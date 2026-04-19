@@ -1,9 +1,9 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
-import MissingPersonsList from "./MissingPersons";
-import Navbar from "./components/Navbar";
-import AddReport from "./pages/AddPerson";
+import Dashboard from "./pages/Dashboard.jsx";
+import MissingPersonsList from "./MissingPersons.jsx";
+import Navbar from "./components/Navbar.jsx";
+import AddPerson from "./pages/AddPerson.jsx";
 
 function App() {
     return (
