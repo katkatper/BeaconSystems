@@ -6,9 +6,11 @@ import MissingPersonsList from "./pages/MissingPersons.jsx";
 import Navbar from "./pages/Navbar.jsx";
 import AddPerson from "./pages/AddReport.jsx";
 import Login from "./pages/Login.jsx";
+import CaseDetail from "./pages/CaseDetail.jsx";
+
 
 function App() {
-    const [token, setToken] = useState(localStorage.getItem("token"));
+    const [, setToken] = useState(localStorage.getItem("token"));
 
     return (
         <Router>
@@ -19,6 +21,7 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/missing" element={<MissingPersonsList />} />
                 <Route path="/add" element={<AddPerson />} />
+                <Route path="/cases/:id" element={<CaseDetail />} />
             </Routes>
         </Router>
     );
