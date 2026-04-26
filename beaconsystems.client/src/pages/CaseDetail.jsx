@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-
+import SightingMap from "./SightingMap.jsx";
 
 
 //CASE DETAIL PAGE
@@ -328,6 +328,14 @@ function CaseDetail() {
 
                 </div>
             ))}
+
+            <hr />
+
+            <h2>Sighting Map</h2>
+
+            <SightingMap sightings={sightings} />
+
+            <hr />
 
         // FORM TO ADD NEW SIGHTING
 
