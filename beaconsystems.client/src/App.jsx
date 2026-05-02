@@ -7,6 +7,9 @@ import Navbar from "./pages/Navbar.jsx";
 import AddPerson from "./pages/AddReport.jsx";
 import Login from "./pages/Login.jsx";
 import CaseDetail from "./pages/CaseDetail.jsx";
+import PersonDetail from "./pages/PersonDetail.jsx";
+import CreateCase from "./pages/CreateCase.jsx";
+
 
 function App() {
     return (
@@ -23,6 +26,11 @@ function App() {
                 <Route path="/login" element={<Login />} />
 
                 <Route path="/cases/:id" element={<CaseDetail />} />
+
+                <Route path="/persons/:id" element={<PersonDetail />} />
+
+                <Route path="/create-case" element={<CreateCase />} />
+
             </Routes>
         </Router>
     );

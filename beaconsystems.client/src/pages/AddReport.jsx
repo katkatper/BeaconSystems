@@ -1,23 +1,21 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 function AddPerson() {
-    const navigate = useNavigate();
-
     const [formData, setFormData] = useState({
-        case_number: "",
-        person_id: "",
-        description: "",
-        investigator_id: "",
-        reporting_agency_id: "",
+        first_name: "",
+        last_name: "",
+        age: "",
+        eye_color: "",
+        hair_color: "",
+        height: "",
+        weight: "",
         last_seen_location: "",
-        priority_level: "medium",
-        notes: "",
-        case_status: "open",
+        risk_level: "high",
+        status: "missing",
+        description: "",
     });
 
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
+    const [message, setMessage] = useState("");
 
     const handleChange = (e) => {
         setFormData({
@@ -29,57 +27,49 @@ function AddPerson() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        setError("");
-        setSuccess("");
-
         const token = localStorage.getItem("token");
-
-        if (!token) {
-            setError("You must be logged in to create a case.");
-            return;
-        }
 
         try {
             const payload = {
                 ...formData,
-                person_id: Number(formData.person_id),
-                investigator_id: formData.investigator_id
-                    ? Number(formData.investigator_id)
-                    : null,
-                reporting_agency_id: formData.reporting_agency_id
-                    ? Number(formData.reporting_agency_id)
-                    : null,
+                age: formData.age ? Number(formData.age) : null,
+                weight: formData.weight ? Number(formData.weight) : null,
             };
 
-            const response = await fetch(
-                "http://127.0.0.1:8000/cases/",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
+            const response = await fetch("http://127.0.0.1:8000/persons/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            });
 
             if (!response.ok) {
-                throw new Error("Failed to create case");
+                throw new Error("Failed to create person");
             }
 
             const data = await response.json();
+            console.log("Person created:", data);
 
-            console.log("Created case:", data);
+            setMessage("Missing person created successfully.");
 
-            setSuccess("Case created successfully.");
-
-            setTimeout(() => {
-                navigate("/");
-            }, 1000);
-
+            setFormData({
+                first_name: "",
+                last_name: "",
+                age: "",
+                eye_color: "",
+                hair_color: "",
+                height: "",
+                weight: "",
+                last_seen_location: "",
+                risk_level: "high",
+                status: "missing",
+                description: "",
+            });
         } catch (err) {
             console.error(err);
-            setError("Could not create case.");
+            setMessage("Could not create missing person.");
         }
     };
 
@@ -88,88 +78,34 @@ function AddPerson() {
             <h1>Report Missing Person</h1>
 
             <form onSubmit={handleSubmit}>
+                <input name="first_name" placeholder="First Name" value={formData.first_name} onChange={handleChange} />
+                <input name="last_name" placeholder="Last Name" value={formData.last_name} onChange={handleChange} />
+                <input name="age" placeholder="Age" value={formData.age} onChange={handleChange} />
+                <input name="eye_color" placeholder="Eye Color" value={formData.eye_color} onChange={handleChange} />
+                <input name="hair_color" placeholder="Hair Color" value={formData.hair_color} onChange={handleChange} />
+                <input name="height" placeholder="Height" value={formData.height} onChange={handleChange} />
+                <input name="weight" placeholder="Weight" value={formData.weight} onChange={handleChange} />
+                <input name="last_seen_location" placeholder="Last Seen Location" value={formData.last_seen_location} onChange={handleChange} />
 
-                <input
-                    name="case_number"
-                    placeholder="Case Number"
-                    value={formData.case_number}
-                    onChange={handleChange}
-                />
-
-                <input
-                    name="person_id"
-                    placeholder="Person ID"
-                    value={formData.person_id}
-                    onChange={handleChange}
-                />
-
-                <input
-                    name="description"
-                    placeholder="Description"
-                    value={formData.description}
-                    onChange={handleChange}
-                />
-
-                <input
-                    name="investigator_id"
-                    placeholder="Investigator ID"
-                    value={formData.investigator_id}
-                    onChange={handleChange}
-                />
-
-                <input
-                    name="reporting_agency_id"
-                    placeholder="Reporting Agency ID"
-                    value={formData.reporting_agency_id}
-                    onChange={handleChange}
-                />
-
-                <input
-                    name="last_seen_location"
-                    placeholder="Last Seen Location"
-                    value={formData.last_seen_location}
-                    onChange={handleChange}
-                />
-
-                <select
-                    name="priority_level"
-                    value={formData.priority_level}
-                    onChange={handleChange}
-                >
+                <select name="risk_level" value={formData.risk_level} onChange={handleChange}>
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
+                    <option value="critical">Critical</option>
                 </select>
 
-                <textarea
-                    name="notes"
-                    placeholder="Notes"
-                    value={formData.notes}
-                    onChange={handleChange}
-                />
-
-                <select
-                    name="case_status"
-                    value={formData.case_status}
-                    onChange={handleChange}
-                >
-                    <option value="open">Open</option>
-                    <option value="investigating">Investigating</option>
-                    <option value="closed">Closed</option>
+                <select name="status" value={formData.status} onChange={handleChange}>
+                    <option value="missing">Missing</option>
+                    <option value="found">Found</option>
+                    <option value="unknown">Unknown</option>
                 </select>
 
-                <br />
-                <br />
+                <textarea name="description" placeholder="Description" value={formData.description} onChange={handleChange} />
 
-                <button type="submit">
-                    Submit Report
-                </button>
-
+                <button type="submit">Submit Missing Person</button>
             </form>
 
-            {error && <p>{error}</p>}
-            {success && <p>{success}</p>}
-
+            {message && <p>{message}</p>}
         </div>
     );
 }

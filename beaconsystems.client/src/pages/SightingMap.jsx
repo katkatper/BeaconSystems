@@ -1,5 +1,5 @@
-import React from "react";
-import {MapContainer, TileLayer, Marker,Popup,Polyline,Circle,} from "react-leaflet";
+import React, { useEffect } from "react";
+import {MapContainer, TileLayer, Marker,Popup,Polyline,Circle, useMap} from "react-leaflet";
 import L from "leaflet";
 
 function getPinColor(confidence) {
@@ -8,17 +8,14 @@ function getPinColor(confidence) {
     return "gray";
 }
 
-
 function getSearchRadius(confidence) {
     if (confidence >= 0.8) return 500;
     if (confidence >= 0.5) return 1000;
     return 1500;
 }
 
-
 function createMarkerIcon(confidence, index) {
     const color = getPinColor(confidence);
-
 
 
     return L.divIcon({
@@ -68,6 +65,17 @@ function createArrowIcon(angle) {
     });
 }
 
+function FitMapToSightings({ positions }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (positions.length > 0) {
+            map.fitBounds(positions, { padding: [40, 40] });
+        }
+    }, [positions, map]);
+
+    return null;
+}
 function SightingMap({ sightings }) {
 
     const validSightings = sightings
@@ -84,15 +92,12 @@ function SightingMap({ sightings }) {
                 )
         );
 
-
     const pathPositions = validSightings.map((s) => [
         s.latitude,
         s.longitude,
     ]);
 
-
     const arrowPositions = [];
-
 
     for (let i = 0; i < pathPositions.length - 1; i++) {
         const start = pathPositions[i];
@@ -116,11 +121,9 @@ function SightingMap({ sightings }) {
         });
     }
 
-
     if (validSightings.length === 0) {
         return <p>No mapped sightings yet.</p>;
     }
-
 
     return (
         <div>
@@ -144,6 +147,9 @@ function SightingMap({ sightings }) {
 
                     url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
                 />
+                
+                <FitMapToSightings positions={pathPositions} />
+
 
                 {validSightings.map((sighting) => (
 
