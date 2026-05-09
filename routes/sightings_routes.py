@@ -1,0 +1,232 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+
+from database.connection import get_db
+from models.sighting import Sighting
+from models.case import Cases
+from models.user import User
+from security.auth import get_current_user, require_role
+from services.activity_service import log_activity
+from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
+
+# CREATE APIRouter INSTANCE WITH PREFIX AND TAGS
+
+router = APIRouter(prefix="/sightings", tags=["Sightings"])
+
+
+@router.get("/test")
+
+def sightings_test():
+
+    return {"message": "Sightings router is working"}
+
+
+# GET SIGHTINGS WITH OPTIONAL FILTERS AND PAGINATION, LOG ACTIVITY, RETURN LIST OF SIGHTINGS
+
+@router.get("/", response_model=List[SightingResponse])
+
+def get_sightings(
+    case_id: Optional[int] = Query(None),
+
+    limit: int = Query(20, ge=1, le=100),
+
+    offset: int = Query(0, ge=0),
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user),
+):
+    query = db.query(Sighting)
+
+    if case_id is not None:
+        query = query.filter(Sighting.case_id == case_id)
+
+    sightings = query.offset(offset).limit(limit).all()
+    
+
+    log_activity(
+
+        db=db,
+
+        user_id=current_user.user_id,
+
+        action="VIEW_SIGHTINGS",
+
+        entity="sighting",
+
+        details=f"{current_user.username} viewed sightings",
+    )
+
+    return sightings
+
+# GET SIGHTING BY ID, LOG ACTIVITY, RETURN SIGHTING DETAILS, RAISE 404 IF NOT FOUND
+
+@router.get("/{sighting_id}", response_model=SightingResponse)
+
+def get_sighting_by_id(
+
+    sighting_id: int,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user),
+):
+
+    sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
+
+    if not sighting:
+
+        raise HTTPException(status_code=404, detail="Sighting not found")
+
+    return sighting
+
+# CREATE SIGHTING WITH ROLE-BASED ACCESS CONTROL, LOG ACTIVITY, 
+# RETURN CREATED SIGHTING ID, RAISE 404 IF CASE NOT FOUND
+
+@router.post("/", response_model=MessageResponse)
+
+def create_sighting(
+
+    data: SightingCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(require_role("admin", "investigator")),
+):
+
+    case = db.query(Cases).filter(Cases.case_id == data.case_id).first()
+
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    new_sighting = Sighting(
+
+        case_id=data.case_id,
+
+        person_id=data.person_id,
+
+        location=data.location,
+
+        latitude=data.latitude,
+
+        longitude=data.longitude,
+
+        description=data.description,
+
+        confidence_score=data.confidence_score,
+
+        image_url=data.image_url,
+    )
+
+    db.add(new_sighting)
+    db.commit()
+    db.refresh(new_sighting)
+
+    log_activity(
+
+        db=db,
+
+        user_id=current_user.user_id,
+
+        action="CREATE",
+
+        entity="sighting",
+
+        entity_id=new_sighting.sighting_id,
+
+        details=f"Sighting created for case {data.case_id}",
+    )
+
+    return {
+        "message": "Sighting created",
+        "sighting_id": new_sighting.sighting_id,
+    }
+
+# UPDATE SIGHTING WITH ROLE-BASED ACCESS CONTROL, LOG ACTIVITY, 
+# RETURN SUCCESS MESSAGE, RAISE 404 IF SIGHTING NOT FOUND
+
+@router.put("/{sighting_id}", response_model=MessageResponse)
+
+def update_sighting(
+
+    sighting_id: int,
+
+    data: SightingUpdate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(require_role("admin", "investigator")),
+):
+
+    sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
+
+    if not sighting:
+
+        raise HTTPException(status_code=404, detail="Sighting not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+
+        setattr(sighting, field, value)
+
+    db.commit()
+    db.refresh(sighting)
+
+    log_activity(
+
+        db=db,
+
+        user_id=current_user.user_id,
+
+        action="UPDATE",
+
+        entity="sighting",
+
+        entity_id=sighting.sighting_id,
+
+        details=f"Sighting {sighting.sighting_id} updated",
+    )
+
+    return {"message": "Sighting updated"}
+
+# DELETE SIGHTING WITH ROLE-BASED ACCESS CONTROL, LOG ACTIVITY,
+# RETURN SUCCESS MESSAGE, RAISE 404 IF SIGHTING NOT FOUND
+
+@router.delete("/{sighting_id}", response_model=MessageResponse)
+
+def delete_sighting(
+
+    sighting_id: int,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(require_role("admin", "investigator")),
+):
+    sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
+
+    if not sighting:
+        raise HTTPException(status_code=404, detail="Sighting not found")
+
+    sighting_id_value = sighting.sighting_id
+
+    db.delete(sighting)
+    db.commit()
+
+    log_activity(
+
+        db=db,
+
+        user_id=current_user.user_id,
+
+        action="DELETE",
+
+        entity="sighting",
+
+        entity_id=sighting_id_value,
+
+        details=f"Sighting {sighting_id_value} deleted",
+    )
+
+    return {"message": "Sighting deleted"}

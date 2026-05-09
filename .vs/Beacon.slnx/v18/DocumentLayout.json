@@ -1,0 +1,471 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\devst\\source\\repos\\Beacon\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\main.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:main.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\models\\timeline_events.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:models\\timeline_events.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\routes\\external_records_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:routes\\external_records_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\models\\external_record.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:models\\external_record.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\models\\person.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:models\\person.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\models\\case.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:models\\case.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\routes\\match_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:routes\\match_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\models\\match.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:models\\match.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\services\\match_service.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:services\\match_service.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\database\\connection.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:database\\connection.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\routes\\admin_log.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:routes\\admin_log.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\routes\\integrations_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:routes\\integrations_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\models\\IntegrationSource.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:models\\IntegrationSource.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\routes\\cases_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:routes\\cases_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\routes\\person_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:routes\\person_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\person_schema.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:schemas\\person_schema.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\sighting_schema.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:schemas\\sighting_schema.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\models\\sighting.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:models\\sighting.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\routes\\sightings_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:routes\\sightings_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\routes\\users_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:routes\\users_routes.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\security\\auth.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:security\\auth.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\models\\activity_log.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:models\\activity_log.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\database\\__init__.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:database\\__init__.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\user_schema.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:schemas\\user_schema.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\services\\activity_service.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:services\\activity_service.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\database\\leads.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:database\\leads.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\case_schema.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:schemas\\case_schema.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|C:\\Users\\devst\\source\\repos\\Beacon\\.env||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{911EBF75-E25E-40DC-8FB2-C712EABC442E}|Beacon.pyproj|solutionrelative:.env||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 10,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "timeline_events.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\timeline_events.py",
+              "RelativeDocumentMoniker": "models\\timeline_events.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\timeline_events.py",
+              "RelativeToolTip": "models\\timeline_events.py",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAAB8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-05-09T17:12:21.953Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "match_routes.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\match_routes.py",
+              "RelativeDocumentMoniker": "routes\\match_routes.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\match_routes.py",
+              "RelativeToolTip": "routes\\match_routes.py",
+              "ViewState": "AgIAABsAAAAAAAAAAAAAADQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-05-03T20:06:59.38Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "match.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\match.py",
+              "RelativeDocumentMoniker": "models\\match.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\match.py",
+              "RelativeToolTip": "models\\match.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-05-03T20:04:49.909Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "match_service.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\services\\match_service.py",
+              "RelativeDocumentMoniker": "services\\match_service.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\services\\match_service.py",
+              "RelativeToolTip": "services\\match_service.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-05-03T20:03:03.993Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "external_records_routes.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\external_records_routes.py",
+              "RelativeDocumentMoniker": "routes\\external_records_routes.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\external_records_routes.py",
+              "RelativeToolTip": "routes\\external_records_routes.py",
+              "ViewState": "AgIAADwAAAAAAAAAAAAAAEgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-05-03T19:29:54.802Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "external_record.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\external_record.py",
+              "RelativeDocumentMoniker": "models\\external_record.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\external_record.py",
+              "RelativeToolTip": "models\\external_record.py",
+              "ViewState": "AgIAABIAAAAAAAAAAAAAAB4AAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-05-03T19:18:40.035Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "integrations_routes.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\integrations_routes.py",
+              "RelativeDocumentMoniker": "routes\\integrations_routes.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\integrations_routes.py",
+              "RelativeToolTip": "routes\\integrations_routes.py",
+              "ViewState": "AgIAACMAAAAAAAAAAAAUwDkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-05-03T18:38:13.281Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "IntegrationSource.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\IntegrationSource.py",
+              "RelativeDocumentMoniker": "models\\IntegrationSource.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\IntegrationSource.py",
+              "RelativeToolTip": "models\\IntegrationSource.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-05-03T18:25:38.601Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "person_schema.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\person_schema.py",
+              "RelativeDocumentMoniker": "schemas\\person_schema.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\person_schema.py",
+              "RelativeToolTip": "schemas\\person_schema.py",
+              "ViewState": "AgIAAGkAAAAAAAAAAAAAAHwAAAAhAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-26T20:20:29.591Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "person.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\person.py",
+              "RelativeDocumentMoniker": "models\\person.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\person.py",
+              "RelativeToolTip": "models\\person.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-26T20:18:43.924Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "main.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\main.py",
+              "RelativeDocumentMoniker": "main.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\main.py",
+              "RelativeToolTip": "main.py",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAswB0AAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-05T00:23:55.018Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "sighting_schema.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\sighting_schema.py",
+              "RelativeDocumentMoniker": "schemas\\sighting_schema.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\sighting_schema.py",
+              "RelativeToolTip": "schemas\\sighting_schema.py",
+              "ViewState": "AgIAACoAAAAAAAAAAAAAADgAAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-26T14:29:23.665Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "sightings_routes.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\sightings_routes.py",
+              "RelativeDocumentMoniker": "routes\\sightings_routes.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\sightings_routes.py",
+              "RelativeToolTip": "routes\\sightings_routes.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAOMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-26T14:11:55.781Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "sighting.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\sighting.py",
+              "RelativeDocumentMoniker": "models\\sighting.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\sighting.py",
+              "RelativeToolTip": "models\\sighting.py",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAswCEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-26T14:11:38.115Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "person_routes.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\person_routes.py",
+              "RelativeDocumentMoniker": "routes\\person_routes.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\person_routes.py",
+              "RelativeToolTip": "routes\\person_routes.py",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-19T23:31:44.144Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "case_schema.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\case_schema.py",
+              "RelativeDocumentMoniker": "schemas\\case_schema.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\case_schema.py",
+              "RelativeToolTip": "schemas\\case_schema.py",
+              "ViewState": "AgIAADMAAAAAAAAAAAAAAEkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-12T18:43:23.035Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "admin_log.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\admin_log.py",
+              "RelativeDocumentMoniker": "routes\\admin_log.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\admin_log.py",
+              "RelativeToolTip": "routes\\admin_log.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAyAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-12T15:08:47.458Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "user_schema.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\user_schema.py",
+              "RelativeDocumentMoniker": "schemas\\user_schema.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\schemas\\user_schema.py",
+              "RelativeToolTip": "schemas\\user_schema.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-12T14:52:43.841Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "activity_service.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\services\\activity_service.py",
+              "RelativeDocumentMoniker": "services\\activity_service.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\services\\activity_service.py",
+              "RelativeToolTip": "services\\activity_service.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-11T21:25:27.86Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "cases_routes.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\cases_routes.py",
+              "RelativeDocumentMoniker": "routes\\cases_routes.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\cases_routes.py",
+              "RelativeToolTip": "routes\\cases_routes.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-11T15:44:46.937Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "auth.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\security\\auth.py",
+              "RelativeDocumentMoniker": "security\\auth.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\security\\auth.py",
+              "RelativeToolTip": "security\\auth.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADMAAAA5AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-10T14:36:50.86Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "users_routes.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\users_routes.py",
+              "RelativeDocumentMoniker": "routes\\users_routes.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\routes\\users_routes.py",
+              "RelativeToolTip": "routes\\users_routes.py",
+              "ViewState": "AgIAAMwAAAAAAAAAAAAAAOIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-05T19:07:53.914Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "__init__.py (database)",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\database\\__init__.py",
+              "RelativeDocumentMoniker": "database\\__init__.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\database\\__init__.py",
+              "RelativeToolTip": "database\\__init__.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-05T19:07:39.665Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "leads.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\database\\leads.py",
+              "RelativeDocumentMoniker": "database\\leads.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\database\\leads.py",
+              "RelativeToolTip": "database\\leads.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-05T19:07:38Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": ".env",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\.env",
+              "RelativeDocumentMoniker": ".env",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\.env",
+              "RelativeToolTip": ".env",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-04-05T14:33:19.735Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "case.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\case.py",
+              "RelativeDocumentMoniker": "models\\case.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\case.py",
+              "RelativeToolTip": "models\\case.py",
+              "ViewState": "AgIAABEAAAAAAAAAAAAswBQAAABQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-05T01:05:13.702Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "activity_log.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\activity_log.py",
+              "RelativeDocumentMoniker": "models\\activity_log.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\models\\activity_log.py",
+              "RelativeToolTip": "models\\activity_log.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-05T00:18:47.77Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "connection.py",
+              "DocumentMoniker": "C:\\Users\\devst\\source\\repos\\Beacon\\database\\connection.py",
+              "RelativeDocumentMoniker": "database\\connection.py",
+              "ToolTip": "C:\\Users\\devst\\source\\repos\\Beacon\\database\\connection.py",
+              "RelativeToolTip": "database\\connection.py",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2026-04-04T22:56:17.78Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
