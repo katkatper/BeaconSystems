@@ -3,12 +3,15 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from database.connection import get_db
+from models import timeline_events
 from models.sighting import Sighting
 from models.case import Cases
 from models.user import User
 from security.auth import get_current_user, require_role
 from services.activity_service import log_activity
 from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
+from models.timeline_events import Timeline_Event
+
 
 # CREATE APIRouter INSTANCE WITH PREFIX AND TAGS
 
@@ -122,6 +125,24 @@ def create_sighting(
     db.add(new_sighting)
     db.commit()
     db.refresh(new_sighting)
+
+    timeline_event = Timeline_Event(
+
+        case_id=new_sighting.case_id,
+
+        person_id=new_sighting.person_id,
+
+        event_type="sighting",
+
+        source_type="user_report",
+
+        location=new_sighting.location,
+
+        description=new_sighting.description
+    )
+
+    db.add(timeline_event)
+    db.commit()
 
     log_activity(
 

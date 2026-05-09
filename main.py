@@ -48,6 +48,8 @@ from routes import external_records_routes
 
 from routes import match_routes
 
+from  routes.timeline_events_routes import router as timeline_events_router
+
 router = APIRouter()
 class PersonCreate(BaseModel):
     name: str
@@ -117,6 +119,7 @@ app.include_router(external_records_routes.router)
 
 app.include_router(match_routes.router)
 
+app.include_router(timeline_events_router)
 
 @app.get("/health")
 def health_check():
