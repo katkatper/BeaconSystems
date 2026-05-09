@@ -9,6 +9,8 @@ import Login from "./pages/Login.jsx";
 import CaseDetail from "./pages/CaseDetail.jsx";
 import PersonDetail from "./pages/PersonDetail.jsx";
 import CreateCase from "./pages/CreateCase.jsx";
+import AddExternalRecord from "./pages/AddExternalRecord.jsx";
+import ExternalRecordList from "./pages/ExternalRecordList.jsx";
 
 
 function App() {
@@ -30,6 +32,10 @@ function App() {
                 <Route path="/persons/:id" element={<PersonDetail />} />
 
                 <Route path="/create-case" element={<CreateCase />} />
+
+                <Route path="/external-records/add" element={<AddExternalRecord />} />
+
+                <Route path="/external-records" element={<ExternalRecordList />} />
 
             </Routes>
         </Router>

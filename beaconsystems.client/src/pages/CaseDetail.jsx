@@ -7,6 +7,7 @@ function CaseDetail() {
 
     const [caseItem, setCaseItem] = useState(null);
     const [sightings, setSightings] = useState([]);
+    const [externalRecords, setExternalRecords] = useState([]);
     const [error, setError] = useState("");
     const [sightingMessage, setSightingMessage] = useState("");
     const [person, setPerson] = useState(null);
@@ -36,11 +37,28 @@ function CaseDetail() {
             .then((data) => {
                 setCaseItem(data);
 
-                return fetch(`http://127.0.0.1:8000/persons/${data.person_id}`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+                fetch(
+                    `http://127.0.0.1:8000/external-records/?person_id=${data.person_id}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                )
+                    .then((res) => res.json())
+                    .then((externalData) => {
+                        setExternalRecords(externalData);
+                    })
+                    .catch((err) => console.error(err));
+
+                return fetch(
+                    `http://127.0.0.1:8000/persons/${data.person_id}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
             })
             .then((res) => res.json())
             .then((personData) => {
@@ -69,6 +87,7 @@ function CaseDetail() {
                 console.error(err);
             });
     }, [id]);
+
     const handleSightingChange = (e) => {
         setSightingForm({
             ...sightingForm,
@@ -99,14 +118,17 @@ function CaseDetail() {
                 image_url: null,
             };
 
-            const response = await fetch("http://127.0.0.1:8000/sightings/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
+            const response = await fetch(
+                "http://127.0.0.1:8000/sightings/",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(payload),
+                }
+            );
 
             if (!response.ok) {
                 throw new Error("Failed to add sighting");
@@ -172,33 +194,50 @@ function CaseDetail() {
                         border: "1px solid gray",
                         padding: "15px",
                         margin: "15px 0",
-                        borderRadius: "8px"
+                        borderRadius: "8px",
                     }}
                 >
                     <h2>Missing Person Profile</h2>
 
                     <p>Name: {person.first_name} {person.last_name}</p>
-
                     <p>Age: {person.age}</p>
-
                     <p>Eye Color: {person.eye_color}</p>
-
                     <p>Hair Color: {person.hair_color}</p>
-
                     <p>Height: {person.height}</p>
-
                     <p>Weight: {person.weight}</p>
-
                     <p>Risk Level: {person.risk_level}</p>
-
                     <p>Status: {person.status}</p>
-
                     <p>Last Seen: {person.last_seen_location}</p>
-
                     <p>Description: {person.description}</p>
-
                 </div>
             )}
+
+            <hr />
+
+            <h2>Linked External Records</h2>
+
+            {externalRecords.length === 0 ? (
+                <p>No external records found for this person.</p>
+            ) : (
+                externalRecords.map((record) => (
+                    <div
+                        key={record.id}
+                        style={{
+                            border: "1px solid gray",
+                            margin: "10px",
+                            padding: "12px",
+                            borderRadius: "8px",
+                        }}
+                    >
+                        <strong>{record.record_type}</strong>
+                        <p>Name: {record.first_name} {record.last_name}</p>
+                        <p>Age: {record.age}</p>
+                        <p>Location: {record.location}</p>
+                        <p>Notes: {record.notes}</p>
+                    </div>
+                ))
+            )}
+
             <hr />
 
             <h2>Case Timeline</h2>
@@ -238,17 +277,10 @@ function CaseDetail() {
                     }}
                 >
                     <strong>Sighting #{index + 1} Reported</strong>
-
                     <p>Location: {sighting.location}</p>
                     <p>Description: {sighting.description}</p>
-                    <p>
-                        Confidence:{" "}
-                        {sighting.confidence_score ?? "Unknown"}
-                    </p>
-                    <p>
-                        Coordinates: {sighting.latitude},{" "}
-                        {sighting.longitude}
-                    </p>
+                    <p>Confidence: {sighting.confidence_score ?? "Unknown"}</p>
+                    <p>Coordinates: {sighting.latitude}, {sighting.longitude}</p>
                     <p>
                         Time:{" "}
                         {sighting.sighting_time ||
