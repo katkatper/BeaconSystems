@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="beaconsystems.client/beaconsystems.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="BeaconSystems.Server/BeaconSystems.Server.csproj" />
+</Solution>
