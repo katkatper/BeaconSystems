@@ -11,6 +11,8 @@ function CaseDetail() {
     const [error, setError] = useState("");
     const [sightingMessage, setSightingMessage] = useState("");
     const [person, setPerson] = useState(null);
+    const [Timeline_Events, setTimeline_Events] = useState([]);
+
 
     const [sightingForm, setSightingForm] = useState({
         location: "",
@@ -86,10 +88,19 @@ function CaseDetail() {
             .catch((err) => {
                 console.error(err);
             });
-    }, [id]);
 
-    const handleSightingChange = (e) => {
-        setSightingForm({
+        fetch(`http://127.0.0.1:8000/timeline-events/?case_id=${id}`)
+            .then((res) => res.json())
+            .then((data) => {
+                setTimeline_Events(data);
+            })
+            .catch((err) => {
+                console.error(err);
+            });
+
+    }, [id]);
+         const handleSightingChange = (e) => {
+         setSightingForm({
             ...sightingForm,
             [e.target.name]: e.target.value,
         });
@@ -250,24 +261,29 @@ function CaseDetail() {
                     borderRadius: "8px",
                 }}
             >
-                <strong>Case Opened</strong>
-                <p>Investigation initiated</p>
-            </div>
+                {Timeline_Events.map((event) => (
+                    <div
+                        key={event.event_id}
+                        style={{
+                            border: "1px solid gray",
+                            margin: "10px",
+                            padding: "12px",
+                            borderRadius: "8px",
+                        }}
+                    >
+                        <strong>{event.event_type}</strong>
 
-            <div
-                style={{
-                    border: "1px solid gray",
-                    margin: "10px",
-                    padding: "12px",
-                    borderRadius: "8px",
-                }}
-            >
-                <strong>Last Seen</strong>
-                <p>{caseItem.last_seen_location}</p>
-            </div>
+                        <p>{event.description}</p>
 
-            {sortedSightings.map((sighting, index) => (
-                <div
+                        <p>Location: {event.location}</p>
+
+                        <p>{event.timestamp}</p>
+                    </div>
+               
+                ))}
+
+                {sortedSightings.map((sighting, index) => (
+                    <div
                     key={sighting.sighting_id}
                     style={{
                         border: "1px solid gray",
@@ -341,7 +357,8 @@ function CaseDetail() {
 
             {sightingMessage && <p>{sightingMessage}</p>}
         </div>
-    );
-}
+            );
+    </div>
+)};
 
 export default CaseDetail;
