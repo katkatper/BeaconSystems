@@ -1,0 +1,138 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>911ebf75-e25e-40dc-8fb2-c712eabc442e</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>main.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>Beacon</Name>
+    <RootNamespace>Beacon</RootNamespace>
+    <SuppressEnvironmentCreationPrompt>True</SuppressEnvironmentCreationPrompt>
+    <TestFramework>Pytest</TestFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="ai_engine\face_recognition.py" />
+    <Compile Include="ai_engine\main.py" />
+    <Compile Include="ai_engine\pattern_detection.py" />
+    <Compile Include="ai_engine\test_rds.py" />
+    <Compile Include="database\__init__.py" />
+    <Compile Include="models\external_record.py" />
+    <Compile Include="models\IntegrationSource.py" />
+    <Compile Include="models\match.py" />
+    <Compile Include="models\user.py" />
+    <Compile Include="models\__init__.py" />
+    <Compile Include="routes\admin_log.py" />
+    <Compile Include="routes\alerts_routes.py" />
+    <Compile Include="routes\cases_routes.py" />
+    <Compile Include="routes\external_records_routes.py" />
+    <Compile Include="routes\integrations_routes.py" />
+    <Compile Include="routes\match_routes.py" />
+    <Compile Include="routes\person_routes.py" />
+    <Compile Include="routes\routes.py" />
+    <Compile Include="routes\sightings_routes.py" />
+    <Compile Include="routes\search_routes.py" />
+    <Compile Include="app.py" />
+    <Compile Include="config\aws_config.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="config\database_config.py" />
+    <Compile Include="config\settings.py" />
+    <Compile Include="config\__init__.py" />
+    <Compile Include="database\base.py" />
+    <Compile Include="desktop_app.py" />
+    <Compile Include="Images\Beacon.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="integrations\cameras.py" />
+    <Compile Include="integrations\dna.py" />
+    <Compile Include="integrations\missing_registry.py" />
+    <Compile Include="integrations\service.py" />
+    <Compile Include="Lambda_handler.py" />
+    <Compile Include="models\activity_log.py" />
+    <Compile Include="models\agencies.py" />
+    <Compile Include="models\alerts.py" />
+    <Compile Include="models\cameras.py" />
+    <Compile Include="models\case.py" />
+    <Compile Include="database\connection.py" />
+    <Compile Include="database\leads.py" />
+    <Compile Include="integrations\financial_transactions.py" />
+    <Compile Include="integrations\hospital_api.py" />
+    <Compile Include="integrations\police_api.py" />
+    <Compile Include="integrations\social_media_api.py" />
+    <Compile Include="integrations\transportation.py" />
+    <Compile Include="main.py" />
+    <Compile Include="models\data_matches.py" />
+    <Compile Include="models\data_sources.py" />
+    <Compile Include="models\evidence.py" />
+    <Compile Include="models\investigators.py" />
+    <Compile Include="models\leads.py" />
+    <Compile Include="models\person.py" />
+    <Compile Include="models\sighting.py" />
+    <Compile Include="models\timeline_events.py" />
+    <Compile Include="routes\timeline_events_routes.py" />
+    <Compile Include="routes\users_routes.py" />
+    <Compile Include="routes\__init__.py" />
+    <Compile Include="schemas\case_schema.py" />
+    <Compile Include="schemas\person_schema.py" />
+    <Compile Include="schemas\sighting_schema.py" />
+    <Compile Include="schemas\user_schema.py" />
+    <Compile Include="security\auth.py" />
+    <Compile Include="services\activity_service.py" />
+    <Compile Include="services\alert_service.py" />
+    <Compile Include="services\auth_service.py" />
+    <Compile Include="services\case_service.py" />
+    <Compile Include="services\match_service.py" />
+    <Compile Include="services\persons_service.py" />
+    <Compile Include="services\prediction.py" />
+    <Compile Include="services\search_service.py" />
+    <Compile Include="services\sighting_service.py" />
+    <Compile Include="services\timeline_service.py" />
+    <Compile Include="test_rds.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Utility Logger\logger.py" />
+    <Compile Include="services\s3_service.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="config\" />
+    <Folder Include="database\" />
+    <Folder Include="routes\" />
+    <Folder Include="ai_engine\" />
+    <Folder Include="integrations\" />
+    <Folder Include="models\" />
+    <Folder Include="Images\" />
+    <Folder Include="schemas\" />
+    <Folder Include="Utility Logger\" />
+    <Folder Include="security\" />
+    <Folder Include="services\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include=".env" />
+    <Content Include="ai_engine\Pipfile" />
+    <Content Include="ai_engine\requirements.txt" />
+    <Content Include="Images\Beacon.png" />
+    <Content Include="Pipfile" />
+    <Content Include="requirements.txt" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+  <!-- Uncomment the CoreCompile target to enable the Build command in
+       Visual Studio and specify your pre- and post-build commands in
+       the BeforeBuild and AfterBuild targets below. -->
+  <!--<Target Name="CoreCompile" />-->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+</Project>
