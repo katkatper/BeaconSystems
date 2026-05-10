@@ -11,6 +11,7 @@ from security.auth import get_current_user, require_role
 from services.activity_service import log_activity
 from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
 from models.timeline_events import Timeline_Event
+from models.alerts import Alerts
 
 
 # CREATE APIRouter INSTANCE WITH PREFIX AND TAGS
@@ -143,6 +144,27 @@ def create_sighting(
 
     db.add(timeline_event)
     db.commit()
+
+
+    if new_sighting.confidence_score is not None and new_sighting.confidence_score >= 0.8:
+
+        alert = Alerts(
+            case_id=new_sighting.case_id,
+
+            person_id=new_sighting.person_id,
+
+            alert_type="high_confidence_sighting",
+
+            title="High Confidence Sighting",
+
+            description=f"High confidence sighting reported at {new_sighting.location}",
+
+            severity="high"
+        )
+
+        db.add(alert)
+        db.commit()
+
 
     log_activity(
 

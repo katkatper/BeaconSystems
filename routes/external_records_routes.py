@@ -8,6 +8,8 @@ from database.connection import get_db
 
 from models.external_record import ExternalRecord
 
+from models.timeline_events import Timeline_Event
+
 
 
 # EXTERNAL RECORDS ROUTES - FOR DIGESTING EXTERNAL INTELLIGENCE INTO THE SYSTEM
@@ -37,9 +39,14 @@ def create_external_record(
     location: str | None = None,
 
     notes: str | None = None,
+    
+    person_id: int | None = None,
+
+    case_id: int | None = None,
 
     db: Session = Depends(get_db)
 ):
+
     record = ExternalRecord(
 
         integration_source_id=integration_source_id,
@@ -54,15 +61,38 @@ def create_external_record(
 
         location=location,
 
-        notes=notes
+        notes=notes,
+
+        person_id=person_id,
+
+        case_id=case_id,
     )
 
     db.add(record)
     db.commit()
     db.refresh(record)
 
-    return record
+    if record.case_id is not None:
 
+        timeline_event = Timeline_Event(
+
+            case_id=record.case_id,
+
+            person_id=record.person_id,
+
+            event_type="external_record",
+
+            source_type=record.record_type,
+
+            location=record.location,
+
+            description=record.notes
+        )
+
+        db.add(timeline_event)
+        db.commit()
+
+    return record
 
 @router.get("/")
 def get_external_records(
@@ -73,6 +103,7 @@ def get_external_records(
 
     db: Session = Depends(get_db)
 ):
+
 
     query = db.query(ExternalRecord)
 
