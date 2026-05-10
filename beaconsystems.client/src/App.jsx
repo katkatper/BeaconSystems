@@ -11,7 +11,7 @@ import PersonDetail from "./pages/PersonDetail.jsx";
 import CreateCase from "./pages/CreateCase.jsx";
 import AddExternalRecord from "./pages/AddExternalRecord.jsx";
 import ExternalRecordList from "./pages/ExternalRecordList.jsx";
-
+import Alerts from "./pages/Alerts.jsx";
 
 function App() {
     return (
@@ -37,6 +37,7 @@ function App() {
 
                 <Route path="/external-records" element={<ExternalRecordList />} />
 
+                <Route path="/alerts" element={<Alerts />} />
             </Routes>
         </Router>
     );
