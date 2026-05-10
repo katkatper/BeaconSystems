@@ -2,24 +2,66 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 function Navbar() {
+
     return (
-        <nav>
-            <Link to="/">Dashboard</Link>{" | "}
 
-            <Link to="/missing">Missing Persons</Link>{" | "}
+        <nav style={styles.nav}>
 
-            <Link to="/add">Report Person</Link>{" | "}
+            <h2 style={styles.title}>Beacon Systems</h2>
 
-            <Link to="/login">Login</Link>{" | "}
+            <div>
 
-            <Link to="/create-case">Create Case</Link>{" | "}
+                <Link to="/" style={styles.link}>
+                    Dashboard
+                </Link>
 
-            <Link to="/external-records/add"> Add External Record</Link> {" | "}
+                <Link to="/missing" style={styles.link}>
+                    Missing Persons
+                </Link>
 
-            <Link to="/external-records"> View External Record</Link>
+                <Link to="/cases/1" style={styles.link}>
+                    Cases
+                </Link>
+
+                <Link to="/external-records" style={styles.link}>
+                    External Records
+                </Link>
+
+                <Link to="/alerts" style={styles.link}>
+                    Alerts
+                </Link>
+
+                <Link to="/login" style={styles.link}>
+                    Login
+                </Link>
+
+            </div>
 
         </nav>
     );
 }
+
+const styles = {
+
+    nav: {
+        backgroundColor: "#1e293b",
+        padding: "15px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+
+    title: {
+        color: "white",
+        margin: 0,
+    },
+
+    link: {
+        color: "white",
+        marginRight: "15px",
+        textDecoration: "none",
+        fontWeight: "bold",
+    },
+};
 
 export default Navbar;
