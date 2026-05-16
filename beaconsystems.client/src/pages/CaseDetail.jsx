@@ -197,7 +197,7 @@ function CaseDetail() {
             <p>Last Seen: {caseItem.last_seen_location}</p>
             <p>Notes: {caseItem.notes}</p>
             <p>Investigator ID: {caseItem.investigator_id}</p>
-            <p>Agency ID: {caseItem.reporting_agency_id}</p>
+            <p>Agency ID: {caseItem?.agency_id}</p>
 
             {person && (
                 <div

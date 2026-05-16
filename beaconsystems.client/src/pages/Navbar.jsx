@@ -1,40 +1,39 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function Navbar() {
 
-    return (
+    const navigate = useNavigate();
 
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        navigate("/login");
+    };
+
+    return (
         <nav style={styles.nav}>
 
-            <h2 style={styles.title}>Beacon Systems</h2>
+            <h2>Beacon System</h2>
 
             <div>
+                <Link to="/" style={styles.link}>Dashboard</Link>
 
-                <Link to="/" style={styles.link}>
-                    Dashboard
-                </Link>
+                <Link to="/missing" style={styles.link}>Missing Persons</Link>
 
-                <Link to="/missing" style={styles.link}>
-                    Missing Persons
-                </Link>
+                <Link to="/create-case" style={styles.link}>Create Case</Link>
 
-                <Link to="/cases/1" style={styles.link}>
-                    Cases
-                </Link>
+                <Link to="/external-records" style={styles.link}>External Records</Link>
 
-                <Link to="/external-records" style={styles.link}>
-                    External Records
-                </Link>
+                <Link to="/alerts" style={styles.link}>Alerts</Link>
 
-                <Link to="/alerts" style={styles.link}>
-                    Alerts
-                </Link>
+                <Link to="/agencies" style={styles.link}>Agencies</Link>
 
-                <Link to="/login" style={styles.link}>
-                    Login
-                </Link>
-
+                <button
+                    onClick={handleLogout}
+                    style={styles.button}
+                >
+                    Logout
+                </button>
             </div>
 
         </nav>
@@ -42,25 +41,24 @@ function Navbar() {
 }
 
 const styles = {
-
     nav: {
-        backgroundColor: "#1e293b",
         padding: "15px",
+        backgroundColor: "#111",
+        color: "white",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-    },
-
-    title: {
-        color: "white",
-        margin: 0,
     },
 
     link: {
         color: "white",
         marginRight: "15px",
         textDecoration: "none",
-        fontWeight: "bold",
+    },
+
+    button: {
+        padding: "6px 12px",
+        cursor: "pointer",
     },
 };
 
