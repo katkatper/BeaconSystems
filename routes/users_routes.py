@@ -5,7 +5,7 @@ from database.connection import get_db
 from models.user import User
 from schemas.user_schema import UserCreate, UserLogin, UserResponse, UserRoleUpdate
 from security.auth import hash_password, verify_password, create_access_token, require_role, get_current_user
-from services.activity_service import log_activity
+from services.activity_service import create_activity_log
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -53,7 +53,7 @@ def register_user(
     db.refresh(new_user)
 
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -103,7 +103,7 @@ def login(
     if not user.is_active:
         raise HTTPException(status_code=403, detail="User account is inactive")
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -165,7 +165,7 @@ def update_user_role(
     db.refresh(user)
 
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -221,7 +221,7 @@ def deactivate_user(
     db.refresh(user)
 
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -273,7 +273,7 @@ def activate_user(
 
     db.refresh(user)
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -314,7 +314,7 @@ def get_users(
 
     users = db.query(User).all()
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 

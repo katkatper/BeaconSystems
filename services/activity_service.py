@@ -1,24 +1,48 @@
-from sqlalchemy.orm import Session
 from models.activity_log import ActivityLog
 
 
-def log_activity(
-    db: Session,
-    user_id: int,
+#ACTIVITY LOG TO DATABASE
+
+def create_activity_log(
+
+    db,
+
     action: str,
+
     entity: str,
-    entity_id: int = None,
-    details: str = None,
+
+    user_id: int | None = None,
+
+    agency_id: int | None = None,
+
+    entity_id: int | None = None,
+
+    details: str | None = None,
+
+    ip_address: str | None = None,
 ):
-    log_entry = ActivityLog(
+
+
+    log = ActivityLog(
+
         user_id=user_id,
+
+        agency_id=agency_id,
+
         action=action,
+
         entity=entity,
+
         entity_id=entity_id,
+
         details=details,
+
+        ip_address=ip_address,
     )
 
-    db.add(log_entry)
+    db.add(log)
     db.commit()
-    db.refresh(log_entry)
-    return log_entry
+    db.refresh(log)
+
+
+    return log

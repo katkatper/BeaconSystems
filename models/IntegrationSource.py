@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.sql import func
-from database.connection import Base\
+from database.connection import Base
 
 
 class IntegrationSource(Base):

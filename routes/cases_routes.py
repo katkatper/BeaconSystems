@@ -1,19 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-
-from services.activity_service import log_activity
+from services.activity_service import create_activity_log 
 from database.connection import get_db
 from models.case import Cases
 from models.user import User
 from security.auth import get_current_user, require_role
 from schemas.case_schema import CaseCreate, CaseUpdate, CaseResponse, CaseCreateResponse, MessageResponse
 from typing import List, Optional
+from fastapi import Request
+from services.activity_service import create_activity_log 
+from routes.users_routes import get_current_user
+
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
 
 
 
 @router.get("/by-person/{person_id}", response_model=List[CaseResponse])
+
 def get_cases_by_person(
     person_id: int,
     db: Session = Depends(get_db),
@@ -30,6 +34,7 @@ def get_cases_by_person(
 # temp test route to verify router is working, remove later
 
 @router.get("/test")
+
 def get_cases_test():
 
     return [
@@ -41,6 +46,7 @@ def get_cases_test():
 @router.get("/", response_model=List[CaseResponse])
 
 def get_cases(
+
     db: Session = Depends(get_db),
 
     current_user: User = Depends(get_current_user),
@@ -55,6 +61,7 @@ def get_cases(
 
     offset: int = Query(0, ge=0),
 ):
+
     query = db.query(Cases)
 
     if current_user.role != "admin":
@@ -71,7 +78,9 @@ def get_cases(
 
     cases = query.offset(offset).limit(limit).all()
 
-    log_activity(
+
+    create_activity_log(
+
         db=db,
 
         user_id=current_user.user_id,
@@ -85,80 +94,63 @@ def get_cases(
 
     return cases
 
-
 # CREATE CASE WITH ROLE-BASED ACCESS CONTROL AND ACTIVITY LOGGING
 
-@router.post("/", response_model=CaseCreateResponse)
+@router.post("/")
 
 def create_case(
 
-    data: CaseCreate,
+    case: CaseCreate,
+
+    request: Request,
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "investigator"))
+    current_user = Depends(get_current_user)
 ):
-    investigator_id = data.investigator_id
+    new_case = Cases(**case.dict())
 
-
-    if current_user.role != "admin":
-
-        investigator_id = current_user.user_id
-
-    new_case = Cases(
-
-        case_number=data.case_number,
-
-        person_id=data.person_id,
-
-        description=data.description,
-
-        investigator_id=investigator_id,
-
-        reporting_agency_id=data.reporting_agency_id,
-
-        last_seen_location=data.last_seen_location,
-
-        priority_level=data.priority_level,
-
-        notes=data.notes,
-
-        case_status=data.case_status or "open",
-    )
 
     db.add(new_case)
-
     db.commit()
-
     db.refresh(new_case)
 
+    
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
         user_id=current_user.user_id,
 
-        action="CREATE",
+        agency_id=getattr(current_user, "agency_id", None),
+
+        action="CREATE_CASE",
 
         entity="case",
 
         entity_id=new_case.case_id,
 
-        details=f"Case {new_case.case_number} created",
+        details=f"Case created: {new_case.title}",
+
+        ip_address=request.client.host if request.client else None
     )
 
-    return {"message": "Case created", "case_id": new_case.case_id}
-
+    return new_case
 
 # UPDATE CASE WITH ROLE-BASED ACCESS CONTROL AND ACTIVITY LOGGING
 
 @router.get("/{case_id}", response_model=CaseResponse)
+
 def get_case_by_id(
+
     case_id: int,
+
     db: Session = Depends(get_db),
+
     current_user: User = Depends(get_current_user)
 ):
+
     case = db.query(Cases).filter(Cases.case_id == case_id).first()
 
     if not case:
@@ -190,7 +182,7 @@ def update_case(
 
     if current_user.role != "admin" and case.investigator_id != current_user.user_id:
 
-        log_activity(
+        create_activity_log(
 
             db=db,
 
@@ -223,7 +215,7 @@ def update_case(
     db.refresh(case)
 
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -262,7 +254,7 @@ def delete_case(
 
     if current_user.role != "admin" and case.investigator_id != current_user.user_id:
 
-        log_activity(
+        create_activity_log(
 
             db=db,
 
@@ -287,7 +279,7 @@ def delete_case(
 
     db.commit()
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -332,7 +324,7 @@ def get_case_counts(
     high_priority = query.filter(Cases.priority_level == "high").count()
 
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 

@@ -48,6 +48,8 @@ from models.case import Cases
 
 from models.alerts import Alerts
 
+from models.activity_log import ActivityLog
+
 # IMPORT ROUTES
 from routes.users_routes import router as users_router
 

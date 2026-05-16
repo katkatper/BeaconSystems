@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-
 from database.connection import get_db
 from models import timeline_events
 from models.sighting import Sighting
 from models.case import Cases
 from models.user import User
 from security.auth import get_current_user, require_role
-from services.activity_service import log_activity
+from services.activity_service import create_activity_log 
 from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
 from models.timeline_events import Timeline_Event
 from models.alerts import Alerts
@@ -49,7 +48,7 @@ def get_sightings(
     sightings = query.offset(offset).limit(limit).all()
     
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -166,7 +165,7 @@ def create_sighting(
         db.commit()
 
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -217,7 +216,7 @@ def update_sighting(
     db.commit()
     db.refresh(sighting)
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 
@@ -257,7 +256,7 @@ def delete_sighting(
     db.delete(sighting)
     db.commit()
 
-    log_activity(
+    create_activity_log(
 
         db=db,
 

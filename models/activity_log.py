@@ -4,19 +4,24 @@ from datetime import datetime
 
 
 class ActivityLog(Base):
+
     __tablename__ = "activity_log"
+
 
     id = Column(Integer, primary_key=True, index=True)
 
     user_id = Column(Integer, nullable=False)
+    agency_id = Column(Integer, nullable=True)
+
 
     action = Column(String(100), nullable=False)
 
-    entity = Column(String(100), nullable=False)
 
+    entity = Column(String(100), nullable=False)
     entity_id = Column(Integer, nullable=True)
 
     details = Column(Text, nullable=True)
+    ip_address = Column(String(100), nullable=True)
 
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
 
