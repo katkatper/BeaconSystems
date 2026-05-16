@@ -4,7 +4,7 @@ from datetime import datetime
 
 class Agencies(Base):
 
-    __tablename__ = 'Agencies'
+    __tablename__ = 'agencies'
     
     agency_id=Column(Integer, primary_key=True)
 
