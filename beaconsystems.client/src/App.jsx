@@ -15,6 +15,9 @@ import ExternalRecordList from "./pages/ExternalRecordList.jsx";
 import Alerts from "./pages/Alerts.jsx";
 import AgencyManagement from "./pages/AgencyManagement.jsx";
 import { useLocation } from "react-router-dom"; 
+import UserManagement from "./pages/UserManagement.jsx";
+import Cases from "./pages/Cases.jsx";
+
 
 function ProtectedRoute({ children }) {
     const token = localStorage.getItem("token");
@@ -125,6 +128,30 @@ function AppLayout() {
                     element={
                         <ProtectedRoute>
                             <AgencyManagement />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/admin/users"
+                    element={
+                        <ProtectedRoute>
+                            <UserManagement />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/cases"
+                    element={
+                        <ProtectedRoute>
+                            <Cases />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/intelligence"
+                    element={
+                        <ProtectedRoute>
+                            <IntelligenceCenter />
                         </ProtectedRoute>
                     }
                 />

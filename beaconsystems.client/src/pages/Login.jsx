@@ -31,8 +31,10 @@ function Login({ onLogin }) {
             }
 
             const data = await response.json();
+            console.log("Login response:", data);
 
             localStorage.setItem("token", data.access_token);
+            localStorage.setItem("role", data.role);
 
             navigate("/");
 

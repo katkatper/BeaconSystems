@@ -12,7 +12,9 @@ function CaseDetail() {
     const [sightingMessage, setSightingMessage] = useState("");
     const [person, setPerson] = useState(null);
     const [Timeline_Events, setTimeline_Events] = useState([]);
-
+    const [investigators, setInvestigators] = useState([]);
+    const [selectedInvestigator, setSelectedInvestigator] = useState("");
+    const [assignmentMessage, setAssignmentMessage] = useState("");
 
     const [sightingForm, setSightingForm] = useState({
         location: "",
@@ -97,10 +99,29 @@ function CaseDetail() {
             .catch((err) => {
                 console.error(err);
             });
+        fetch("http://127.0.0.1:8000/admin/users/", {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+
+                const investigatorUsers = data.filter(
+                    (user) =>
+                        user.role === "investigator" ||
+                        user.role === "admin"
+                );
+
+                setInvestigators(investigatorUsers);
+            })
+            .catch((err) => {
+                console.error(err);
+            });
 
     }, [id]);
-         const handleSightingChange = (e) => {
-         setSightingForm({
+    const handleSightingChange = (e) => {
+        setSightingForm({
             ...sightingForm,
             [e.target.name]: e.target.value,
         });
@@ -140,7 +161,7 @@ function CaseDetail() {
                     body: JSON.stringify(payload),
                 }
             );
-
+            
             if (!response.ok) {
                 throw new Error("Failed to add sighting");
             }
@@ -169,6 +190,42 @@ function CaseDetail() {
             setSightingMessage("Could not add sighting.");
         }
     };
+    const assignInvestigator = async () => {
+
+        const token = localStorage.getItem("token");
+
+        try {
+
+            const response = await fetch(
+                `http://127.0.0.1:8000/cases/${id}/assign-investigator?investigator_id=${selectedInvestigator}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("Failed to assign investigator");
+            }
+
+            const data = await response.json();
+
+            setAssignmentMessage(data.message);
+
+            setCaseItem({
+                ...caseItem,
+                investigator_id: selectedInvestigator,
+            });
+
+        } catch (err) {
+
+            console.error(err);
+
+            setAssignmentMessage("Could not assign investigator.");
+        }
+    };
 
     if (error) {
         return <p>{error}</p>;
@@ -185,6 +242,7 @@ function CaseDetail() {
     );
 
     return (
+
         <div>
             <Link to="/">Back to Dashboard</Link>
 
@@ -196,8 +254,31 @@ function CaseDetail() {
             <p>Priority: {caseItem.priority_level}</p>
             <p>Last Seen: {caseItem.last_seen_location}</p>
             <p>Notes: {caseItem.notes}</p>
-            <p>Investigator ID: {caseItem.investigator_id}</p>
             <p>Agency ID: {caseItem?.agency_id}</p>
+            <p>Investigator ID: {caseItem.investigator_id}</p>
+            <div>
+                <h3>Assign Investigator</h3>
+
+                <select
+                    value={selectedInvestigator}
+                    onChange={(e) => setSelectedInvestigator(e.target.value)}
+                >
+                    <option value="">Select Investigator</option>
+
+                    {investigators.map((user) => (
+                        <option key={user.user_id} value={user.user_id}>
+                            {user.username} - {user.role}
+                        </option>
+                    ))}
+                </select>
+
+                <button onClick={assignInvestigator}>
+                    Assign
+                </button>
+
+                {assignmentMessage && <p>{assignmentMessage}</p>}
+
+            </div>
 
             {person && (
                 <div
@@ -221,6 +302,7 @@ function CaseDetail() {
                     <p>Last Seen: {person.last_seen_location}</p>
                     <p>Description: {person.description}</p>
                 </div>
+
             )}
 
             <hr />
@@ -279,86 +361,88 @@ function CaseDetail() {
 
                         <p>{event.timestamp}</p>
                     </div>
-               
+
                 ))}
 
                 {sortedSightings.map((sighting, index) => (
                     <div
-                    key={sighting.sighting_id}
-                    style={{
-                        border: "1px solid gray",
-                        margin: "10px",
-                        padding: "12px",
-                        borderRadius: "8px",
-                    }}
-                >
-                    <strong>Sighting #{index + 1} Reported</strong>
-                    <p>Location: {sighting.location}</p>
-                    <p>Description: {sighting.description}</p>
-                    <p>Confidence: {sighting.confidence_score ?? "Unknown"}</p>
-                    <p>Coordinates: {sighting.latitude}, {sighting.longitude}</p>
-                    <p>
-                        Time:{" "}
-                        {sighting.sighting_time ||
-                            sighting.created_at ||
-                            "Unknown"}
-                    </p>
-                </div>
-            ))}
+                        key={sighting.sighting_id}
+                        style={{
+                            border: "1px solid gray",
+                            margin: "10px",
+                            padding: "12px",
+                            borderRadius: "8px",
+                        }}
+                    >
+                        <strong>Sighting #{index + 1} Reported</strong>
+                        <p>Location: {sighting.location}</p>
+                        <p>Description: {sighting.description}</p>
+                        <p>Confidence: {sighting.confidence_score ?? "Unknown"}</p>
+                        <p>Coordinates: {sighting.latitude}, {sighting.longitude}</p>
+                        <p>
+                            Time:{" "}
+                            {sighting.sighting_time ||
+                                sighting.created_at ||
+                                "Unknown"}
+                        </p>
+                    </div>
+                ))}
 
-            <hr />
+                <hr />
 
-            <h2>Sighting Map</h2>
+                <h2>Sighting Map</h2>
 
-            <SightingMap sightings={sortedSightings} />
+                <SightingMap sightings={sortedSightings} />
 
-            <hr />
+                <hr />
 
-            <h2>Add Sighting</h2>
+                <h2>Add Sighting</h2>
 
-            <form onSubmit={submitSighting}>
-                <input
-                    name="location"
-                    placeholder="Location"
-                    value={sightingForm.location}
-                    onChange={handleSightingChange}
-                />
+                <form onSubmit={submitSighting}>
+                    <input
+                        name="location"
+                        placeholder="Location"
+                        value={sightingForm.location}
+                        onChange={handleSightingChange}
+                    />
 
-                <input
-                    name="latitude"
-                    placeholder="Latitude"
-                    value={sightingForm.latitude}
-                    onChange={handleSightingChange}
-                />
+                    <input
+                        name="latitude"
+                        placeholder="Latitude"
+                        value={sightingForm.latitude}
+                        onChange={handleSightingChange}
+                    />
 
-                <input
-                    name="longitude"
-                    placeholder="Longitude"
-                    value={sightingForm.longitude}
-                    onChange={handleSightingChange}
-                />
+                    <input
+                        name="longitude"
+                        placeholder="Longitude"
+                        value={sightingForm.longitude}
+                        onChange={handleSightingChange}
+                    />
 
-                <textarea
-                    name="description"
-                    placeholder="Description"
-                    value={sightingForm.description}
-                    onChange={handleSightingChange}
-                />
+                    <textarea
+                        name="description"
+                        placeholder="Description"
+                        value={sightingForm.description}
+                        onChange={handleSightingChange}
+                    />
 
-                <input
-                    name="confidence_score"
-                    placeholder="Confidence Score 0-1"
-                    value={sightingForm.confidence_score}
-                    onChange={handleSightingChange}
-                />
+                    <input
+                        name="confidence_score"
+                        placeholder="Confidence Score 0-1"
+                        value={sightingForm.confidence_score}
+                        onChange={handleSightingChange}
+                    />
 
-                <button type="submit">Add Sighting</button>
-            </form>
+                    <button type="submit">Add Sighting</button>
+                </form>
 
-            {sightingMessage && <p>{sightingMessage}</p>}
-        </div>
+                {sightingMessage && <p>{sightingMessage}</p>}
+
+            </div>
+
             );
-    </div>
-)};
-
-export default CaseDetail;
+        </div>
+    )
+};  
+    export default CaseDetail;
