@@ -1,26 +1,35 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
 from database.connection import Base
 from datetime import datetime
 
 
+
+
 class Evidence(Base):
 
-    __tablename__ = 'Evidence'
-
-    evidence_id= Column(Integer, primary_key=True)
-
-    case_id= Column(Integer)
-
-    description= Column(Text)
-
-    evidence_type= Column(String(100))
-
-    collected_by= Column(Integer)
-
-    evidence_location= Column(String(200))
-
-    collected_at= Column(DateTime)
-
-    created_at =Column(DateTime, default=datetime.utcnow)
+    __tablename__ = "evidence"
 
 
+    evidence_id = Column(Integer, primary_key=True, index=True)
+
+
+    case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=False)
+
+
+    description = Column(Text, nullable=True)
+    evidence_type = Column(String(100), nullable=False)
+
+
+
+    collected_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    evidence_location = Column(String(200), nullable=True)
+
+    is_sensitive = Column(Boolean, default=False)
+
+    file_name = Column(String(255), nullable=True)
+    file_path = Column(String(500), nullable=True)
+
+
+
+    collected_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

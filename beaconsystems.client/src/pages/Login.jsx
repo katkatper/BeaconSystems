@@ -50,32 +50,36 @@ function Login({ onLogin }) {
     };
 
     return (
-        <div>
-            <h1>Beacon Login</h1>
+        <div className="login-page">
+            <div className="login-card">
+                <h1>Beacon</h1>
 
-            <form onSubmit={handleSubmit}>
-                <div>
+                <p className="login-subtitle">
+                    Investigative Intelligence Platform
+                </p>
+
+                <form onSubmit={handleSubmit}>
                     <input
                         type="text"
                         placeholder="Username"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                     />
-                </div>
 
-                <div>
                     <input
                         type="password"
                         placeholder="Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
-                </div>
 
-                <button type="submit">Login</button>
-            </form>
+                    <button type="submit">
+                        Secure Login
+                    </button>
+                </form>
 
-            {error && <p>{error}</p>}
+                {error && <p className="error-text">{error}</p>}
+            </div>
         </div>
     );
 }

@@ -10,8 +10,7 @@ from security.auth import get_current_user, require_role
 from services.activity_service import create_activity_log 
 from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
 from models.timeline_events import Timeline_Event
-from models.alerts import Alerts
-
+from services.alert_service import create_alert
 
 # CREATE APIRouter INSTANCE WITH PREFIX AND TAGS
 
@@ -98,7 +97,9 @@ def create_sighting(
     current_user: User = Depends(require_role("admin", "investigator")),
 ):
 
-    case = db.query(Cases).filter(Cases.case_id == data.case_id).first()
+    case = db.query(Cases).filter(
+        Cases.case_id == data.case_id
+    ).first()
 
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -138,32 +139,38 @@ def create_sighting(
 
         location=new_sighting.location,
 
-        description=new_sighting.description
+        description=new_sighting.description,
     )
 
     db.add(timeline_event)
     db.commit()
 
+    if (
+        new_sighting.confidence_score is not None
+        and new_sighting.confidence_score >= 0.8
+    ):
 
-    if new_sighting.confidence_score is not None and new_sighting.confidence_score >= 0.8:
+        create_alert(
 
-        alert = Alerts(
+            db=db,
+
             case_id=new_sighting.case_id,
 
             person_id=new_sighting.person_id,
 
-            alert_type="high_confidence_sighting",
+            recipient_agency_id=current_user.agency_id,
+
+            alert_type="HIGH_CONFIDENCE_SIGHTING",
 
             title="High Confidence Sighting",
 
-            description=f"High confidence sighting reported at {new_sighting.location}",
+            description=(
+                f"High confidence sighting reported at "
 
-            severity="high"
+                f"{new_sighting.location}"
+            ),
+            severity="high",
         )
-
-        db.add(alert)
-        db.commit()
-
 
     create_activity_log(
 
@@ -184,7 +191,6 @@ def create_sighting(
         "message": "Sighting created",
         "sighting_id": new_sighting.sighting_id,
     }
-
 # UPDATE SIGHTING WITH ROLE-BASED ACCESS CONTROL, LOG ACTIVITY, 
 # RETURN SUCCESS MESSAGE, RAISE 404 IF SIGHTING NOT FOUND
 
@@ -201,20 +207,45 @@ def update_sighting(
     current_user: User = Depends(require_role("admin", "investigator")),
 ):
 
-    sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
+    sighting = db.query(Sighting).filter(
+        Sighting.sighting_id == sighting_id
+    ).first()
 
     if not sighting:
-
         raise HTTPException(status_code=404, detail="Sighting not found")
+
+    previous_confidence = sighting.confidence_score
 
     update_data = data.model_dump(exclude_unset=True)
 
     for field, value in update_data.items():
-
         setattr(sighting, field, value)
 
     db.commit()
     db.refresh(sighting)
+
+    if (
+        sighting.confidence_score is not None
+        and sighting.confidence_score >= 0.8
+        and (
+            previous_confidence is None
+            or previous_confidence < 0.8
+        )
+    ):
+
+        create_alert(
+            db=db,
+            case_id=sighting.case_id,
+            person_id=sighting.person_id,
+            recipient_agency_id=current_user.agency_id,
+            alert_type="SIGHTING_ESCALATED",
+            title="Sighting Escalated",
+            description=(
+                f"Sighting at {sighting.location} "
+                f"was escalated to high confidence."
+            ),
+            severity="high",
+        )
 
     create_activity_log(
 
@@ -246,12 +277,24 @@ def delete_sighting(
 
     current_user: User = Depends(require_role("admin", "investigator")),
 ):
+
     sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
 
     if not sighting:
         raise HTTPException(status_code=404, detail="Sighting not found")
 
     sighting_id_value = sighting.sighting_id
+
+    create_alert(
+        db=db,
+        case_id=sighting.case_id,
+        person_id=sighting.person_id,
+        recipient_agency_id=current_user.agency_id,
+        alert_type="SIGHTING_DELETED_AUDIT",
+        title="Sighting Deleted",
+        description=f"Sighting at {sighting.location} was deleted.",
+        severity="medium",
+    )
 
     db.delete(sighting)
     db.commit()

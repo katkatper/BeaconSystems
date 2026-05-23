@@ -1,91 +1,51 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-
+import { NavLink, useNavigate } from "react-router-dom";
 
 function Navbar() {
-
     const navigate = useNavigate();
-
     const role = localStorage.getItem("role");
 
     const handleLogout = () => {
-
-        localStorage.removeItem("token");
-
-        localStorage.removeItem("role");
-
-        localStorage.removeItem("user_id");
-
-        localStorage.removeItem("agency_id");
-
+        localStorage.clear();
         navigate("/login");
     };
 
-
     return (
-        <nav style={styles.nav}>
+        <nav className="navbar">
+            <div className="navbar-brand">
+                <div className="brand-mark">B</div>
+                <div>
+                    <h2>Beacon</h2>
+                    <span>Investigative Intelligence</span>
+                </div>
+            </div>
 
-            <h2>Beacon System</h2>
-
-            <div>
-                <Link to="/" style={styles.link}>Dashboard</Link>
-
-                <Link to="/cases" style={styles.link}>Cases</Link>
-
-                <Link to="/missing" style={styles.link}>Missing Persons</Link>
-
-                <Link to="/create-case" style={styles.link}>Create Case</Link>
-
-                <Link to="/external-records" style={styles.link}>External Records</Link>
+            <div className="navbar-links">
+                <NavLink to="/">Dashboard</NavLink>
+                <NavLink to="/cases">Cases</NavLink>
+                <NavLink to="/missing">Missing Persons</NavLink>
+                <NavLink to="/create-case">Create Case</NavLink>
+                <NavLink to="/external-records">External Records</NavLink>
+                <NavLink to="/evidence-upload">Evidence</NavLink>
+                <NavLink to="/intelligence">Intelligence</NavLink>
 
                 {(role === "admin" || role === "agency_admin" || role === "investigator") && (
-
-                    <Link to="/alerts" style={styles.link}>Alerts</Link>
-
+                    <NavLink to="/alerts">Alerts</NavLink>
                 )}
-
-                <Link to="/intelligence" style={styles.link}>
-                    Intelligence Center
-                </Link>
 
                 {role === "admin" && (
                     <>
-                        <Link to="/agencies" style={styles.link}>Agencies</Link>
-
-                        <Link to="/admin/users" style={styles.link}>Users</Link>
+                        <NavLink to="/agencies">Agencies</NavLink>
+                        <NavLink to="/admin/users">Users</NavLink>
                     </>
                 )}
 
-                <button onClick={handleLogout} style={styles.button}>
+                <button onClick={handleLogout} className="logout-button">
                     Logout
                 </button>
-
             </div>
         </nav>
     );
 }
-
-const styles = {
-
-    nav: {
-        padding: "15px",
-        backgroundColor: "#111",
-        color: "white",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
-
-    link: {
-        color: "white",
-        marginRight: "15px",
-        textDecoration: "none",
-    },
-
-    button: {
-        padding: "6px 12px",
-        cursor: "pointer",
-    },
-};
 
 export default Navbar;

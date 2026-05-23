@@ -1,6 +1,6 @@
 import React from "react";
 
-import { BrowserRouter as Router,Routes,Route,Navigate,} from "react-router-dom";
+import { BrowserRouter as Router,Routes,Route,Navigate,useLocation} from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard.jsx";
 import MissingPersonsList from "./pages/MissingPersons.jsx";
@@ -14,9 +14,11 @@ import AddExternalRecord from "./pages/AddExternalRecord.jsx";
 import ExternalRecordList from "./pages/ExternalRecordList.jsx";
 import Alerts from "./pages/Alerts.jsx";
 import AgencyManagement from "./pages/AgencyManagement.jsx";
-import { useLocation } from "react-router-dom"; 
 import UserManagement from "./pages/UserManagement.jsx";
 import Cases from "./pages/Cases.jsx";
+import IntelligenceCenter from "./pages/IntelligenceCenter.jsx";
+import EvidenceUpload from "./pages/EvidenceUpload.jsx";
+import "./App.css";
 
 
 function ProtectedRoute({ children }) {
@@ -155,15 +157,25 @@ function AppLayout() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/evidence-upload"
+                    element={
+                        <ProtectedRoute>
+                            <EvidenceUpload />
+                        </ProtectedRoute>
+                    }   
+                    />
             </Routes>
         </>
     );
 }
 function App() {
     return (
-        <Router>
-            <AppLayout />
-        </Router>
+        <div className="main-background">
+            <Router>
+                <AppLayout />
+            </Router>
+        </div>
     );
 }
 

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 function Dashboard() {
     const [cases, setCases] = useState([]);
+    const [alerts, setAlerts] = useState([]);
     const [summary, setSummary] = useState(null);
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
@@ -53,6 +54,35 @@ function Dashboard() {
             .catch((err) => {
                 console.error(err);
             });
+
+        const interval = setInterval(() => {
+
+            fetch("http://127.0.0.1:8000/dashboard/summary", {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            })
+                .then((res) => res.json())
+                .then((data) => {
+                    setSummary(data);
+                })
+                .catch((err) => {
+                    console.error(err);
+                });
+
+        }, 10000);
+
+        fetch("http://127.0.0.1:8000/alerts/", {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+            .then((res) => res.json())
+            .then((data) => setAlerts(data))
+            .catch((err) => console.error(err));
+
+        return () => clearInterval(interval);
+
 
     }, []);
 
@@ -123,93 +153,94 @@ function Dashboard() {
             setError("Could not delete case");
         }
     };
-
     return (
-        <div>
-            <h1>Beacon Dashboard</h1>
+        <div className="dashboard-page">
+
+            <div className="dashboard-header">
+                <h1>Beacon Command Center</h1>
+
+                <p>
+                    Real-time investigative intelligence and operational coordination
+                </p>
+            </div>
 
             {summary && (
-                <div style={styles.summaryGrid}>
-                    <div style={styles.summaryCard}>
+
+                <div className="command-grid">
+
+                    <div className="command-card">
                         <h3>Total Cases</h3>
                         <p>{summary.total_cases}</p>
                     </div>
 
-                    <div style={styles.summaryCard}>
+                    <div className="command-card">
                         <h3>Open Cases</h3>
                         <p>{summary.open_cases}</p>
                     </div>
 
-                    <div style={styles.summaryCard}>
+                    <div className="command-card">
                         <h3>High Priority</h3>
                         <p>{summary.high_priority_cases}</p>
                     </div>
+
                 </div>
             )}
 
-            {summary && (
-                <div>
-                    <h2>Recent Sightings</h2>
-
-                    {summary.recent_sightings?.length === 0 ? (
-                        <p>No recent sightings.</p>
-                    ) : (
-                        summary.recent_sightings?.map((sighting) => (
-                            <div key={sighting.sighting_id} style={styles.infoCard}>
-                                <strong>{sighting.location}</strong>
-                                <p>{sighting.description}</p>
-                                <p>Confidence: {sighting.confidence_score ?? "Unknown"}</p>
-                            </div>
-                        ))
-                    )}
-
-                    <h2>Recent Activity</h2>
-
-                    {summary.recent_activity?.length === 0 ? (
-                        <p>No recent activity.</p>
-                    ) : (
-                        summary.recent_activity?.map((activity) => (
-                            <div key={activity.id} style={styles.infoCard}>
-                                <strong>{activity.action}</strong>
-                                <p>{activity.details}</p>
-                                <p>{activity.timestamp}</p>
-                            </div>
-                        ))
-                    )}
-                </div>
-            )
-            }
-
             {error && <p>{error}</p>}
 
-            <h2>Active Cases</h2>
+            {alerts
+                .filter((alert) => alert.severity === "high" || alert.severity === "critical")
+                .map((alert) => (
+                    <div key={alert.alert_id} className={`alert-banner alert-${alert.severity}`}>
+                        <strong>{alert.severity.toUpperCase()} ALERT:</strong> {alert.title}
+                        <p>{alert.description}</p>
+                    </div>
+                ))}
+
+            <h2 className="section-title">
+                Active Cases
+            </h2>
 
             {cases.length === 0 && !error && (
                 <p>No cases found for this user.</p>
             )}
 
-            <div>
+            <div className="cases-grid">
+
                 {cases.map((c) => (
+
                     <div
                         key={c.case_id}
-                        style={{
-                            border: "1px solid gray",
-                            padding: "15px",
-                            margin: "10px",
-                            borderRadius: "8px",
-                        }}
+                        className="case-card"
                     >
+
+                        <div className="case-card-header">
+
+                            <span
+                                className={`priority-badge priority-${c.priority_level}`}
+                            >
+                                {c.priority_level}
+                            </span>
+
+                            <span className="status-badge">
+                                {c.case_status}
+                            </span>
+
+                        </div>
+
                         <h3>
                             <Link to={`/cases/${c.case_id}`}>
                                 {c.case_number}
                             </Link>
                         </h3>
 
-                        <p>Status: {c.case_status}</p>
+                        <p>
+                            Last Seen: {c.last_seen_location}
+                        </p>
 
-                        <p>Last Seen: {c.last_seen_location}</p>
-
-                        <p>Priority: {c.priority_level}</p>
+                        <p>
+                            Priority: {c.priority_level}
+                        </p>
 
                         <button
                             onClick={() =>
@@ -240,35 +271,14 @@ function Dashboard() {
                         >
                             Delete Case
                         </button>
+
                     </div>
+
                 ))}
+
             </div>
+
         </div>
-    )
-
-};
-const styles = {
-    summaryGrid: {
-        display: "flex",
-        gap: "15px",
-        margin: "20px 0",
-        flexWrap: "wrap",
-    },
-
-    summaryCard: {
-        border: "1px solid gray",
-        padding: "15px",
-        borderRadius: "8px",
-        minWidth: "160px",
-        backgroundColor: "#f5f5f5",
-    },
-
-    infoCard: {
-        border: "1px solid gray",
-        padding: "12px",
-        margin: "10px 0",
-        borderRadius: "8px",
-    },
-
-};
-  export default Dashboard;
+    );
+}
+    export default Dashboard;

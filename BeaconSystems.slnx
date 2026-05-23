@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="Beacon.pyproj" Type="888888a0-9f3d-457c-b088-3a5042f75d52" Id="911ebf75-e25e-40dc-8fb2-c712eabc442e">
+    <Build Project="false" />
+  </Project>
   <Project Path="beaconsystems.client/beaconsystems.client.esproj">
     <Build />
     <Deploy />
