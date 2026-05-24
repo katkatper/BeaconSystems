@@ -15,7 +15,7 @@ from models.legal_access_request import LegalAccessRequest
 from models.sighting import Sighting
 from models.user import User
 from security.auth import get_current_user
-
+from models.bolo_alert import BoloAlert
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -109,6 +109,19 @@ def get_dashboard_summary(
     recent_alerts = alert_query.order_by(Alerts.created_at.desc()).limit(5).all()
     recent_evidence = evidence_query.order_by(Evidence.created_at.desc()).limit(5).all()
     recent_access = access_query.order_by(CaseAccessGrant.granted_at.desc()).limit(5).all()
+    bolo_query = db.query(BoloAlert)
+
+    if current_user.role != "admin":
+     bolo_query = bolo_query.filter(BoloAlert.agency_id == current_user.agency_id)
+
+    active_bolos = (
+    bolo_query
+    .filter(BoloAlert.status == "active")
+    .order_by(BoloAlert.created_at.desc())
+    .limit(5)
+    .all()
+)
+
 
     recent_sightings_query = db.query(Sighting)
     if accessible_case_ids:
@@ -171,6 +184,7 @@ def get_dashboard_summary(
         "urgent_cases": urgent_cases,
         "recent_alerts": recent_alerts,
         "recent_evidence": recent_evidence,
+        "active_bolos": active_bolos,
         "recent_access": recent_access,
         "recent_sightings": recent_sightings,
         "recent_activity": recent_activity,

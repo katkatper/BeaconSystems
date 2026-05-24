@@ -177,7 +177,26 @@ function Dashboard() {
                                 ))
                             )}
                         </section>
+                        <section className="dashboard-panel">
+                            <h2>Active BOLOs</h2>
 
+                            {summary.active_bolos?.length === 0 ? (
+                                <p>No active BOLO alerts.</p>
+                            ) : (
+                                summary.active_bolos?.map((bolo) => (
+                                    <article key={bolo.bolo_id} className="queue-item bolo-preview-item">
+                                        <div>
+                                            <strong>{bolo.title}</strong>
+                                            <span>{bolo.risk_level}</span>
+                                        </div>
+
+                                        <p>{bolo.description}</p>
+
+                                        <Link to="/bolos">Open BOLO Board</Link>
+                                    </article>
+                                ))
+                            )}
+                        </section>
                         
                         <section className="dashboard-panel">
                             <h2>Evidence Watch</h2>
