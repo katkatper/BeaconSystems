@@ -1,284 +1,195 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-
 function Dashboard() {
-    const [cases, setCases] = useState([]);
-    const [alerts, setAlerts] = useState([]);
     const [summary, setSummary] = useState(null);
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
-
     );
 
-    useEffect(() => {
+    const loadSummary = async () => {
         const token = localStorage.getItem("token");
 
-        if (!token) {
-            return;
+        if (!token) return;
+
+        const response = await fetch("http://127.0.0.1:8000/dashboard/summary", {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to load dashboard summary");
         }
 
-        fetch("http://127.0.0.1:8000/cases/", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Unauthorized or failed request");
-                }
-                return res.json();
-            })
-            .then((data) => {
-                console.log("Cases:", data);
-                setCases(data);
-            })
-            .catch((err) => {
-                console.error(err);
-                setError("Could not load cases");
-            });
-        fetch("http://127.0.0.1:8000/dashboard/summary", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Failed to load dashboard summary");
-                }
-                return res.json();
-            })
-            .then((data) => {
-                setSummary(data);
-            })
-            .catch((err) => {
-                console.error(err);
-            });
+        const data = await response.json();
+        setSummary(data);
+    };
+
+    useEffect(() => {
+        loadSummary().catch((err) => {
+            console.error(err);
+            setError("Could not load dashboard summary");
+        });
 
         const interval = setInterval(() => {
-
-            fetch("http://127.0.0.1:8000/dashboard/summary", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            })
-                .then((res) => res.json())
-                .then((data) => {
-                    setSummary(data);
-                })
-                .catch((err) => {
-                    console.error(err);
-                });
-
+            loadSummary().catch((err) => console.error(err));
         }, 10000);
 
-        fetch("http://127.0.0.1:8000/alerts/", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => res.json())
-            .then((data) => setAlerts(data))
-            .catch((err) => console.error(err));
-
         return () => clearInterval(interval);
-
-
     }, []);
 
-    const updateCaseStatus = async (caseId, newStatus) => {
-        const token = localStorage.getItem("token");
+    const metrics = summary
+        ? [
+              ["Active Cases", summary.open_cases],
+              ["High Priority", summary.high_priority_cases],
+              ["New Alerts", summary.new_alerts],
+              ["Pending Legal", summary.pending_legal_requests],
+              ["Pending Partners", summary.pending_partner_sources],
+              ["Evidence Today", summary.evidence_uploaded_today],
+              ["Restricted Access", summary.restricted_access_events],
+              ["Active Sources", summary.active_partner_sources],
+          ]
+        : [];
 
-        try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/cases/${caseId}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        case_status: newStatus,
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Update failed");
-            }
-
-            setCases(
-                cases.map((c) =>
-                    c.case_id === caseId
-                        ? { ...c, case_status: newStatus }
-                        : c
-                )
-            );
-        } catch (err) {
-            console.error(err);
-            setError("Could not update case");
-        }
-    };
-    const deleteCase = async (caseId) => {
-        const token = localStorage.getItem("token");
-
-        if (!window.confirm("Delete this case?")) {
-            return;
-        }
-
-        try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/cases/${caseId}`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Delete failed");
-            }
-
-            setCases(
-                cases.filter(
-                    c => c.case_id !== caseId
-                )
-            );
-
-        } catch (err) {
-            console.error(err);
-            setError("Could not delete case");
-        }
-    };
     return (
         <div className="dashboard-page">
-
             <div className="dashboard-header">
                 <h1>Beacon Command Center</h1>
-
-                <p>
-                    Real-time investigative intelligence and operational coordination
-                </p>
+                <p>Operational overview, compliance watch, and urgent work queue.</p>
             </div>
-
-            {summary && (
-
-                <div className="command-grid">
-
-                    <div className="command-card">
-                        <h3>Total Cases</h3>
-                        <p>{summary.total_cases}</p>
-                    </div>
-
-                    <div className="command-card">
-                        <h3>Open Cases</h3>
-                        <p>{summary.open_cases}</p>
-                    </div>
-
-                    <div className="command-card">
-                        <h3>High Priority</h3>
-                        <p>{summary.high_priority_cases}</p>
-                    </div>
-
-                </div>
-            )}
 
             {error && <p>{error}</p>}
 
-            {alerts
-                .filter((alert) => alert.severity === "high" || alert.severity === "critical")
-                .map((alert) => (
-                    <div key={alert.alert_id} className={`alert-banner alert-${alert.severity}`}>
-                        <strong>{alert.severity.toUpperCase()} ALERT:</strong> {alert.title}
-                        <p>{alert.description}</p>
+            {summary && (
+                <>
+                    <div className="command-grid">
+                        {metrics.map(([label, value]) => (
+                            <div className="command-card" key={label}>
+                                <h3>{label}</h3>
+                                <p>{value ?? 0}</p>
+                            </div>
+                        ))}
                     </div>
-                ))}
 
-            <h2 className="section-title">
-                Active Cases
-            </h2>
+                    <section className="quick-actions">
+                        <Link to="/create-case">Create Case</Link>
+                        <Link to="/case-access">Request Case Access</Link>
+                        <Link to="/evidence-upload">Upload Evidence</Link>
+                        <Link to="/legal-access">Submit Legal Access</Link>
+                        <Link to="/partner-sources">Add Partner Source</Link>
+                        <Link to="/intelligence">Open Intelligence</Link>
+                    </section>
 
-            {cases.length === 0 && !error && (
-                <p>No cases found for this user.</p>
+                    <div className="dashboard-columns">
+                        <section className="dashboard-panel">
+                            <h2>Priority Work Queue</h2>
+                            {summary.urgent_cases?.length === 0 ? (
+                                <p>No high priority cases in your queue.</p>
+                            ) : (
+                                summary.urgent_cases?.map((caseItem) => (
+                                    <article key={caseItem.case_id} className="queue-item">
+                                        <div>
+                                            <strong>{caseItem.case_number}</strong>
+                                            <span>{caseItem.priority_level}</span>
+                                        </div>
+                                        <p>{caseItem.title}</p>
+                                        <Link to={`/cases/${caseItem.case_id}`}>
+                                            Open Case
+                                        </Link>
+                                    </article>
+                                ))
+                            )}
+                        </section>
+
+                        <section className="dashboard-panel">
+                            <h2>Recent Alerts</h2>
+                            {summary.recent_alerts?.length === 0 ? (
+                                <p>No recent alerts.</p>
+                            ) : (
+                                summary.recent_alerts?.map((alert) => (
+                                    <article key={alert.alert_id} className="queue-item">
+                                        <div>
+                                            <strong>{alert.title}</strong>
+                                            <span>{alert.severity}</span>
+                                        </div>
+                                        <p>{alert.description}</p>
+                                    </article>
+                                ))
+                            )}
+                        </section>
+
+                        <section className="dashboard-panel">
+                            <h2>Live Intelligence Snapshot</h2>
+                            {summary.recent_sightings?.length === 0 ? (
+                                <p>No recent sightings.</p>
+                            ) : (
+                                summary.recent_sightings?.map((sighting) => (
+                                    <article
+                                        key={sighting.sighting_id}
+                                        className="queue-item"
+                                    >
+                                        <div>
+                                            <strong>{sighting.location || "Unknown location"}</strong>
+                                            <span>
+                                                {sighting.confidence_score ?? "unknown"}
+                                            </span>
+                                        </div>
+                                        <p>{sighting.description || "No description"}</p>
+                                    </article>
+                                ))
+                            )}
+                        </section>
+
+                        <section className="dashboard-panel">
+                            <h2>Evidence Watch</h2>
+                            {summary.recent_evidence?.length === 0 ? (
+                                <p>No recent evidence uploads.</p>
+                            ) : (
+                                summary.recent_evidence?.map((item) => (
+                                    <article key={item.evidence_id} className="queue-item">
+                                        <div>
+                                            <strong>{item.file_name || "Unnamed file"}</strong>
+                                            <span>Case {item.case_id}</span>
+                                        </div>
+                                        <p>{item.description || "No description"}</p>
+                                    </article>
+                                ))
+                            )}
+                        </section>
+
+                        <section className="dashboard-panel">
+                            <h2>Case Access Audit</h2>
+                            {summary.recent_access?.length === 0 ? (
+                                <p>No recent restricted access events.</p>
+                            ) : (
+                                summary.recent_access?.map((access) => (
+                                    <article key={access.grant_id} className="queue-item">
+                                        <div>
+                                            <strong>Case {access.case_id}</strong>
+                                            <span>User {access.user_id}</span>
+                                        </div>
+                                        <p>{access.reason}</p>
+                                    </article>
+                                ))
+                            )}
+                        </section>
+
+                        <section className="dashboard-panel">
+                            <h2>Compliance Readiness</h2>
+                            <div className="compliance-list">
+                                <span>Audit logging active</span>
+                                <span>Evidence chain of custody active</span>
+                                <span>Legal access review queue active</span>
+                                <span>Partner source approval queue active</span>
+                                <span>Restricted case access logging active</span>
+                            </div>
+                        </section>
+                    </div>
+                </>
             )}
-
-            <div className="cases-grid">
-
-                {cases.map((c) => (
-
-                    <div
-                        key={c.case_id}
-                        className="case-card"
-                    >
-
-                        <div className="case-card-header">
-
-                            <span
-                                className={`priority-badge priority-${c.priority_level}`}
-                            >
-                                {c.priority_level}
-                            </span>
-
-                            <span className="status-badge">
-                                {c.case_status}
-                            </span>
-
-                        </div>
-
-                        <h3>
-                            <Link to={`/cases/${c.case_id}`}>
-                                {c.case_number}
-                            </Link>
-                        </h3>
-
-                        <p>
-                            Last Seen: {c.last_seen_location}
-                        </p>
-
-                        <p>
-                            Priority: {c.priority_level}
-                        </p>
-
-                        <button
-                            onClick={() =>
-                                updateCaseStatus(
-                                    c.case_id,
-                                    "investigating"
-                                )
-                            }
-                        >
-                            Investigating
-                        </button>
-
-                        <button
-                            onClick={() =>
-                                updateCaseStatus(
-                                    c.case_id,
-                                    "closed"
-                                )
-                            }
-                        >
-                            Close Case
-                        </button>
-
-                        <button
-                            onClick={() =>
-                                deleteCase(c.case_id)
-                            }
-                        >
-                            Delete Case
-                        </button>
-
-                    </div>
-
-                ))}
-
-            </div>
-
         </div>
     );
 }
-    export default Dashboard;
+
+export default Dashboard;
