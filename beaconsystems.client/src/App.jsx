@@ -22,7 +22,7 @@ import LegalAccessRequests from "./pages/LegalAccessRequests.jsx";
 import PartnerSources from "./pages/PartnerSources.jsx";
 import CaseAccess from "./pages/CaseAccess.jsx";
 import "./App.css";
-
+import BoloBoard from "./pages/BoloBoard.jsx";
 
 function ProtectedRoute({ children }) {
     const token = localStorage.getItem("token");
@@ -192,6 +192,8 @@ function AppLayout() {
                         </ProtectedRoute>
                     }
                 />
+                <Route path="/bolos" element={<ProtectedRoute><BoloBoard /></ProtectedRoute>} />
+
             </Routes>
         </>
     );

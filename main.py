@@ -29,8 +29,11 @@ from models.data_matches import Data_Matches
 from models.data_sources import Data_Source
 
 from models.evidence import Evidence
+
 from models.evidence_chain import EvidenceChain
+
 from models.legal_access_request import LegalAccessRequest
+
 from models.case_access_grant import CaseAccessGrant
 
 from models.leads import Leads
@@ -52,6 +55,8 @@ from models.case import Cases
 from models.alerts import Alerts
 
 from models.activity_log import ActivityLog
+
+from models.bolo_alert import BoloAlert
 
 # IMPORT ROUTES
 from routes.users_routes import router as users_router
@@ -82,6 +87,7 @@ from routes.sightings_routes import router as sightings_routes
 
 from routes.alerts_routes import router as alerts_router
 
+from routes.bolo_routes import router as bolo_router
 
 router = APIRouter()
 
@@ -139,9 +145,13 @@ app.include_router(sightings_router)
 app.include_router(cases_router)
 
 app.include_router(alerts_router)
+
 app.include_router(evidence_router)
+
 app.include_router(admin_user_router)
+
 app.include_router(dashboard_router)
+
 app.include_router(legal_access_router)
 
 app.include_router(person_routes.router)
@@ -159,6 +169,9 @@ app.include_router(match_routes.router)
 app.include_router(timeline_events_router)
 
 app.include_router(alerts_router)
+
+app.include_router(bolo_router)
+ 
 
 @app.get("/health")
 def health_check():
