@@ -28,6 +28,7 @@
     <Compile Include="ai_engine\pattern_detection.py" />
     <Compile Include="ai_engine\test_rds.py" />
     <Compile Include="database\__init__.py" />
+    <Compile Include="models\bolo_alert.py" />
     <Compile Include="models\external_record.py" />
     <Compile Include="models\IntegrationSource.py" />
     <Compile Include="models\match.py" />
@@ -35,6 +36,7 @@
     <Compile Include="models\__init__.py" />
     <Compile Include="routes\admin_log.py" />
     <Compile Include="routes\alerts_routes.py" />
+    <Compile Include="routes\bolo_routes.py" />
     <Compile Include="routes\cases_routes.py" />
     <Compile Include="routes\external_records_routes.py" />
     <Compile Include="routes\integrations_routes.py" />

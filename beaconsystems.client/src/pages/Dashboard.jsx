@@ -7,49 +7,57 @@ function Dashboard() {
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
     );
 
-    const loadSummary = async () => {
-        const token = localStorage.getItem("token");
-
-        if (!token) return;
-
-        const response = await fetch("http://127.0.0.1:8000/dashboard/summary", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to load dashboard summary");
-        }
-
-        const data = await response.json();
-        setSummary(data);
-    };
-
     useEffect(() => {
-        loadSummary().catch((err) => {
-            console.error(err);
-            setError("Could not load dashboard summary");
-        });
+        let isMounted = true;
 
-        const interval = setInterval(() => {
-            loadSummary().catch((err) => console.error(err));
-        }, 10000);
+        const loadSummary = async () => {
+            const token = localStorage.getItem("token");
 
-        return () => clearInterval(interval);
+            if (!token) return;
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/dashboard/summary", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to load dashboard summary");
+                }
+
+                const data = await response.json();
+
+                if (isMounted) {
+                    setSummary(data);
+                    setError("");
+                }
+            } catch (err) {
+                console.error(err);
+
+                if (isMounted) {
+                    setError("Could not load dashboard summary");
+                }
+            }
+        };
+
+        const timer = setTimeout(loadSummary, 0);
+        const interval = setInterval(loadSummary, 10000);
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timer);
+            clearInterval(interval);
+        };
     }, []);
 
     const metrics = summary
         ? [
-              ["Active Cases", summary.open_cases],
-              ["High Priority", summary.high_priority_cases],
-              ["New Alerts", summary.new_alerts],
-              ["Pending Legal", summary.pending_legal_requests],
-              ["Pending Partners", summary.pending_partner_sources],
-              ["Evidence Today", summary.evidence_uploaded_today],
-              ["Restricted Access", summary.restricted_access_events],
-              ["Active Sources", summary.active_partner_sources],
-          ]
+            ["Active Cases", summary.open_cases],
+            ["High Priority", summary.high_priority_cases],
+            ["New Alerts", summary.new_alerts],
+            ["Evidence Today", summary.evidence_uploaded_today],
+        ]
         : [];
 
     return (
@@ -71,13 +79,64 @@ function Dashboard() {
                             </div>
                         ))}
                     </div>
+                    {summary.command_briefing && (
+                        <section className="command-briefing">
+                            <div>
+                                <span>Urgent Case</span>
+                                <strong>
+                                    {summary.command_briefing.urgent_case
+                                        ? summary.command_briefing.urgent_case.case_number
+                                        : "None"}
+                                </strong>
+                                <p>
+                                    {summary.command_briefing.urgent_case
+                                        ? summary.command_briefing.urgent_case.title
+                                        : "No urgent case in queue"}
+                                </p>
+                            </div>
 
+                            <div>
+                                <span>Latest Alert</span>
+                                <strong>
+                                    {summary.command_briefing.latest_alert
+                                        ? summary.command_briefing.latest_alert.title
+                                        : "None"}
+                                </strong>
+                                <p>
+                                    {summary.command_briefing.latest_alert
+                                        ? summary.command_briefing.latest_alert.severity
+                                        : "No recent alerts"}
+                                </p>
+                            </div>
+
+                            <div>
+                                <span>Latest Evidence</span>
+                                <strong>
+                                    {summary.command_briefing.latest_evidence
+                                        ? summary.command_briefing.latest_evidence.file_name
+                                        : "None"}
+                                </strong>
+                                <p>
+                                    {summary.command_briefing.latest_evidence
+                                        ? `Case ${summary.command_briefing.latest_evidence.case_id}`
+                                        : "No recent evidence"}
+                                </p>
+                            </div>
+
+                            <div>
+                                <span>Compliance</span>
+                                <strong>
+                                    {summary.command_briefing.compliance.pending_legal_requests} pending
+                                </strong>
+                                <p>
+                                    Legal requests awaiting review
+                                </p>
+                            </div>
+                        </section>
+                    )}
                     <section className="quick-actions">
                         <Link to="/create-case">Create Case</Link>
-                        <Link to="/case-access">Request Case Access</Link>
                         <Link to="/evidence-upload">Upload Evidence</Link>
-                        <Link to="/legal-access">Submit Legal Access</Link>
-                        <Link to="/partner-sources">Add Partner Source</Link>
                         <Link to="/intelligence">Open Intelligence</Link>
                     </section>
 
@@ -119,28 +178,7 @@ function Dashboard() {
                             )}
                         </section>
 
-                        <section className="dashboard-panel">
-                            <h2>Live Intelligence Snapshot</h2>
-                            {summary.recent_sightings?.length === 0 ? (
-                                <p>No recent sightings.</p>
-                            ) : (
-                                summary.recent_sightings?.map((sighting) => (
-                                    <article
-                                        key={sighting.sighting_id}
-                                        className="queue-item"
-                                    >
-                                        <div>
-                                            <strong>{sighting.location || "Unknown location"}</strong>
-                                            <span>
-                                                {sighting.confidence_score ?? "unknown"}
-                                            </span>
-                                        </div>
-                                        <p>{sighting.description || "No description"}</p>
-                                    </article>
-                                ))
-                            )}
-                        </section>
-
+                        
                         <section className="dashboard-panel">
                             <h2>Evidence Watch</h2>
                             {summary.recent_evidence?.length === 0 ? (
@@ -158,23 +196,7 @@ function Dashboard() {
                             )}
                         </section>
 
-                        <section className="dashboard-panel">
-                            <h2>Case Access Audit</h2>
-                            {summary.recent_access?.length === 0 ? (
-                                <p>No recent restricted access events.</p>
-                            ) : (
-                                summary.recent_access?.map((access) => (
-                                    <article key={access.grant_id} className="queue-item">
-                                        <div>
-                                            <strong>Case {access.case_id}</strong>
-                                            <span>User {access.user_id}</span>
-                                        </div>
-                                        <p>{access.reason}</p>
-                                    </article>
-                                ))
-                            )}
-                        </section>
-
+                       
                         <section className="dashboard-panel">
                             <h2>Compliance Readiness</h2>
                             <div className="compliance-list">

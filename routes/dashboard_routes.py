@@ -129,10 +129,39 @@ def get_dashboard_summary(
         .all()
     )
 
+    urgent_case = urgent_cases[0] if urgent_cases else None
+    latest_alert = recent_alerts[0] if recent_alerts else None
+    latest_evidence = recent_evidence[0] if recent_evidence else None
+
+    command_briefing = {
+        "urgent_case": {
+            "case_id": urgent_case.case_id,
+            "case_number": urgent_case.case_number,
+            "title": urgent_case.title,
+            "priority_level": urgent_case.priority_level,
+        } if urgent_case else None,
+        "latest_alert": {
+            "alert_id": latest_alert.alert_id,
+            "title": latest_alert.title,
+            "severity": latest_alert.severity,
+        } if latest_alert else None,
+        "latest_evidence": {
+            "evidence_id": latest_evidence.evidence_id,
+            "file_name": latest_evidence.file_name,
+            "case_id": latest_evidence.case_id,
+        } if latest_evidence else None,
+        "compliance": {
+            "pending_legal_requests": pending_legal_requests,
+            "pending_partner_sources": pending_partner_sources,
+            "restricted_access_events": restricted_access_events,
+        },
+    }
+
     return {
         "total_cases": total_cases,
         "open_cases": open_cases,
         "high_priority_cases": high_priority_cases,
+        "command_briefing": command_briefing,
         "new_alerts": new_alerts,
         "pending_legal_requests": pending_legal_requests,
         "pending_partner_sources": pending_partner_sources,
