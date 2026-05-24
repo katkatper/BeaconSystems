@@ -18,6 +18,9 @@ import UserManagement from "./pages/UserManagement.jsx";
 import Cases from "./pages/Cases.jsx";
 import IntelligenceCenter from "./pages/IntelligenceCenter.jsx";
 import EvidenceUpload from "./pages/EvidenceUpload.jsx";
+import LegalAccessRequests from "./pages/LegalAccessRequests.jsx";
+import PartnerSources from "./pages/PartnerSources.jsx";
+import CaseAccess from "./pages/CaseAccess.jsx";
 import "./App.css";
 
 
@@ -165,6 +168,30 @@ function AppLayout() {
                         </ProtectedRoute>
                     }   
                     />
+                <Route
+                    path="/legal-access"
+                    element={
+                        <ProtectedRoute>
+                            <LegalAccessRequests />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/partner-sources"
+                    element={
+                        <ProtectedRoute>
+                            <PartnerSources />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/case-access"
+                    element={
+                        <ProtectedRoute>
+                            <CaseAccess />
+                        </ProtectedRoute>
+                    }
+                />
             </Routes>
         </>
     );

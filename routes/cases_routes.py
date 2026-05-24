@@ -1,9 +1,14 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from database.connection import get_db
 from models.case import Cases
+from models.case_access_grant import CaseAccessGrant
 from models.user import User
 from security.auth import get_current_user, require_role
 from schemas.case_schema import CaseCreate, CaseUpdate, CaseResponse, MessageResponse
@@ -13,13 +18,40 @@ from services.activity_service import create_activity_log
 router = APIRouter(prefix="/cases", tags=["Cases"])
 
 
-def apply_case_access_filter(query, current_user: User):
+class CaseAccessCodeRequest(BaseModel):
+    case_id: int
+    access_code: str
+    reason: str
+
+
+def apply_case_access_filter(query, current_user: User, include_grants: bool = True):
 
     if current_user.role == "admin":
 
         return query
 
-    return query.filter(Cases.agency_id == current_user.agency_id)
+    if current_user.role == "agency_admin":
+
+        return query.filter(Cases.agency_id == current_user.agency_id)
+
+    if current_user.role == "investigator":
+
+        filters = [Cases.investigator_id == current_user.user_id]
+
+        if include_grants:
+
+            granted_case_ids = query.session.query(CaseAccessGrant.case_id).filter(
+                CaseAccessGrant.user_id == current_user.user_id,
+                CaseAccessGrant.status == "active",
+            )
+
+            filters.append(Cases.case_id.in_(granted_case_ids))
+
+        return query.filter(Cases.agency_id == current_user.agency_id).filter(
+            or_(*filters)
+        )
+
+    return query.filter(Cases.case_id == -1)
 
 
 
@@ -68,6 +100,8 @@ def get_cases(
 
     investigator_id: Optional[int] = Query(None),
 
+    include_archived: bool = Query(False),
+
     limit: int = Query(20, ge=1, le=100),
 
     offset: int = Query(0, ge=0),
@@ -76,6 +110,9 @@ def get_cases(
     query = db.query(Cases)
 
     query = apply_case_access_filter(query, current_user)
+
+    if not include_archived:
+        query = query.filter(Cases.case_status != "archived")
 
     if case_status:
         query = query.filter(Cases.case_status == case_status)
@@ -196,7 +233,7 @@ def update_case(
 
     query = db.query(Cases).filter(Cases.case_id == case_id)
 
-    query = apply_case_access_filter(query, current_user)
+    query = apply_case_access_filter(query, current_user, include_grants=False)
 
     case = query.first()
 
@@ -252,6 +289,113 @@ def update_case(
     return {"message": "Case updated"}
 
 
+@router.post("/access-code", response_model=MessageResponse)
+def request_case_access_with_code(
+    data: CaseAccessCodeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("investigator", "agency_admin", "admin")),
+):
+    if len(data.reason.strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="A specific access reason is required",
+        )
+
+    expected_code = os.getenv("BEACON_CASE_ACCESS_CODE", "BEACON-DEMO-CODE")
+
+    if data.access_code != expected_code:
+        create_activity_log(
+            db=db,
+            user_id=current_user.user_id,
+            agency_id=current_user.agency_id,
+            action="CASE_ACCESS_CODE_DENIED",
+            entity="case",
+            entity_id=data.case_id,
+            details=f"{current_user.username} entered an invalid case access code",
+        )
+        raise HTTPException(status_code=403, detail="Invalid access code")
+
+    case = db.query(Cases).filter(Cases.case_id == data.case_id).first()
+
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    if current_user.role != "admin" and case.agency_id != current_user.agency_id:
+        raise HTTPException(status_code=403, detail="Case belongs to another agency")
+
+    existing_grant = db.query(CaseAccessGrant).filter(
+        CaseAccessGrant.case_id == data.case_id,
+        CaseAccessGrant.user_id == current_user.user_id,
+        CaseAccessGrant.status == "active",
+    ).first()
+
+    if existing_grant:
+        existing_grant.reason = data.reason
+        db.commit()
+        db.refresh(existing_grant)
+    else:
+        grant = CaseAccessGrant(
+            case_id=data.case_id,
+            user_id=current_user.user_id,
+            agency_id=current_user.agency_id,
+            reason=data.reason,
+            status="active",
+        )
+        db.add(grant)
+        db.commit()
+        db.refresh(grant)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="CASE_ACCESS_CODE_GRANTED",
+        entity="case",
+        entity_id=data.case_id,
+        details=f"{current_user.username} accessed case by code. Reason: {data.reason}",
+    )
+
+    return {"message": "Case access granted and logged"}
+
+
+@router.put("/{case_id}/archive", response_model=MessageResponse)
+def archive_case(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin")),
+):
+    query = db.query(Cases).filter(Cases.case_id == case_id)
+    query = apply_case_access_filter(query, current_user, include_grants=False)
+
+    case = query.first()
+
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
+
+    if (case.case_status or "").lower() != "closed":
+        raise HTTPException(
+            status_code=400,
+            detail="Only closed cases can be archived",
+        )
+
+    case.case_status = "archived"
+
+    db.commit()
+    db.refresh(case)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="ARCHIVE_CASE",
+        entity="case",
+        entity_id=case.case_id,
+        details=f"Archived case {case.case_number}",
+    )
+
+    return {"message": "Case archived"}
+
+
 @router.delete("/{case_id}", response_model=MessageResponse)
 
 def delete_case(
@@ -265,7 +409,7 @@ def delete_case(
 
     query = db.query(Cases).filter(Cases.case_id == case_id)
 
-    query = apply_case_access_filter(query, current_user)
+    query = apply_case_access_filter(query, current_user, include_grants=False)
 
     case = query.first()
 

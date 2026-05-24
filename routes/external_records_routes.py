@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 from database.connection import get_db
 
 from models.external_record import ExternalRecord
+from models.user import User
 
 from models.timeline_events import Timeline_Event
+from security.auth import get_current_user, require_role
 
 
 
@@ -44,7 +46,9 @@ def create_external_record(
 
     case_id: int | None = None,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
 ):
 
     record = ExternalRecord(
@@ -101,7 +105,9 @@ def get_external_records(
 
     case_id: Optional[int] = None,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user),
 ):
 
 

@@ -392,11 +392,18 @@ function CaseDetail() {
                         <button onClick={() => viewEvidence(item.evidence_id)}>
                             Open Evidence
                         </button>
+
                         <button onClick={() => loadEvidenceChain(item.evidence_id)}>
                             View Chain of Custody
                         </button>
-                        <button onClick={() => markEvidenceSensitive(item.evidence_id, true)}>
-                            Mark Sensitive
+
+                        <button
+                            onClick={() =>
+                                markEvidenceSensitive(item.evidence_id, !item.is_sensitive)
+                            }
+                        >
+                            {item.is_sensitive ? "Unmark Sensitive" : "Mark Sensitive"}
+
                         </button>
 
                         {evidenceChains[item.evidence_id]?.map((event) => (
@@ -488,7 +495,6 @@ function CaseDetail() {
         </div>
     );
 }
-
 const styles = {
     card: {
         border: "1px solid gray",
@@ -503,6 +509,14 @@ const styles = {
         marginTop: "8px",
         borderRadius: "6px",
         backgroundColor: "#f7f7f7",
+    },
+
+    evidenceActions: {
+        display: "flex",
+        gap: "10px",
+        flexWrap: "wrap",
+        marginTop: "12px",
+        marginBottom: "12px",
     },
 };
 

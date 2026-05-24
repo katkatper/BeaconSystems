@@ -20,6 +20,20 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
+@router.get("/")
+def get_all_evidence(
+    case_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    query = db.query(Evidence)
+
+    if case_id is not None:
+        query = query.filter(Evidence.case_id == case_id)
+
+    return query.order_by(Evidence.created_at.desc()).all()
+
+
 @router.post("/upload")
 def upload_evidence(
     case_id: int = Form(...),
