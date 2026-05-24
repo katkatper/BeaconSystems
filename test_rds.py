@@ -1,13 +1,12 @@
-import psycopg2
-import boto3
-
+import os
 import psycopg2
 
 conn = psycopg2.connect(
-    host="beacon-database.cefowseme3pk.us-east-1.rds.amazonaws.com",
-    dbname="your_db",
-    user="your_user",
-    password="your_password",
-    sslmode="verify-full",
-    sslrootcert="global-bundle.pem"
+    host=os.getenv("DB_HOST"),
+    dbname=os.getenv("DB_NAME"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASSWORD"),
+    port=os.getenv("DB_PORT", "5432"),
+    sslmode=os.getenv("DB_SSLMODE", "verify-full"),
+    sslrootcert=os.getenv("DB_SSLROOTCERT", "global-bundle.pem"),
 )

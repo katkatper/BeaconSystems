@@ -1,6 +1,6 @@
 from logging.config import fileConfig
-from  database.connection import Base
-from sqlalchemy import engine_from_config
+from database.connection import Base, DATABASE_URL
+from sqlalchemy import create_engine
 from sqlalchemy import pool
 
 from alembic import context
@@ -22,6 +22,9 @@ from models.investigators import Investigators
 from models.IntegrationSource import IntegrationSource
 from models.match import Match
 from models.external_record import ExternalRecord
+from models.evidence_chain import EvidenceChain
+from models.legal_access_request import LegalAccessRequest
+from models.case_access_grant import CaseAccessGrant
 
 
 
@@ -59,9 +62,8 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -78,9 +80,8 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_engine(
+        DATABASE_URL,
         poolclass=pool.NullPool,
     )
 

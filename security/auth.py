@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from models.user import User
+from config.settings import ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY
 
-SECRET_KEY = "Change_this_secret"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY must be set in the environment")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

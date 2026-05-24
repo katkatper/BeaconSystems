@@ -4,6 +4,7 @@ node_modules/
 dist/
 .vs/
 .vscode/
+.env
 __pycache__/
 *.py[cod]
 
