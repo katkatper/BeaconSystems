@@ -24,7 +24,11 @@ import CaseAccess from "./pages/CaseAccess.jsx";
 import "./App.css";
 import BoloBoard from "./pages/BoloBoard.jsx";
 import SupervisorQueue from "./pages/SupervisorQueue";
+import AuditCenter from "./pages/AuditCenter.jsx";
 
+
+// ProtectedRoute keeps application pages behind login. The backend still
+// enforces real authorization; this only controls frontend navigation.
 
 function ProtectedRoute({ children }) {
     const token = localStorage.getItem("token");
@@ -35,7 +39,8 @@ function ProtectedRoute({ children }) {
 
     return children;
 }
-
+// AppLayout owns the shared navigation and page routes. Login hides the navbar
+// so unauthenticated users only see the sign-in screen.
 function AppLayout() {
     const location = useLocation();
 
@@ -194,13 +199,37 @@ function AppLayout() {
                         </ProtectedRoute>
                     }
                 />
-                <Route path="/bolos" element={<ProtectedRoute><BoloBoard /></ProtectedRoute>} />
+                <Route
+                    path="/bolos"
+                    element={
+                        <ProtectedRoute>
+                            <BoloBoard />
+                        </ProtectedRoute>
+                    }
+                />
+                {/* Supervisor and audit pages are protected views for compliance oversight. */}
+                <Route
+                    path="/supervisor"
+                    element={
+                        <ProtectedRoute>
+                            <SupervisorQueue />
+                        </ProtectedRoute>
+                    }
+                />
 
-                <Route path="/supervisor" element={<ProtectedRoute><SupervisorQueue /></ProtectedRoute>} />
+                <Route
+                    path="/audit"
+                    element={
+                        <ProtectedRoute>
+                            <AuditCenter />
+                        </ProtectedRoute>
+                    }
+                />
             </Routes>
         </>
     );
 }
+// App wraps the router in the shared Beacon background shell.
 function App() {
     return (
         <div className="main-background">

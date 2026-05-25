@@ -2,7 +2,6 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -11,6 +10,7 @@ from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
 from models.user import User
 from security.auth import get_current_user, require_role
+from security.case_access import apply_case_access_filter
 from schemas.case_schema import CaseCreate, CaseUpdate, CaseResponse, MessageResponse
 from services.activity_service import create_activity_log
 
@@ -22,37 +22,6 @@ class CaseAccessCodeRequest(BaseModel):
     case_id: int
     access_code: str
     reason: str
-
-
-def apply_case_access_filter(query, current_user: User, include_grants: bool = True):
-
-    if current_user.role == "admin":
-
-        return query
-
-    if current_user.role == "agency_admin":
-
-        return query.filter(Cases.agency_id == current_user.agency_id)
-
-    if current_user.role == "investigator":
-
-        filters = [Cases.investigator_id == current_user.user_id]
-
-        if include_grants:
-
-            granted_case_ids = query.session.query(CaseAccessGrant.case_id).filter(
-                CaseAccessGrant.user_id == current_user.user_id,
-                CaseAccessGrant.status == "active",
-            )
-
-            filters.append(Cases.case_id.in_(granted_case_ids))
-
-        return query.filter(Cases.agency_id == current_user.agency_id).filter(
-            or_(*filters)
-        )
-
-    return query.filter(Cases.case_id == -1)
-
 
 
 @router.get("/by-person/{person_id}", response_model=List[CaseResponse])

@@ -1182,7 +1182,8 @@
 .legal-access-header h1,
 .partner-header h1,
 .external-records-header h1,
-.bolo-header h1 {
+.bolo-header h1,
+.audit-header h1 {
     margin-bottom: 14px;
 }
 
@@ -1195,6 +1196,7 @@
 .partner-header p,
 .external-records-header p,
 .bolo-header p,
+.audit-header p,
 .supervisor-header p {
     line-height: 1.55;
     max-width: 820px;
@@ -1212,7 +1214,8 @@
 .legal-access-page,
 .partner-page,
 .external-records-page,
-.bolo-page {
+.bolo-page,
+.audit-page {
     padding: 22px;
 }
 
@@ -1310,7 +1313,8 @@
 .external-record-empty,
 .bolo-panel,
 .bolo-card,
-.case-access-panel {
+.case-access-panel,
+.audit-panel {
     padding: 10px;
 }
 
@@ -1389,7 +1393,6 @@
     .supervisor-header {
         font-size: 36px;
     }
-
 /* Supervisor Review Queue
    Centralizes high-risk review items for agency leadership. */
 
@@ -1438,10 +1441,323 @@
         margin: 0 0 8px;
     }
 
+/* Audit & Compliance Center
+   Presents sensitive access and evidence history for supervisor review. */
+.audit-page {
+    padding: 22px;
+}
+
+/* Keeps audit headings consistent with other operational pages. */
+.audit-header {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+    .audit-header h1 {
+        font-size: 36px;
+        margin: 0 0 14px;
+    }
+
+    .audit-header p {
+        color: #cbd5e1;
+        line-height: 1.55;
+        max-width: 820px;
+        margin: 0 auto;
+    }
+
+/* Responsive audit grid keeps oversight panels readable without stretching too wide. */
+.audit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 540px));
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Shared panel style for access logs, restricted case access, and evidence history. */
+.audit-panel {
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    padding: 10px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.24);
+}
+
+    .audit-panel h2 {
+        font-size: 20px;
+        margin: 0 0 8px;
+    }
+
+    .audit-panel small {
+        color: #94a3b8;
+    }
+
+.audit-search-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 420px) minmax(280px, 420px);
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.audit-panel input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+.audit-user-list {
+    display: grid;
+    gap: 8px;
+}
+
+.audit-user-button {
+    width: 100%;
+    display: grid;
+    gap: 4px;
+    text-align: left;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(30, 41, 59, 0.72);
+    color: #e5e7eb;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+    .audit-user-button:hover,
+    .audit-user-button.active {
+        border-color: #60a5fa;
+        background: rgba(30, 64, 175, 0.5);
+    }
+
+    .audit-user-button span,
+    .audit-user-button small,
+    .audit-user-summary small {
+        color: #94a3b8;
+    }
+
+.audit-user-summary strong {
+    display: block;
+    font-size: 18px;
+    margin-bottom: 6px;
+}
+
+@media (max-width: 900px) {
+    .audit-search-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 1100px) {
     .command-grid,
     .command-briefing,
     .dashboard-columns {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Audit search should stay compact and centered instead of stretching full width. */
+.audit-search-layout {
+    grid-template-columns: minmax(280px, 420px) minmax(260px, 360px);
+    justify-content: center;
+    align-items: start;
+    max-width: 820px;
+    margin: 0 auto 12px;
+}
+
+    .audit-search-layout .audit-panel {
+        width: 100%;
+    }
+
+.audit-panel input {
+    min-height: 34px;
+    font-size: 14px;
+}
+
+.audit-user-summary {
+    text-align: center;
+}
+
+.audit-user-list {
+    justify-items: stretch;
+}
+
+@media (max-width: 900px) {
+    .audit-search-layout {
+        max-width: 520px;
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Keep the audit user lookup compact, readable, and centered on wide screens. */
+.audit-page > .audit-search-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 440px) minmax(260px, 360px);
+    justify-content: center;
+    align-items: start;
+    width: min(860px, calc(100% - 44px));
+    margin: 0 auto 20px;
+    gap: 12px;
+}
+
+.audit-page > .audit-search-layout > .audit-panel {
+    justify-self: stretch;
+    max-width: 440px;
+    min-height: 170px;
+}
+
+.audit-page > .audit-search-layout > .audit-user-summary {
+    max-width: 340px;
+    text-align: center;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.audit-page > .audit-search-layout h2 {
+    text-align: center;
+}
+
+.audit-page > .audit-search-layout input {
+    display: block;
+    max-width: 360px;
+    margin: 0 auto 10px;
+}
+
+.audit-page > .audit-search-layout .audit-user-list {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+    .audit-page > .audit-search-layout {
+        grid-template-columns: 1fr;
+        width: min(520px, calc(100% - 32px));
+    }
+
+    .audit-page > .audit-search-layout > .audit-panel,
+    .audit-page > .audit-search-layout > .audit-user-summary {
+        max-width: none;
+    }
+}
+
+/* App-wide professional module sizing
+   Keeps forms, lookup panels, and operational lists compact instead of stretched. */
+.case-access-panel,
+.login-card {
+    width: min(100%, 440px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.legal-access-layout,
+.partner-layout,
+.evidence-layout,
+.bolo-layout {
+    grid-template-columns: minmax(280px, 420px) minmax(320px, 560px);
+    justify-content: center;
+    width: min(100%, 1010px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.intelligence-layout {
+    grid-template-columns: minmax(360px, 680px) minmax(280px, 420px);
+    justify-content: center;
+    width: min(100%, 1120px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.case-management-grid,
+.cases-grid,
+.external-record-grid,
+.source-grid,
+.supervisor-grid,
+.audit-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 460px));
+    justify-content: center;
+    width: min(100%, 1040px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.intelligence-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 190px));
+    justify-content: center;
+}
+
+.external-records-toolbar,
+.intelligence-controls,
+.quick-actions,
+.case-actions,
+.legal-actions,
+.partner-actions,
+.evidence-actions {
+    justify-content: center;
+}
+
+.legal-form,
+.partner-form,
+.evidence-form,
+.bolo-form,
+.case-access-form,
+.case-edit-form {
+    width: min(100%, 420px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.case-edit-form {
+    width: 100%;
+}
+
+.legal-form input,
+.legal-form select,
+.legal-form textarea,
+.partner-form input,
+.partner-form select,
+.partner-form textarea,
+.evidence-form input,
+.evidence-form textarea,
+.bolo-form input,
+.bolo-form select,
+.bolo-form textarea,
+.case-access-form input,
+.case-access-form textarea {
+    min-height: 34px;
+    font-size: 14px;
+}
+
+.legal-request-list,
+.partner-list,
+.evidence-list,
+.bolo-list,
+.feed-list {
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.case-card,
+.external-record-card,
+.legal-request-card,
+.partner-card,
+.evidence-card,
+.bolo-card,
+.feed-item,
+.queue-item {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+    .legal-access-layout,
+    .partner-layout,
+    .evidence-layout,
+    .bolo-layout,
+    .intelligence-layout {
+        grid-template-columns: 1fr;
+        width: min(100%, 560px);
     }
 }

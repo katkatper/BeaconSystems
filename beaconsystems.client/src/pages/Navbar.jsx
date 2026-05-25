@@ -1,9 +1,14 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
+
+// Navbar provides primary navigation after login. Role-specific links are kept
+// here so users only see areas relevant to their responsibilities.
 function Navbar() {
     const navigate = useNavigate();
     const role = localStorage.getItem("role");
+
+    // Clear local session data and return the user to the login page.
 
     const handleLogout = () => {
         localStorage.clear();
@@ -30,8 +35,10 @@ function Navbar() {
                 <NavLink to="/legal-access">Legal Access</NavLink>
                 <NavLink to="/partner-sources">Partners</NavLink>
                 <NavLink to="/supervisor">Supervisor</NavLink>
+                <NavLink to="/audit">Audit</NavLink>
 
 
+                {/* Admin-only management links. Backend role checks still enforce access. */}
 
                 {(role === "admin" || role === "agency_admin" || role === "investigator") && (
                     <NavLink to="/alerts">Alerts</NavLink>

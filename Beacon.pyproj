@@ -36,6 +36,7 @@
     <Compile Include="models\__init__.py" />
     <Compile Include="routes\admin_log.py" />
     <Compile Include="routes\alerts_routes.py" />
+    <Compile Include="routes\audit_routes.py" />
     <Compile Include="routes\bolo_routes.py" />
     <Compile Include="routes\cases_routes.py" />
     <Compile Include="routes\external_records_routes.py" />

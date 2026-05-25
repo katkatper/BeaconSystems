@@ -16,24 +16,9 @@ from models.sighting import Sighting
 from models.user import User
 from security.auth import get_current_user
 from models.bolo_alert import BoloAlert
+from security.case_access import apply_case_access_filter
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
-
-
-def apply_dashboard_case_filter(query, current_user: User):
-    if current_user.role == "admin":
-        return query
-
-    if current_user.role == "agency_admin":
-        return query.filter(Cases.agency_id == current_user.agency_id)
-
-    if current_user.role == "investigator":
-        return query.filter(
-            Cases.agency_id == current_user.agency_id,
-            Cases.investigator_id == current_user.user_id,
-        )
-
-    return query.filter(Cases.case_id == -1)
 
 
 @router.get("/summary")
@@ -43,7 +28,7 @@ def get_dashboard_summary(
 ):
     today = datetime.utcnow() - timedelta(days=1)
 
-    case_query = apply_dashboard_case_filter(db.query(Cases), current_user)
+    case_query = apply_case_access_filter(db.query(Cases), current_user)
 
     total_cases = case_query.count()
     open_cases = case_query.filter(func.lower(Cases.case_status) == "open").count()
@@ -72,8 +57,10 @@ def get_dashboard_summary(
 
     if accessible_case_ids:
         evidence_query = evidence_query.filter(Evidence.case_id.in_(accessible_case_ids))
+        alert_query = alert_query.filter(Alerts.case_id.in_(accessible_case_ids))
     else:
         evidence_query = evidence_query.filter(Evidence.case_id == -1)
+        alert_query = alert_query.filter(Alerts.case_id == -1)
 
     new_alerts = alert_query.filter(
         func.lower(Alerts.alert_status) == "active"
@@ -110,18 +97,18 @@ def get_dashboard_summary(
     recent_evidence = evidence_query.order_by(Evidence.created_at.desc()).limit(5).all()
     recent_access = access_query.order_by(CaseAccessGrant.granted_at.desc()).limit(5).all()
     bolo_query = db.query(BoloAlert)
-
-    if current_user.role != "admin":
-     bolo_query = bolo_query.filter(BoloAlert.agency_id == current_user.agency_id)
+    if accessible_case_ids:
+        bolo_query = bolo_query.filter(BoloAlert.case_id.in_(accessible_case_ids))
+    elif current_user.role != "admin":
+        bolo_query = bolo_query.filter(BoloAlert.case_id == -1)
 
     active_bolos = (
-    bolo_query
-    .filter(BoloAlert.status == "active")
-    .order_by(BoloAlert.created_at.desc())
-    .limit(5)
-    .all()
-)
-
+        bolo_query
+        .filter(BoloAlert.status == "active")
+        .order_by(BoloAlert.created_at.desc())
+        .limit(5)
+        .all()
+    )
 
     recent_sightings_query = db.query(Sighting)
     if accessible_case_ids:

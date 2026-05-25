@@ -60,6 +60,8 @@ from routes.sightings_routes import router as sightings_routes
 from routes.alerts_routes import router as alerts_router
 from routes.bolo_routes import router as bolo_router
 from routes.supervisor_routes import router as supervisor_router
+from routes.audit_routes import router as audit_router
+
 
 # Register API areas. Each router owns one operational workflow such as cases,
 # evidence, legal authority, partner sources, BOLO alerts, or supervisor review.
@@ -127,6 +129,7 @@ app.include_router(timeline_events_router)
 app.include_router(alerts_router)
 app.include_router(bolo_router)
 app.include_router(supervisor_router)
+app.include_router(audit_router)
 
 # Lightweight health endpoint used to confirm the API process is reachable.
 

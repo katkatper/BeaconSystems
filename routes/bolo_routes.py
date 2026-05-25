@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from models.bolo_alert import BoloAlert
-from models.case import Cases
 from models.user import User
 from security.auth import get_current_user, require_role
+from security.case_access import apply_related_case_access_filter, assert_case_write_access
 from services.activity_service import create_activity_log
 
 
@@ -37,27 +37,6 @@ class BoloUpdate(BaseModel):
     expires_at: datetime | None = None
 
 
-def can_access_case(db: Session, case_id: int, current_user: User):
-    query = db.query(Cases).filter(Cases.case_id == case_id)
-
-    if current_user.role == "admin":
-        case = query.first()
-    elif current_user.role == "agency_admin":
-        case = query.filter(Cases.agency_id == current_user.agency_id).first()
-    elif current_user.role == "investigator":
-        case = query.filter(
-            Cases.agency_id == current_user.agency_id,
-            Cases.investigator_id == current_user.user_id,
-        ).first()
-    else:
-        case = None
-
-    if not case:
-        raise HTTPException(status_code=403, detail="Case access denied")
-
-    return case
-
-
 @router.get("/")
 def list_bolos(
     status: str | None = "active",
@@ -65,9 +44,7 @@ def list_bolos(
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(BoloAlert)
-
-    if current_user.role != "admin":
-        query = query.filter(BoloAlert.agency_id == current_user.agency_id)
+    query = apply_related_case_access_filter(query, BoloAlert.case_id, current_user)
 
     if status:
         query = query.filter(BoloAlert.status == status)
@@ -81,7 +58,7 @@ def create_bolo(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
 ):
-    case = can_access_case(db, data.case_id, current_user)
+    case = assert_case_write_access(db, data.case_id, current_user)
 
     bolo = BoloAlert(
         case_id=data.case_id,
@@ -120,15 +97,12 @@ def update_bolo(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
 ):
-    query = db.query(BoloAlert).filter(BoloAlert.bolo_id == bolo_id)
-
-    if current_user.role != "admin":
-        query = query.filter(BoloAlert.agency_id == current_user.agency_id)
-
-    bolo = query.first()
+    bolo = db.query(BoloAlert).filter(BoloAlert.bolo_id == bolo_id).first()
 
     if not bolo:
         raise HTTPException(status_code=404, detail="BOLO alert not found")
+
+    assert_case_write_access(db, bolo.case_id, current_user)
 
     if current_user.role == "investigator" and bolo.created_by != current_user.user_id:
         raise HTTPException(status_code=403, detail="Only creator or supervisor can update this BOLO")

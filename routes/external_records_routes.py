@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,11 @@ from models.user import User
 
 from models.timeline_events import Timeline_Event
 from security.auth import get_current_user, require_role
+from security.case_access import (
+    apply_related_case_access_filter,
+    assert_case_write_access,
+    get_authorized_case,
+)
 
 
 
@@ -50,6 +55,14 @@ def create_external_record(
 
     current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
 ):
+    if current_user.role == "investigator" and case_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Investigators must link external records to an assigned case.",
+        )
+
+    if case_id is not None:
+        assert_case_write_access(db, case_id, current_user)
 
     record = ExternalRecord(
 
@@ -112,11 +125,13 @@ def get_external_records(
 
 
     query = db.query(ExternalRecord)
+    query = apply_related_case_access_filter(query, ExternalRecord.case_id, current_user)
 
     if person_id is not None:
         query = query.filter(ExternalRecord.person_id == person_id)
 
     if case_id is not None:
+        get_authorized_case(db, case_id, current_user)
         query = query.filter(ExternalRecord.case_id == case_id)
 
     return query.all()

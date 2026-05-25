@@ -7,6 +7,11 @@ from models.sighting import Sighting
 from models.case import Cases
 from models.user import User
 from security.auth import get_current_user, require_role
+from security.case_access import (
+    apply_related_case_access_filter,
+    assert_case_write_access,
+    get_authorized_case,
+)
 from services.activity_service import create_activity_log 
 from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
 from models.timeline_events import Timeline_Event
@@ -40,8 +45,10 @@ def get_sightings(
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(Sighting)
+    query = apply_related_case_access_filter(query, Sighting.case_id, current_user)
 
     if case_id is not None:
+        get_authorized_case(db, case_id, current_user)
         query = query.filter(Sighting.case_id == case_id)
 
     sightings = query.offset(offset).limit(limit).all()
@@ -75,11 +82,13 @@ def get_sighting_by_id(
     current_user: User = Depends(get_current_user),
 ):
 
-    sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
+    query = db.query(Sighting).filter(Sighting.sighting_id == sighting_id)
+    query = apply_related_case_access_filter(query, Sighting.case_id, current_user)
+    sighting = query.first()
 
     if not sighting:
 
-        raise HTTPException(status_code=404, detail="Sighting not found")
+        raise HTTPException(status_code=404, detail="Sighting not found or access denied")
 
     return sighting
 
@@ -94,15 +103,10 @@ def create_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
 ):
 
-    case = db.query(Cases).filter(
-        Cases.case_id == data.case_id
-    ).first()
-
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
+    assert_case_write_access(db, data.case_id, current_user)
 
     new_sighting = Sighting(
 
@@ -204,15 +208,15 @@ def update_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
 ):
 
-    sighting = db.query(Sighting).filter(
-        Sighting.sighting_id == sighting_id
-    ).first()
+    sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
 
     if not sighting:
         raise HTTPException(status_code=404, detail="Sighting not found")
+
+    assert_case_write_access(db, sighting.case_id, current_user)
 
     previous_confidence = sighting.confidence_score
 
@@ -275,13 +279,15 @@ def delete_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
 ):
 
     sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
 
     if not sighting:
         raise HTTPException(status_code=404, detail="Sighting not found")
+
+    assert_case_write_access(db, sighting.case_id, current_user)
 
     sighting_id_value = sighting.sighting_id
 
