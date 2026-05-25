@@ -83,6 +83,7 @@
     <Compile Include="models\person.py" />
     <Compile Include="models\sighting.py" />
     <Compile Include="models\timeline_events.py" />
+    <Compile Include="routes\supervisor_routes.py" />
     <Compile Include="routes\timeline_events_routes.py" />
     <Compile Include="routes\users_routes.py" />
     <Compile Include="routes\__init__.py" />

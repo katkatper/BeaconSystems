@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+
+
 function Dashboard() {
     const [summary, setSummary] = useState(null);
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
     );
+
+    // Refresh the dashboard summary so command-center data stays current while
+    // the user keeps the page open.
 
     useEffect(() => {
         let isMounted = true;
@@ -97,6 +102,8 @@ function Dashboard() {
 
                             <div>
                                 <span>Latest Alert</span>
+
+                                {/* Command Briefing highlights the highest-value operational items first. */}
                                 <strong>
                                     {summary.command_briefing.latest_alert
                                         ? summary.command_briefing.latest_alert.title
@@ -177,6 +184,9 @@ function Dashboard() {
                                 ))
                             )}
                         </section>
+
+                        {/* Active BOLOs are surfaced on the dashboard for urgent field awareness. */}
+
                         <section className="dashboard-panel">
                             <h2>Active BOLOs</h2>
 
