@@ -29,6 +29,9 @@ function Navbar() {
                 <NavLink to="/bolos">BOLO</NavLink>
                 <NavLink to="/legal-access">Legal Access</NavLink>
                 <NavLink to="/partner-sources">Partners</NavLink>
+                <NavLink to="/supervisor">Supervisor</NavLink>
+
+
 
                 {(role === "admin" || role === "agency_admin" || role === "investigator") && (
                     <NavLink to="/alerts">Alerts</NavLink>

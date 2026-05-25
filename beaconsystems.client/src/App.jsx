@@ -23,6 +23,8 @@ import PartnerSources from "./pages/PartnerSources.jsx";
 import CaseAccess from "./pages/CaseAccess.jsx";
 import "./App.css";
 import BoloBoard from "./pages/BoloBoard.jsx";
+import SupervisorQueue from "./pages/SupervisorQueue";
+
 
 function ProtectedRoute({ children }) {
     const token = localStorage.getItem("token");
@@ -194,6 +196,7 @@ function AppLayout() {
                 />
                 <Route path="/bolos" element={<ProtectedRoute><BoloBoard /></ProtectedRoute>} />
 
+                <Route path="/supervisor" element={<ProtectedRoute><SupervisorQueue /></ProtectedRoute>} />
             </Routes>
         </>
     );

@@ -1107,6 +1107,7 @@
 .external-record-empty,
 .bolo-panel,
 .bolo-card,
+.supervisor-panel,
 .case-access-panel {
     border-radius: 8px;
     padding: 12px;
@@ -1193,7 +1194,8 @@
 .legal-access-header p,
 .partner-header p,
 .external-records-header p,
-.bolo-header p {
+.bolo-header p,
+.supervisor-header p {
     line-height: 1.55;
     max-width: 820px;
     margin-left: auto;
@@ -1375,17 +1377,66 @@
     font-size: 42px;
 }
 
-.cases-header h1,
-.case-title,
-.case-access-header h1,
-.evidence-header h1,
-.intelligence-header h1,
-.legal-access-header h1,
-.partner-header h1,
-.external-records-header h1,
-.bolo-header h1 {
-    font-size: 36px;
+    .cases-header h1,
+    .case-title,
+    .case-access-header h1,
+    .evidence-header h1,
+    .intelligence-header h1,
+    .legal-access-header h1,
+    .partner-header h1,
+    .external-records-header h1,
+    .bolo-header h1
+    .supervisor-header {
+        font-size: 36px;
+    }
+
+/* Supervisor Review Queue
+   Centralizes high-risk review items for agency leadership. */
+
+.supervisor-page {
+    padding: 22px;
 }
+/* Keeps supervisor page titles consistent with the rest of Beacon. */
+
+.supervisor-header {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+    .supervisor-header h1 {
+        font-size: 36px;
+        margin: 0 0 14px;
+    }
+
+    .supervisor-header p {
+        color: #cbd5e1;
+        line-height: 1.55;
+        max-width: 820px;
+        margin: 0 auto;
+    }
+/* Responsive review grid: panels stay compact on wide screens and stack on mobile. */
+
+.supervisor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 540px));
+    justify-content: center;
+    gap: 12px;
+}
+/* Shared operational panel style for review categories like legal, partners, BOLOs, and case access. */
+
+.supervisor-panel {
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    padding: 10px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.24);
+}
+
+    .supervisor-panel h2 {
+        font-size: 20px;
+        margin: 0 0 8px;
+    }
 
 @media (max-width: 1100px) {
     .command-grid,
