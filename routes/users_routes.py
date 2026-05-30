@@ -123,7 +123,15 @@ def login(
     return {
         "access_token": token,
 
-        "token_type": "bearer"
+        "token_type": "bearer",
+
+        "user_id": user.user_id,
+
+        "username": user.username,
+
+        "role": user.role,
+
+        "agency_id": user.agency_id,
     }
 
 # UPDATE USER ROLE ROUTE WITH ROLE-BASED ACCESS CONTROL AND ACTIVITY LOGGING

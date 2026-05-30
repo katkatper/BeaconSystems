@@ -32,7 +32,8 @@ function Navbar() {
                 <NavLink to="/evidence-upload">Evidence</NavLink>
                 <NavLink to="/intelligence">Intelligence</NavLink>
                 <NavLink to="/bolos">BOLO</NavLink>
-                <NavLink to="/legal-access">Legal Access</NavLink>
+                <NavLink to="/legal-access">Request Legal Access</NavLink>
+                <NavLink to="/legal-orders">Legal Orders</NavLink>
                 <NavLink to="/partner-sources">Partners</NavLink>
                 <NavLink to="/supervisor">Supervisor</NavLink>
                 <NavLink to="/audit">Audit</NavLink>

@@ -47,8 +47,11 @@ def create_legal_access_request(
     allowed_authorities = {
         "agency_agreement",
         "warrant",
+        "search_warrant",
         "subpoena",
         "court_order",
+        "wiretap_order",
+        "national_security_letter",
         "consent",
         "approved_api",
         "partner_integration",
@@ -60,7 +63,11 @@ def create_legal_access_request(
         "camera",
         "toll",
         "cell_provider",
+        "communications",
         "social_media",
+        "coroner",
+        "genealogy",
+        "missing_persons_organization",
         "other",
     }
 
@@ -139,7 +146,7 @@ def review_legal_access_request(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin")),
 ):
-    allowed_statuses = {"pending", "approved", "denied", "expired", "revoked"}
+    allowed_statuses = {"pending", "approved", "denied", "missing_info", "expired", "revoked"}
 
     if data.status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid request status")

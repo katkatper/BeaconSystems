@@ -73,6 +73,10 @@ class CaseResponse(BaseModel):
 
     case_status: Optional[str] = None
 
+    missing_person_last_name: Optional[str] = None
+
+    investigator_name: Optional[str] = None
+
 
     class Config:
         from_attributes = True

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -23,6 +25,10 @@ def apply_case_access_filter(query, current_user: User, include_grants: bool = T
             granted_case_ids = query.session.query(CaseAccessGrant.case_id).filter(
                 CaseAccessGrant.user_id == current_user.user_id,
                 CaseAccessGrant.status == "active",
+                or_(
+                    CaseAccessGrant.expires_at.is_(None),
+                    CaseAccessGrant.expires_at > datetime.utcnow(),
+                ),
             )
             filters.append(Cases.case_id.in_(granted_case_ids))
 

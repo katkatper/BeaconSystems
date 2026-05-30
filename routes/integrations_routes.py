@@ -30,7 +30,7 @@ class IntegrationSourceUpdate(BaseModel):
 def create_integration_source(
     data: IntegrationSourceCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin")),
 ):
     allowed_source_types = {
         "hospital",

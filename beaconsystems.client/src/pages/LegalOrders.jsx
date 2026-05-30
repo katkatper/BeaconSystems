@@ -1,44 +1,38 @@
 import React, { useEffect, useState } from "react";
 
-const authorityTypes = [
-    "agency_agreement",
-    "warrant",
-    "search_warrant",
+const orderTypes = [
     "subpoena",
     "court_order",
+    "search_warrant",
     "wiretap_order",
     "national_security_letter",
-    "consent",
-    "approved_api",
-    "partner_integration",
 ];
 
-const sourceTypes = [
-    "hospital",
+const partnerTypes = [
     "transportation",
+    "communications",
     "camera",
     "toll",
     "cell_provider",
-    "communications",
     "social_media",
     "coroner",
     "genealogy",
     "missing_persons_organization",
+    "hospital",
     "other",
 ];
 
-function LegalAccessRequests() {
-    const [requests, setRequests] = useState([]);
+function LegalOrders() {
+    const [orders, setOrders] = useState([]);
     const [message, setMessage] = useState("");
-    const [reviewNotes, setReviewNotes] = useState({});
     const [form, setForm] = useState({
         case_id: "",
         requester_name: "",
         requester_organization: "",
         requester_role: "district_attorney",
         contact_email: "",
-        authority_type: "court_order",
-        source_type: "hospital",
+        authority_type: "subpoena",
+        source_type: "communications",
         target_identifier: "",
         jurisdiction: "",
         legal_reference: "",
@@ -49,9 +43,11 @@ function LegalAccessRequests() {
         document_location: "",
     });
 
-    const loadRequests = async () => {
-        const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
+    const pendingOrders = orders.filter((order) => order.status !== "approved");
+    const approvedOrders = orders.filter((order) => order.status === "approved");
 
+    const loadOrders = async () => {
         const response = await fetch("http://127.0.0.1:8000/legal-access/", {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -59,27 +55,34 @@ function LegalAccessRequests() {
         });
 
         if (!response.ok) {
-            throw new Error("Failed to load legal access requests");
+            throw new Error("Could not load legal orders");
         }
 
         const data = await response.json();
-        setRequests(Array.isArray(data) ? data : []);
+        setOrders(
+            Array.isArray(data)
+                ? data.filter((item) => orderTypes.includes(item.authority_type))
+                : []
+        );
     };
 
     useEffect(() => {
-        loadRequests().catch((err) => console.error(err));
+        loadOrders().catch((err) => {
+            console.error(err);
+            setMessage("Could not load legal orders.");
+        });
     }, []);
 
-    const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value,
-        });
+    const handleChange = (event) => {
+        setForm((current) => ({
+            ...current,
+            [event.target.name]: event.target.value,
+        }));
     };
 
-    const submitRequest = async (e) => {
-        e.preventDefault();
-        const token = localStorage.getItem("token");
+    const submitOrder = async (event) => {
+        event.preventDefault();
+        setMessage("");
 
         const payload = {
             ...form,
@@ -97,12 +100,12 @@ function LegalAccessRequests() {
             });
 
             if (!response.ok) {
-                throw new Error("Could not submit legal access request");
+                throw new Error("Could not create legal order");
             }
 
-            setMessage("Legal access request submitted for review.");
-            setForm({
-                ...form,
+            setMessage("Legal order request submitted to DA or court workflow.");
+            setForm((current) => ({
+                ...current,
                 target_identifier: "",
                 legal_reference: "",
                 purpose: "",
@@ -110,59 +113,32 @@ function LegalAccessRequests() {
                 minimization_plan: "",
                 retention_plan: "",
                 document_location: "",
-            });
-            await loadRequests();
+            }));
+            await loadOrders();
         } catch (err) {
             console.error(err);
-            setMessage("Could not submit legal access request.");
-        }
-    };
-
-    const reviewRequest = async (requestId, status) => {
-        const token = localStorage.getItem("token");
-
-        try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/legal-access/${requestId}/review`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        status,
-                        review_notes: reviewNotes[requestId] || "",
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not review request");
-            }
-
-            await loadRequests();
-        } catch (err) {
-            console.error(err);
-            alert("Could not update request status.");
+            setMessage("Could not create legal order package.");
         }
     };
 
     return (
         <div className="legal-access-page">
             <div className="legal-access-header">
-                <h1>Request Legal Access</h1>
+                <h1>Legal Orders</h1>
                 <p>
-                    Submit and review authority documents before Beacon obtains live
-                    data from external partners.
+                    Request subpoenas, court orders, warrants, wiretap orders, and
+                    national security letters from the DA or court, then track approved
+                    documents for partner service.
                 </p>
             </div>
 
+            {message && <p className="alert-banner">{message}</p>}
+
             <div className="legal-access-layout">
                 <section className="legal-panel">
-                    <h2>Request Authority Review</h2>
+                    <h2>Request Legal Order</h2>
 
-                    <form className="legal-form" onSubmit={submitRequest}>
+                    <form className="legal-form" onSubmit={submitOrder}>
                         <input
                             name="case_id"
                             placeholder="Case ID"
@@ -178,7 +154,7 @@ function LegalAccessRequests() {
                         />
                         <input
                             name="requester_organization"
-                            placeholder="Court, DA office, agency, or partner"
+                            placeholder="DA office, court, or requesting agency"
                             value={form.requester_organization}
                             onChange={handleChange}
                             required
@@ -202,9 +178,9 @@ function LegalAccessRequests() {
                             value={form.authority_type}
                             onChange={handleChange}
                         >
-                            {authorityTypes.map((type) => (
+                            {orderTypes.map((type) => (
                                 <option key={type} value={type}>
-                                    {type.replace("_", " ")}
+                                    {type.replaceAll("_", " ")}
                                 </option>
                             ))}
                         </select>
@@ -214,16 +190,16 @@ function LegalAccessRequests() {
                             value={form.source_type}
                             onChange={handleChange}
                         >
-                            {sourceTypes.map((type) => (
+                            {partnerTypes.map((type) => (
                                 <option key={type} value={type}>
-                                    {type.replace("_", " ")}
+                                    {type.replaceAll("_", " ")}
                                 </option>
                             ))}
                         </select>
 
                         <input
                             name="target_identifier"
-                            placeholder="Target identifier or subject"
+                            placeholder="Subject, account, device, plate, route, or location"
                             value={form.target_identifier}
                             onChange={handleChange}
                         />
@@ -235,27 +211,27 @@ function LegalAccessRequests() {
                         />
                         <input
                             name="legal_reference"
-                            placeholder="Warrant, subpoena, order, or agreement number"
+                            placeholder="Subpoena, warrant, order, or docket number"
                             value={form.legal_reference}
                             onChange={handleChange}
                         />
                         <input
                             name="document_location"
-                            placeholder="Document location or secure evidence path"
+                            placeholder="Secure document path or evidence reference"
                             value={form.document_location}
                             onChange={handleChange}
                         />
 
                         <textarea
                             name="purpose"
-                            placeholder="Purpose for requested access"
+                            placeholder="Purpose for requesting this legal document"
                             value={form.purpose}
                             onChange={handleChange}
                             required
                         />
                         <textarea
                             name="scope_description"
-                            placeholder="Requested scope, date range, data fields, and limits"
+                            placeholder="Requested partner, date range, data fields, legal limits, and court/DA instructions"
                             value={form.scope_description}
                             onChange={handleChange}
                             required
@@ -273,91 +249,71 @@ function LegalAccessRequests() {
                             onChange={handleChange}
                         />
 
-                        <button type="submit">Request Legal Access</button>
+                        <button type="submit">Request Legal Order</button>
                     </form>
-
-                    {message && <p>{message}</p>}
                 </section>
 
                 <section className="legal-panel">
-                    <h2>Review Queue</h2>
+                    <h2>Legal Order Requests</h2>
 
-                    {requests.length === 0 ? (
-                        <p>No legal access requests submitted.</p>
+                    {pendingOrders.length === 0 ? (
+                        <p>No legal order requests awaiting approval.</p>
                     ) : (
                         <div className="legal-request-list">
-                            {requests.map((request) => (
+                            {pendingOrders.map((order) => (
                                 <article
-                                    key={request.request_id}
+                                    key={order.request_id}
                                     className="legal-request-card"
                                 >
                                     <div className="legal-request-topline">
                                         <strong>
-                                            {request.authority_type.replace("_", " ")}
+                                            {order.authority_type.replaceAll("_", " ")}
                                         </strong>
-                                        <span className={`request-status ${request.status}`}>
-                                            {request.status}
+                                        <span className={`request-status ${order.status}`}>
+                                            {order.status}
                                         </span>
                                     </div>
-
                                     <p>
-                                        {request.source_type.replace("_", " ")} data for
-                                        case {request.case_id ?? "unlinked"}
+                                        {order.source_type.replaceAll("_", " ")} partner
+                                        request for case {order.case_id ?? "unlinked"}
                                     </p>
-                                    <p>{request.requester_organization}</p>
-                                    <p>{request.purpose}</p>
-                                    <p>{request.scope_description}</p>
+                                    <p>{order.target_identifier || "No target listed"}</p>
+                                    <p>{order.legal_reference || "No legal reference listed"}</p>
+                                    <p>{order.scope_description}</p>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </section>
 
-                                    <textarea
-                                        placeholder="Review notes"
-                                        value={reviewNotes[request.request_id] || ""}
-                                        onChange={(e) =>
-                                            setReviewNotes({
-                                                ...reviewNotes,
-                                                [request.request_id]: e.target.value,
-                                            })
-                                        }
-                                    />
+                <section className="legal-panel">
+                    <h2>Approved Legal Orders</h2>
 
-                                    <div className="legal-actions">
-                                        <button
-                                            onClick={() =>
-                                                reviewRequest(
-                                                    request.request_id,
-                                                    "approved"
-                                                )
-                                            }
-                                        >
-                                            Approve
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                reviewRequest(request.request_id, "denied")
-                                            }
-                                        >
-                                            Deny
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                reviewRequest(
-                                                    request.request_id,
-                                                    "missing_info"
-                                                )
-                                            }
-                                        >
-                                            Missing Info
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                reviewRequest(
-                                                    request.request_id,
-                                                    "revoked"
-                                                )
-                                            }
-                                        >
-                                            Revoke
-                                        </button>
+                    {approvedOrders.length === 0 ? (
+                        <p>No approved legal orders ready for partner service.</p>
+                    ) : (
+                        <div className="legal-request-list">
+                            {approvedOrders.map((order) => (
+                                <article
+                                    key={order.request_id}
+                                    className="legal-request-card"
+                                >
+                                    <div className="legal-request-topline">
+                                        <strong>
+                                            {order.authority_type.replaceAll("_", " ")}
+                                        </strong>
+                                        <span className={`request-status ${order.status}`}>
+                                            Ready for partner
+                                        </span>
                                     </div>
+                                    <p>
+                                        Send to {order.source_type.replaceAll("_", " ")} partner
+                                        for case {order.case_id ?? "unlinked"}
+                                    </p>
+                                    <p>{order.target_identifier || "No target listed"}</p>
+                                    <p>{order.legal_reference || "No legal reference listed"}</p>
+                                    <p>{order.document_location || "No secure document path listed"}</p>
+                                    <p>{order.scope_description}</p>
                                 </article>
                             ))}
                         </div>
@@ -368,4 +324,4 @@ function LegalAccessRequests() {
     );
 }
 
-export default LegalAccessRequests;
+export default LegalOrders;

@@ -32,6 +32,7 @@
     <Compile Include="models\external_record.py" />
     <Compile Include="models\IntegrationSource.py" />
     <Compile Include="models\match.py" />
+    <Compile Include="models\partner_intake_record.py" />
     <Compile Include="models\user.py" />
     <Compile Include="models\__init__.py" />
     <Compile Include="routes\admin_log.py" />
@@ -42,6 +43,7 @@
     <Compile Include="routes\external_records_routes.py" />
     <Compile Include="routes\integrations_routes.py" />
     <Compile Include="routes\match_routes.py" />
+    <Compile Include="routes\partner_intake_routes.py" />
     <Compile Include="routes\person_routes.py" />
     <Compile Include="routes\routes.py" />
     <Compile Include="routes\sightings_routes.py" />

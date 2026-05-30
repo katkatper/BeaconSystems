@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const sourceTypes = [
     "hospital",
@@ -11,26 +11,73 @@ const sourceTypes = [
     "other",
 ];
 
+const emptySourceForm = {
+    name: "",
+    source_type: "hospital",
+    api_url: "",
+    description: "",
+};
+
+const emptyIntakeForm = {
+    integration_source_id: "",
+    record_type: "partner_lead",
+    external_id: "",
+    subject_name: "",
+    location: "",
+    summary: "",
+    raw_data: "",
+};
+
 function PartnerSources() {
     const [sources, setSources] = useState([]);
     const [externalRecords, setExternalRecords] = useState([]);
+    const [intakeRecords, setIntakeRecords] = useState([]);
     const [message, setMessage] = useState("");
-    const [form, setForm] = useState({
-        name: "",
-        source_type: "hospital",
-        api_url: "",
-        description: "",
-    });
+    const [sourceForm, setSourceForm] = useState(emptySourceForm);
+    const [intakeForm, setIntakeForm] = useState(emptyIntakeForm);
+    const [reviewForms, setReviewForms] = useState({});
+    const role = localStorage.getItem("role");
+    const canCreatePartnerSource = role === "admin";
+    const canReceivePartnerData = role === "admin" || role === "agency_admin";
 
-    const loadSources = async () => {
-        const token = localStorage.getItem("token");
+    const approvedSources = useMemo(
+        () =>
+            sources.filter(
+                (source) => source.status === "approved" && source.is_active
+            ),
+        [sources]
+    );
+
+    const sourceNameById = useMemo(() => {
+        return sources.reduce((lookup, source) => {
+            lookup[source.id] = source.name;
+            return lookup;
+        }, {});
+    }, [sources]);
+
+    const authHeaders = (includeJson = false) => {
         const headers = {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
         };
 
-        const [sourcesResponse, recordsResponse] = await Promise.all([
-            fetch("http://127.0.0.1:8000/integrations/", { headers }),
-            fetch("http://127.0.0.1:8000/external-records/", { headers }),
+        if (includeJson) {
+            headers["Content-Type"] = "application/json";
+        }
+
+        return headers;
+    };
+
+    const loadPartnerWorkspace = async () => {
+        const [sourcesResponse, recordsResponse, intakeResponse] = await Promise.all([
+            fetch("http://127.0.0.1:8000/integrations/", {
+                headers: authHeaders(),
+            }),
+            fetch("http://127.0.0.1:8000/external-records/", {
+                headers: authHeaders(),
+            }),
+            fetch("http://127.0.0.1:8000/partner-intake/", {
+                headers: authHeaders(),
+            }),
         ]);
 
         if (!sourcesResponse.ok) {
@@ -39,34 +86,52 @@ function PartnerSources() {
 
         const sourcesData = await sourcesResponse.json();
         const recordsData = recordsResponse.ok ? await recordsResponse.json() : [];
+        const intakeData = intakeResponse.ok ? await intakeResponse.json() : [];
 
         setSources(Array.isArray(sourcesData) ? sourcesData : []);
         setExternalRecords(Array.isArray(recordsData) ? recordsData : []);
+        setIntakeRecords(Array.isArray(intakeData) ? intakeData : []);
     };
 
     useEffect(() => {
-        loadSources().catch((err) => console.error(err));
+        loadPartnerWorkspace().catch((err) => {
+            console.error(err);
+            setMessage("Could not load partner workspace.");
+        });
     }, []);
 
-    const handleChange = (e) => {
-        setForm({
-            ...form,
+    const updateSourceForm = (e) => {
+        setSourceForm({
+            ...sourceForm,
             [e.target.name]: e.target.value,
+        });
+    };
+
+    const updateIntakeForm = (e) => {
+        setIntakeForm({
+            ...intakeForm,
+            [e.target.name]: e.target.value,
+        });
+    };
+
+    const updateReviewForm = (intakeId, field, value) => {
+        setReviewForms({
+            ...reviewForms,
+            [intakeId]: {
+                ...reviewForms[intakeId],
+                [field]: value,
+            },
         });
     };
 
     const submitSource = async (e) => {
         e.preventDefault();
-        const token = localStorage.getItem("token");
 
         try {
             const response = await fetch("http://127.0.0.1:8000/integrations/", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(form),
+                headers: authHeaders(true),
+                body: JSON.stringify(sourceForm),
             });
 
             if (!response.ok) {
@@ -74,31 +139,57 @@ function PartnerSources() {
             }
 
             setMessage("Partner source created and marked pending.");
-            setForm({
-                name: "",
-                source_type: "hospital",
-                api_url: "",
-                description: "",
-            });
-            await loadSources();
+            setSourceForm(emptySourceForm);
+            await loadPartnerWorkspace();
         } catch (err) {
             console.error(err);
             setMessage("Could not create partner source.");
         }
     };
 
-    const updateSource = async (sourceId, updates) => {
-        const token = localStorage.getItem("token");
+    const submitPartnerData = async (e) => {
+        e.preventDefault();
 
+        try {
+            const payload = {
+                ...intakeForm,
+                integration_source_id: Number(intakeForm.integration_source_id),
+                raw_data: intakeForm.raw_data
+                    ? JSON.parse(intakeForm.raw_data)
+                    : null,
+            };
+
+            const response = await fetch("http://127.0.0.1:8000/partner-intake/", {
+                method: "POST",
+                headers: authHeaders(true),
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Could not receive partner data");
+            }
+
+            setMessage("Partner data received and added to investigator review.");
+            setIntakeForm(emptyIntakeForm);
+            await loadPartnerWorkspace();
+        } catch (err) {
+            console.error(err);
+            setMessage(
+                err instanceof SyntaxError
+                    ? "Raw data must be valid JSON."
+                    : err.message || "Could not receive partner data."
+            );
+        }
+    };
+
+    const updateSource = async (sourceId, updates) => {
         try {
             const response = await fetch(
                 `http://127.0.0.1:8000/integrations/${sourceId}`,
                 {
                     method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: authHeaders(true),
                     body: JSON.stringify(updates),
                 }
             );
@@ -107,66 +198,293 @@ function PartnerSources() {
                 throw new Error("Could not update partner source");
             }
 
-            await loadSources();
+            await loadPartnerWorkspace();
         } catch (err) {
             console.error(err);
             alert("Could not update partner source.");
         }
     };
 
+    const attachToCase = async (record) => {
+        const review = reviewForms[record.intake_id] || {};
+        const caseId = review.case_id || record.suggested_case_id;
+        const personId = review.person_id || record.suggested_person_id;
+
+        if (!caseId) {
+            setMessage("Choose a case before adding partner data to the case.");
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:8000/partner-intake/${record.intake_id}/attach`,
+                {
+                    method: "PUT",
+                    headers: authHeaders(true),
+                    body: JSON.stringify({
+                        case_id: Number(caseId),
+                        person_id: personId ? Number(personId) : null,
+                        review_notes: review.review_notes || null,
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Could not attach partner data");
+            }
+
+            setMessage("Partner data attached to the case and logged.");
+            await loadPartnerWorkspace();
+        } catch (err) {
+            console.error(err);
+            setMessage(err.message || "Could not attach partner data.");
+        }
+    };
+
+    const dismissRecord = async (intakeId) => {
+        const review = reviewForms[intakeId] || {};
+
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:8000/partner-intake/${intakeId}/dismiss`,
+                {
+                    method: "PUT",
+                    headers: authHeaders(true),
+                    body: JSON.stringify({
+                        review_notes: review.review_notes || "Dismissed after review",
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Could not dismiss partner data");
+            }
+
+            setMessage("Partner data dismissed and logged.");
+            await loadPartnerWorkspace();
+        } catch (err) {
+            console.error(err);
+            setMessage(err.message || "Could not dismiss partner data.");
+        }
+    };
+
     return (
         <div className="partner-page">
             <div className="partner-header">
-                <h1>Partner Sources</h1>
+                <h1>Partners</h1>
                 <p>
-                    Track approved hospitals, transportation partners, cameras, toll
-                    systems, cell providers, social platforms, and NGOs.
+                    Manage approved data partners, review incoming leads, and attach
+                    relevant records to authorized cases.
                 </p>
             </div>
 
-            <div className="partner-layout">
-                <section className="partner-panel">
-                    <h2>Add Partner Source</h2>
+            {message && <p className="alert-banner">{message}</p>}
 
-                    <form className="partner-form" onSubmit={submitSource}>
-                        <input
-                            name="name"
-                            placeholder="Partner name"
-                            value={form.name}
-                            onChange={handleChange}
-                            required
-                        />
+            <div className="partner-workspace-layout">
+                {canReceivePartnerData && (
+                    <section className="partner-intake-panel">
+                        <div className="partner-intake-panel-header">
+                            <span>Partner feed</span>
+                            <strong>Receive Data</strong>
+                        </div>
 
-                        <select
-                            name="source_type"
-                            value={form.source_type}
-                            onChange={handleChange}
-                        >
-                            {sourceTypes.map((type) => (
-                                <option key={type} value={type}>
-                                    {type.replace("_", " ")}
-                                </option>
+                        <form className="partner-intake-form" onSubmit={submitPartnerData}>
+                            <select
+                                name="integration_source_id"
+                                value={intakeForm.integration_source_id}
+                                onChange={updateIntakeForm}
+                                required
+                            >
+                                <option value="">Approved partner source</option>
+                                {approvedSources.map((source) => (
+                                    <option key={source.id} value={source.id}>
+                                        {source.name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <input
+                                name="record_type"
+                                placeholder="Record type"
+                                value={intakeForm.record_type}
+                                onChange={updateIntakeForm}
+                                required
+                            />
+
+                            <input
+                                name="external_id"
+                                placeholder="Partner reference ID"
+                                value={intakeForm.external_id}
+                                onChange={updateIntakeForm}
+                            />
+
+                            <input
+                                name="subject_name"
+                                placeholder="Subject name"
+                                value={intakeForm.subject_name}
+                                onChange={updateIntakeForm}
+                            />
+
+                            <input
+                                name="location"
+                                placeholder="Location"
+                                value={intakeForm.location}
+                                onChange={updateIntakeForm}
+                            />
+
+                            <textarea
+                                name="summary"
+                                placeholder="Summary for investigator review"
+                                value={intakeForm.summary}
+                                onChange={updateIntakeForm}
+                                required
+                            />
+
+                            <textarea
+                                name="raw_data"
+                                placeholder='Optional raw JSON, for example {"source":"camera","confidence":0.91}'
+                                value={intakeForm.raw_data}
+                                onChange={updateIntakeForm}
+                            />
+
+                            <button type="submit">Add to Review Queue</button>
+                        </form>
+                    </section>
+                )}
+
+                <section className="partner-intake-panel partner-intake-review-panel">
+                    <div className="partner-intake-panel-header">
+                        <span>Investigator review</span>
+                        <strong>{intakeRecords.length} pending</strong>
+                    </div>
+
+                    {intakeRecords.length === 0 ? (
+                        <p>No partner data waiting for review.</p>
+                    ) : (
+                        <div className="partner-intake-list">
+                            {intakeRecords.map((record) => (
+                                <article
+                                    key={record.intake_id}
+                                    className="partner-intake-card"
+                                >
+                                    <div className="partner-intake-card-topline">
+                                        <div>
+                                            <strong>
+                                                {sourceNameById[record.integration_source_id] ||
+                                                    "Partner Source"}
+                                            </strong>
+                                            <span>{record.record_type}</span>
+                                        </div>
+                                        <span className={`request-status ${record.status}`}>
+                                            {record.status.replace("_", " ")}
+                                        </span>
+                                    </div>
+
+                                    <h3>{record.subject_name || "Unmatched subject"}</h3>
+                                    <p>{record.summary}</p>
+
+                                    {record.suggested_case_id ? (
+                                        <div className="partner-match-suggestion">
+                                            <strong>
+                                                Suggested match: Case {record.suggested_case_id}
+                                            </strong>
+                                            <span>
+                                                {record.match_score || 0}% confidence
+                                                {record.match_case_status
+                                                    ? ` - ${record.match_case_status}`
+                                                    : ""}
+                                            </span>
+                                            <p>{record.match_reason}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="partner-match-suggestion unmatched">
+                                            <strong>No strong case match</strong>
+                                            <span>Investigator review required</span>
+                                        </div>
+                                    )}
+
+                                    <dl className="partner-intake-details">
+                                        <div>
+                                            <dt>Location</dt>
+                                            <dd>{record.location || "Not provided"}</dd>
+                                        </div>
+                                        <div>
+                                            <dt>External ID</dt>
+                                            <dd>{record.external_id || "Not provided"}</dd>
+                                        </div>
+                                    </dl>
+
+                                    <div className="partner-intake-review-form">
+                                        <input
+                                            type="number"
+                                            placeholder="Case ID"
+                                            value={
+                                                reviewForms[record.intake_id]?.case_id ||
+                                                record.suggested_case_id ||
+                                                ""
+                                            }
+                                            onChange={(e) =>
+                                                updateReviewForm(
+                                                    record.intake_id,
+                                                    "case_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+
+                                        <input
+                                            type="number"
+                                            placeholder="Person ID (optional)"
+                                            value={
+                                                reviewForms[record.intake_id]?.person_id ||
+                                                record.suggested_person_id ||
+                                                ""
+                                            }
+                                            onChange={(e) =>
+                                                updateReviewForm(
+                                                    record.intake_id,
+                                                    "person_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+
+                                        <textarea
+                                            placeholder="Review notes"
+                                            value={
+                                                reviewForms[record.intake_id]?.review_notes || ""
+                                            }
+                                            onChange={(e) =>
+                                                updateReviewForm(
+                                                    record.intake_id,
+                                                    "review_notes",
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="partner-intake-actions">
+                                        <button
+                                            type="button"
+                                            onClick={() => attachToCase(record)}
+                                        >
+                                            Add to Case
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="secondary-button"
+                                            onClick={() => dismissRecord(record.intake_id)}
+                                        >
+                                            Dismiss
+                                        </button>
+                                    </div>
+                                </article>
                             ))}
-                        </select>
-
-                        <input
-                            name="api_url"
-                            placeholder="Approved API URL or intake endpoint"
-                            value={form.api_url}
-                            onChange={handleChange}
-                        />
-
-                        <textarea
-                            name="description"
-                            placeholder="Agreement notes, coverage area, data types, and legal limits"
-                            value={form.description}
-                            onChange={handleChange}
-                        />
-
-                        <button type="submit">Create Source</button>
-                    </form>
-
-                    {message && <p>{message}</p>}
+                        </div>
+                    )}
                 </section>
 
                 <section className="partner-panel">
@@ -176,73 +494,113 @@ function PartnerSources() {
                         <p>No partner sources registered yet.</p>
                     ) : (
                         <div className="partner-list">
-                            {sources.map((source) => (
-                                <article key={source.id} className="partner-card">
-                                    {(() => {
-                                        const recordCount = externalRecords.filter(
-                                            (record) =>
-                                                record.integration_source_id === source.id
-                                        ).length;
+                            {sources.map((source) => {
+                                const recordCount = externalRecords.filter(
+                                    (record) =>
+                                        record.integration_source_id === source.id
+                                ).length;
 
-                                        return (
-                                            <>
-                                    <div className="partner-topline">
-                                        <strong>{source.name}</strong>
-                                        <span className={`request-status ${source.status}`}>
-                                            {source.status}
-                                        </span>
-                                    </div>
+                                return (
+                                    <article key={source.id} className="partner-card">
+                                        <div className="partner-topline">
+                                            <strong>{source.name}</strong>
+                                            <span className={`request-status ${source.status}`}>
+                                                {source.status}
+                                            </span>
+                                        </div>
 
-                                    <p>{source.source_type.replace("_", " ")}</p>
-                                    <p>{source.description || "No description provided"}</p>
-                                    <p>{source.api_url || "No API URL registered"}</p>
-                                    <p>
-                                        {source.is_active
-                                            ? "Active for approved use"
-                                            : "Inactive until approved"}
-                                    </p>
-                                    <p>{recordCount} external records linked</p>
+                                        <p>{source.source_type.replace("_", " ")}</p>
+                                        <p>{source.description || "No description provided"}</p>
+                                        <p>{source.api_url || "No API URL registered"}</p>
+                                        <p>
+                                            {source.is_active
+                                                ? "Active for approved use"
+                                                : "Inactive until approved"}
+                                        </p>
+                                        <p>{recordCount} external records linked</p>
 
-                                    <div className="partner-actions">
-                                        <button
-                                            onClick={() =>
-                                                updateSource(source.id, {
-                                                    status: "approved",
-                                                    is_active: true,
-                                                })
-                                            }
-                                        >
-                                            Approve
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                updateSource(source.id, {
-                                                    status: "suspended",
-                                                    is_active: false,
-                                                })
-                                            }
-                                        >
-                                            Suspend
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                updateSource(source.id, {
-                                                    status: "revoked",
-                                                    is_active: false,
-                                                })
-                                            }
-                                        >
-                                            Revoke
-                                        </button>
-                                    </div>
-                                            </>
-                                        );
-                                    })()}
-                                </article>
-                            ))}
+                                        <div className="partner-actions">
+                                            <button
+                                                onClick={() =>
+                                                    updateSource(source.id, {
+                                                        status: "approved",
+                                                        is_active: true,
+                                                    })
+                                                }
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    updateSource(source.id, {
+                                                        status: "suspended",
+                                                        is_active: false,
+                                                    })
+                                                }
+                                            >
+                                                Suspend
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    updateSource(source.id, {
+                                                        status: "revoked",
+                                                        is_active: false,
+                                                    })
+                                                }
+                                            >
+                                                Revoke
+                                            </button>
+                                        </div>
+                                    </article>
+                                );
+                            })}
                         </div>
                     )}
                 </section>
+
+                {canCreatePartnerSource && (
+                    <section className="partner-panel">
+                        <h2>Add Partner Source</h2>
+
+                        <form className="partner-form" onSubmit={submitSource}>
+                            <input
+                                name="name"
+                                placeholder="Partner name"
+                                value={sourceForm.name}
+                                onChange={updateSourceForm}
+                                required
+                            />
+
+                            <select
+                                name="source_type"
+                                value={sourceForm.source_type}
+                                onChange={updateSourceForm}
+                            >
+                                {sourceTypes.map((type) => (
+                                    <option key={type} value={type}>
+                                        {type.replace("_", " ")}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <input
+                                name="api_url"
+                                placeholder="Approved API URL or intake endpoint"
+                                value={sourceForm.api_url}
+                                onChange={updateSourceForm}
+                            />
+
+                            <textarea
+                                name="description"
+                                placeholder="Agreement notes, coverage area, data types, and legal limits"
+                                value={sourceForm.description}
+                                onChange={updateSourceForm}
+                            />
+
+                            <button type="submit">Create Source</button>
+                        </form>
+                    </section>
+                )}
             </div>
         </div>
     );

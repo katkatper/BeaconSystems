@@ -69,6 +69,15 @@ def get_dashboard_summary(
     pending_legal_requests = legal_query.filter(
         LegalAccessRequest.status == "pending"
     ).count()
+    missing_info_legal_requests = legal_query.filter(
+        LegalAccessRequest.status == "missing_info"
+    ).count()
+    denied_legal_requests = legal_query.filter(
+        LegalAccessRequest.status == "denied"
+    ).count()
+    approved_legal_requests = legal_query.filter(
+        LegalAccessRequest.status == "approved"
+    ).count()
 
     pending_partner_sources = partner_query.filter(
         IntegrationSource.status == "pending"
@@ -152,6 +161,9 @@ def get_dashboard_summary(
         } if latest_evidence else None,
         "compliance": {
             "pending_legal_requests": pending_legal_requests,
+            "missing_info_legal_requests": missing_info_legal_requests,
+            "denied_legal_requests": denied_legal_requests,
+            "approved_legal_requests": approved_legal_requests,
             "pending_partner_sources": pending_partner_sources,
             "restricted_access_events": restricted_access_events,
         },
@@ -164,6 +176,9 @@ def get_dashboard_summary(
         "command_briefing": command_briefing,
         "new_alerts": new_alerts,
         "pending_legal_requests": pending_legal_requests,
+        "missing_info_legal_requests": missing_info_legal_requests,
+        "denied_legal_requests": denied_legal_requests,
+        "approved_legal_requests": approved_legal_requests,
         "pending_partner_sources": pending_partner_sources,
         "evidence_uploaded_today": evidence_uploaded_today,
         "restricted_access_events": restricted_access_events,

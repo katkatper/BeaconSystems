@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 function SupervisorQueue() {
     const [queue, setQueue] = useState(null);
     const [message, setMessage] = useState("");
+    const [reviewNotes, setReviewNotes] = useState({});
 
     const token = localStorage.getItem("token");
 
@@ -58,6 +59,54 @@ function SupervisorQueue() {
             isMounted = false;
         };
     }, [token]);
+
+    const reviewCaseAccess = async (grantId, action) => {
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:8000/supervisor/case-access/${grantId}/${action}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        review_notes: reviewNotes[grantId] || "",
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Could not review case access request");
+            }
+
+            const data = await response.json();
+            setMessage(data.message);
+
+            setQueue((currentQueue) => {
+                if (!currentQueue) {
+                    return currentQueue;
+                }
+
+                return {
+                    ...currentQueue,
+                    pending_case_access: (currentQueue.pending_case_access || []).filter(
+                        (item) => item.grant_id !== grantId
+                    ),
+                };
+            });
+
+            setReviewNotes((currentNotes) => {
+                const nextNotes = { ...currentNotes };
+                delete nextNotes[grantId];
+                return nextNotes;
+            });
+        } catch (err) {
+            console.error(err);
+            setMessage(err.message || "Could not review case access request.");
+        }
+    };
 
 
 
@@ -128,6 +177,52 @@ function SupervisorQueue() {
                                     </div>
                                     <p>{item.title}</p>
                                     <Link to={`/cases/${item.case_id}`}>Open Case</Link>
+                                </article>
+                            ))
+                        )}
+                    </section>
+
+                    <section className="supervisor-panel">
+                        <h2>Pending Case Access</h2>
+
+                        {(queue.pending_case_access || []).length === 0 ? (
+                            <p>No pending case access requests.</p>
+                        ) : (
+                            queue.pending_case_access.map((item) => (
+                                <article key={item.grant_id} className="queue-item">
+                                    <div>
+                                        <strong>Case {item.case_id}</strong>
+                                        <span>User {item.user_id}</span>
+                                    </div>
+                                    <p>{item.reason_category || "Manual review"}</p>
+                                    <p>{item.reason}</p>
+
+                                    <textarea
+                                        className="supervisor-review-notes"
+                                        placeholder="Supervisor review notes"
+                                        value={reviewNotes[item.grant_id] || ""}
+                                        onChange={(e) =>
+                                            setReviewNotes((currentNotes) => ({
+                                                ...currentNotes,
+                                                [item.grant_id]: e.target.value,
+                                            }))
+                                        }
+                                    />
+
+                                    <div className="supervisor-actions">
+                                        <button
+                                            type="button"
+                                            onClick={() => reviewCaseAccess(item.grant_id, "approve")}
+                                        >
+                                            Approve
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => reviewCaseAccess(item.grant_id, "deny")}
+                                        >
+                                            Deny
+                                        </button>
+                                    </div>
                                 </article>
                             ))
                         )}

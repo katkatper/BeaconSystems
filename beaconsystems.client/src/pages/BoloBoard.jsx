@@ -10,6 +10,7 @@ function BoloBoard() {
         description: "",
         risk_level: "high",
         share_with_partners: false,
+        expires_at: "",
     });
     const [message, setMessage] = useState("");
 
@@ -53,6 +54,7 @@ function BoloBoard() {
         const payload = {
             ...form,
             case_id: Number(form.case_id),
+            expires_at: form.expires_at || null,
         };
 
         const response = await fetch("http://127.0.0.1:8000/bolos/", {
@@ -78,6 +80,7 @@ function BoloBoard() {
             description: "",
             risk_level: "high",
             share_with_partners: false,
+            expires_at: "",
         });
 
         setMessage("BOLO alert created");
@@ -147,6 +150,13 @@ function BoloBoard() {
                             <option value="low">Low</option>
                         </select>
 
+                        <input
+                            type="datetime-local"
+                            name="expires_at"
+                            value={form.expires_at}
+                            onChange={handleChange}
+                        />
+
                         <label className="archive-toggle">
                             <input
                                 type="checkbox"
@@ -185,6 +195,7 @@ function BoloBoard() {
                                         {bolo.last_known_location
                                             ? ` | ${bolo.last_known_location}`
                                             : ""}
+                                        {bolo.expires_at ? ` | Expires ${new Date(bolo.expires_at).toLocaleString()}` : ""}
                                     </small>
                                 </article>
                             ))

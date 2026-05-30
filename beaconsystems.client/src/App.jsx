@@ -19,6 +19,7 @@ import Cases from "./pages/Cases.jsx";
 import IntelligenceCenter from "./pages/IntelligenceCenter.jsx";
 import EvidenceUpload from "./pages/EvidenceUpload.jsx";
 import LegalAccessRequests from "./pages/LegalAccessRequests.jsx";
+import LegalOrders from "./pages/LegalOrders.jsx";
 import PartnerSources from "./pages/PartnerSources.jsx";
 import CaseAccess from "./pages/CaseAccess.jsx";
 import "./App.css";
@@ -180,6 +181,14 @@ function AppLayout() {
                     element={
                         <ProtectedRoute>
                             <LegalAccessRequests />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/legal-orders"
+                    element={
+                        <ProtectedRoute>
+                            <LegalOrders />
                         </ProtectedRoute>
                     }
                 />

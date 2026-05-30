@@ -3,17 +3,28 @@ import { Link } from "react-router-dom";
 
 function CaseAccess() {
     const [caseId, setCaseId] = useState("");
-    const [accessCode, setAccessCode] = useState("");
+    const [reasonCategory, setReasonCategory] = useState("assisting_investigator");
     const [reason, setReason] = useState("");
     const [message, setMessage] = useState("");
     const [grantedCaseId, setGrantedCaseId] = useState(null);
+
+    const reasonCategories = [
+        ["assisting_investigator", "Assisting assigned investigator"],
+        ["shift_coverage", "Shift coverage"],
+        ["supervisor_directed", "Supervisor-directed support"],
+        ["linked_person_overlap", "Linked person overlap"],
+        ["emergency_field_support", "Emergency field support"],
+        ["evidence_intake_support", "Evidence intake support"],
+        ["court_preparation", "Court/legal preparation"],
+        ["other", "Other - supervisor review required"],
+    ];
 
     const submitAccessRequest = async (e) => {
         e.preventDefault();
         const token = localStorage.getItem("token");
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/cases/access-code", {
+            const response = await fetch("http://127.0.0.1:8000/cases/access-request", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -21,7 +32,7 @@ function CaseAccess() {
                 },
                 body: JSON.stringify({
                     case_id: Number(caseId),
-                    access_code: accessCode,
+                    reason_category: reasonCategory,
                     reason,
                 }),
             });
@@ -33,8 +44,7 @@ function CaseAccess() {
 
             const data = await response.json();
             setMessage(data.message);
-            setGrantedCaseId(caseId);
-            setAccessCode("");
+            setGrantedCaseId(data.message.includes("auto-approved") ? caseId : null);
         } catch (err) {
             console.error(err);
             setGrantedCaseId(null);
@@ -62,16 +72,20 @@ function CaseAccess() {
                         required
                     />
 
-                    <input
-                        type="password"
-                        placeholder="Access code or case password"
-                        value={accessCode}
-                        onChange={(e) => setAccessCode(e.target.value)}
+                    <select
+                        value={reasonCategory}
+                        onChange={(e) => setReasonCategory(e.target.value)}
                         required
-                    />
+                    >
+                        {reasonCategories.map(([value, label]) => (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
 
                     <textarea
-                        placeholder="Reason for access"
+                        placeholder="Explain why this access is needed. Routine reasons may be auto-approved; unusual reasons go to supervisor review."
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         required

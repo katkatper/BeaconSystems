@@ -31,6 +31,7 @@ from models.person import Person
 from models.timeline_events import Timeline_Event
 from models.investigators import Investigators
 from models.IntegrationSource import IntegrationSource
+from models.partner_intake_record import PartnerIntakeRecord
 from models.match import Match
 from models.person import Person
 from models.case import Cases
@@ -54,6 +55,7 @@ from routes.admin_log import router as admin_log_router
 from routes.person_routes import router as person_router
 from routes import integrations_routes
 from routes import external_records_routes
+from routes import partner_intake_routes
 from routes import match_routes
 from  routes.timeline_events_routes import router as timeline_events_router
 from routes.sightings_routes import router as sightings_routes
@@ -124,6 +126,7 @@ app.include_router(sightings_router)
 app.include_router(person_router)
 app.include_router(integrations_routes.router)
 app.include_router(external_records_routes.router)
+app.include_router(partner_intake_routes.router)
 app.include_router(match_routes.router)
 app.include_router(timeline_events_router)
 app.include_router(alerts_router)

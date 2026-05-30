@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -10,9 +13,14 @@ from models.case_access_grant import CaseAccessGrant
 from models.legal_access_request import LegalAccessRequest
 from models.user import User
 from security.auth import require_role
+from services.activity_service import create_activity_log
 
 
 router = APIRouter(prefix="/supervisor", tags=["Supervisor Review"])
+
+
+class CaseAccessReview(BaseModel):
+    review_notes: str | None = None
 
 
 @router.get("/queue")
@@ -94,8 +102,96 @@ def get_supervisor_queue(
         "pending_legal_requests": pending_legal_requests,
         "pending_partner_sources": pending_partner_sources,
         "high_priority_cases": high_priority_cases,
+        "pending_case_access": (
+            access_query
+            .filter(CaseAccessGrant.status == "pending")
+            .order_by(CaseAccessGrant.granted_at.desc())
+            .limit(10)
+            .all()
+        ),
         "recent_case_access": recent_case_access,
         "active_bolos": active_bolos,
     }
+
+
+def get_reviewable_case_access_grant(
+    db: Session,
+    grant_id: int,
+    current_user: User,
+):
+    query = db.query(CaseAccessGrant).filter(CaseAccessGrant.grant_id == grant_id)
+
+    if current_user.role != "admin":
+        query = query.filter(CaseAccessGrant.agency_id == current_user.agency_id)
+
+    grant = query.first()
+
+    if not grant:
+        raise HTTPException(status_code=404, detail="Case access request not found")
+
+    return grant
+
+
+@router.put("/case-access/{grant_id}/approve")
+def approve_case_access_request(
+    grant_id: int,
+    data: CaseAccessReview,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin")),
+):
+    grant = get_reviewable_case_access_grant(db, grant_id, current_user)
+
+    grant.status = "active"
+    grant.approval_type = "manual"
+    grant.reviewed_by = current_user.user_id
+    grant.review_notes = data.review_notes
+    grant.expires_at = datetime.utcnow() + timedelta(hours=24)
+    grant.revoked_at = None
+
+    db.commit()
+    db.refresh(grant)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="CASE_ACCESS_APPROVED_BY_SUPERVISOR",
+        entity="case",
+        entity_id=grant.case_id,
+        details=f"Approved case access request {grant.grant_id}. Notes: {data.review_notes or 'None'}",
+    )
+
+    return {"message": "Case access approved for 24 hours"}
+
+
+@router.put("/case-access/{grant_id}/deny")
+def deny_case_access_request(
+    grant_id: int,
+    data: CaseAccessReview,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin")),
+):
+    grant = get_reviewable_case_access_grant(db, grant_id, current_user)
+
+    grant.status = "denied"
+    grant.approval_type = "manual"
+    grant.reviewed_by = current_user.user_id
+    grant.review_notes = data.review_notes
+    grant.revoked_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(grant)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="CASE_ACCESS_DENIED",
+        entity="case",
+        entity_id=grant.case_id,
+        details=f"Denied case access request {grant.grant_id}. Notes: {data.review_notes or 'None'}",
+    )
+
+    return {"message": "Case access denied"}
 
 
