@@ -12,11 +12,10 @@ function CaseDetail() {
     const [sightingMessage, setSightingMessage] = useState("");
     const [person, setPerson] = useState(null);
     const [timelineEvents, setTimelineEvents] = useState([]);
-    const [investigators, setInvestigators] = useState([]);
-    const [selectedInvestigator, setSelectedInvestigator] = useState("");
-    const [assignmentMessage, setAssignmentMessage] = useState("");
     const [evidence, setEvidence] = useState([]);
     const [evidenceChains, setEvidenceChains] = useState({});
+    const [selectedExternalRecord, setSelectedExternalRecord] = useState(null);
+    const [showSightingForm, setShowSightingForm] = useState(false);
 
     const [sightingForm, setSightingForm] = useState({
         location: "",
@@ -52,7 +51,6 @@ function CaseDetail() {
                 const [
                     sightingsResponse,
                     timelineResponse,
-                    usersResponse,
                     evidenceResponse,
                     personResponse,
                     externalRecordsResponse,
@@ -61,9 +59,6 @@ function CaseDetail() {
                         headers: authHeaders,
                     }),
                     fetch(`http://127.0.0.1:8000/timeline-events/?case_id=${id}`),
-                    fetch("http://127.0.0.1:8000/admin/users/", {
-                        headers: authHeaders,
-                    }),
                     fetch(`http://127.0.0.1:8000/evidence/case/${id}`, {
                         headers: authHeaders,
                     }),
@@ -79,14 +74,12 @@ function CaseDetail() {
                 const [
                     sightingsData,
                     timelineData,
-                    usersData,
                     evidenceData,
                     personData,
                     externalRecordsData,
                 ] = await Promise.all([
                     sightingsResponse.ok ? sightingsResponse.json() : [],
                     timelineResponse.ok ? timelineResponse.json() : [],
-                    usersResponse.ok ? usersResponse.json() : [],
                     evidenceResponse.ok ? evidenceResponse.json() : [],
                     personResponse.ok ? personResponse.json() : null,
                     externalRecordsResponse.ok ? externalRecordsResponse.json() : [],
@@ -100,13 +93,6 @@ function CaseDetail() {
                 setPerson(personData);
                 setExternalRecords(
                     Array.isArray(externalRecordsData) ? externalRecordsData : []
-                );
-
-                const usersArray = Array.isArray(usersData) ? usersData : [];
-                setInvestigators(
-                    usersArray.filter(
-                        (user) => user.role === "investigator" || user.role === "admin"
-                    )
                 );
             } catch (err) {
                 console.error(err);
@@ -182,32 +168,6 @@ function CaseDetail() {
         } catch (err) {
             console.error(err);
             setSightingMessage("Could not add sighting.");
-        }
-    };
-
-    const assignInvestigator = async () => {
-        const token = localStorage.getItem("token");
-
-        try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/cases/${id}/assign-investigator?investigator_id=${selectedInvestigator}`,
-                {
-                    method: "PUT",
-                    headers: { Authorization: `Bearer ${token}` },
-                }
-            );
-
-            if (!response.ok) throw new Error("Failed to assign investigator");
-
-            const data = await response.json();
-            setAssignmentMessage(data.message);
-            setCaseItem({
-                ...caseItem,
-                investigator_id: selectedInvestigator,
-            });
-        } catch (err) {
-            console.error(err);
-            setAssignmentMessage("Could not assign investigator.");
         }
     };
 
@@ -301,51 +261,90 @@ function CaseDetail() {
             new Date(b.sighting_time || b.created_at)
     );
 
+    const getExternalRecordName = (record) => {
+        if (!record.record_type) return "External Record";
+        return record.record_type
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    };
+
     return (
         <div className="case-detail-page">
-            <Link to="/">Back to Dashboard</Link>
+            <Link className="case-back-link" to="/cases">Back to Cases</Link>
 
             <div className="case-section">
-                <h1 className="case-title">Case {caseItem.case_number}</h1>
-                <p>Investigative case workspace and operational intelligence view</p>
-
                 <div className="case-card-header">
+                    <div>
+                        <h1 className="case-title">Case {caseItem.case_number}</h1>
+                        <p>Investigative case workspace</p>
+                    </div>
+
+                    <button
+                        className="case-action-button"
+                        onClick={() => setShowSightingForm(!showSightingForm)}
+                    >
+                        {showSightingForm ? "Close Sighting" : "Add Sighting"}
+                    </button>
+                </div>
+
+                <div className="case-card-header case-status-row">
                     <span className={`priority-badge priority-${caseItem.priority_level}`}>
                         {caseItem.priority_level}
                     </span>
-                    <span className="status-badge">{caseItem.case_status}</span>
+                    <span className="status-badge">Status: {caseItem.case_status}</span>
+                    <span className="status-badge">Agency ID: {caseItem.agency_id}</span>
+                    <span className="status-badge">
+                        Investigator ID: {caseItem.investigator_id}
+                    </span>
                 </div>
-            </div>
 
-            <p>Status: {caseItem.case_status}</p>
-            <p>Priority: {caseItem.priority_level}</p>
-            <p>Last Seen: {caseItem.last_seen_location}</p>
-            <p>Notes: {caseItem.notes}</p>
-            <p>Agency ID: {caseItem.agency_id}</p>
-            <p>Investigator ID: {caseItem.investigator_id}</p>
+                {showSightingForm && (
+                    <form className="case-sighting-form" onSubmit={submitSighting}>
+                        <input
+                            name="location"
+                            placeholder="Location"
+                            value={sightingForm.location}
+                            onChange={handleSightingChange}
+                        />
 
-            <div className="case-section">
-                <h2>Investigator Assignment</h2>
+                        <input
+                            name="latitude"
+                            placeholder="Latitude"
+                            value={sightingForm.latitude}
+                            onChange={handleSightingChange}
+                        />
 
-                <select
-                    value={selectedInvestigator}
-                    onChange={(e) => setSelectedInvestigator(e.target.value)}
-                >
-                    <option value="">Select Investigator</option>
-                    {investigators.map((user) => (
-                        <option key={user.user_id} value={user.user_id}>
-                            {user.username} - {user.role}
-                        </option>
-                    ))}
-                </select>
+                        <input
+                            name="longitude"
+                            placeholder="Longitude"
+                            value={sightingForm.longitude}
+                            onChange={handleSightingChange}
+                        />
 
-                <button onClick={assignInvestigator}>Assign</button>
-                {assignmentMessage && <p>{assignmentMessage}</p>}
+                        <input
+                            name="confidence_score"
+                            placeholder="Confidence Score 0-1"
+                            value={sightingForm.confidence_score}
+                            onChange={handleSightingChange}
+                        />
+
+                        <textarea
+                            name="description"
+                            placeholder="Description"
+                            value={sightingForm.description}
+                            onChange={handleSightingChange}
+                        />
+
+                        <button type="submit">Add Sighting</button>
+                    </form>
+                )}
+
+                {sightingMessage && <p>{sightingMessage}</p>}
             </div>
 
             {person && (
                 <div className="case-section">
-                    <h2>Missing Person Intelligence Profile</h2>
+                    <h2>Missing Person Profile</h2>
                     <p>Name: {person.first_name} {person.last_name}</p>
                     <p>Age: {person.age}</p>
                     <p>Eye Color: {person.eye_color}</p>
@@ -365,15 +364,38 @@ function CaseDetail() {
             {externalRecords.length === 0 ? (
                 <p>No external records found for this person.</p>
             ) : (
-                externalRecords.map((record) => (
-                    <div key={record.id} style={styles.card}>
-                        <strong>{record.record_type}</strong>
-                        <p>Name: {record.first_name} {record.last_name}</p>
-                        <p>Age: {record.age}</p>
-                        <p>Location: {record.location}</p>
-                        <p>Notes: {record.notes}</p>
+                <div className="external-record-links">
+                    {externalRecords.map((record) => (
+                        <button
+                            key={record.id}
+                            type="button"
+                            onClick={() => setSelectedExternalRecord(record)}
+                        >
+                            {getExternalRecordName(record)}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {selectedExternalRecord && (
+                <div className="case-section external-record-detail">
+                    <div className="case-card-header">
+                        <h3>{getExternalRecordName(selectedExternalRecord)}</h3>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedExternalRecord(null)}
+                        >
+                            Close
+                        </button>
                     </div>
-                ))
+                    <p>
+                        Name: {selectedExternalRecord.first_name}{" "}
+                        {selectedExternalRecord.last_name}
+                    </p>
+                    <p>Age: {selectedExternalRecord.age || "Not provided"}</p>
+                    <p>Location: {selectedExternalRecord.location || "Not provided"}</p>
+                    <p>Notes: {selectedExternalRecord.notes || "Not provided"}</p>
+                </div>
             )}
 
             <hr />
@@ -449,49 +471,6 @@ function CaseDetail() {
             <h2>Sighting Map</h2>
             <SightingMap sightings={sortedSightings} />
 
-            <hr />
-
-            <h2>Add Sighting</h2>
-            <form onSubmit={submitSighting}>
-                <input
-                    name="location"
-                    placeholder="Location"
-                    value={sightingForm.location}
-                    onChange={handleSightingChange}
-                />
-
-                <input
-                    name="latitude"
-                    placeholder="Latitude"
-                    value={sightingForm.latitude}
-                    onChange={handleSightingChange}
-                />
-
-                <input
-                    name="longitude"
-                    placeholder="Longitude"
-                    value={sightingForm.longitude}
-                    onChange={handleSightingChange}
-                />
-
-                <textarea
-                    name="description"
-                    placeholder="Description"
-                    value={sightingForm.description}
-                    onChange={handleSightingChange}
-                />
-
-                <input
-                    name="confidence_score"
-                    placeholder="Confidence Score 0-1"
-                    value={sightingForm.confidence_score}
-                    onChange={handleSightingChange}
-                />
-
-                <button type="submit">Add Sighting</button>
-            </form>
-
-            {sightingMessage && <p>{sightingMessage}</p>}
         </div>
     );
 }
