@@ -56,44 +56,141 @@
     color: #fca5a5;
 }
 .navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 28px;
+    display: grid;
+    gap: 10px;
+    padding: 12px 28px;
     background: rgba(2, 6, 23, 0.88);
     border-bottom: 1px solid rgba(148, 163, 184, 0.25);
     backdrop-filter: blur(12px);
 }
 
+.navbar-topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+}
+
 .navbar-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    min-height: 66px;
 }
 
 .brand-mark {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    background: #2563eb;
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at 52% 82%, rgba(191, 219, 254, 0.22), transparent 28%),
+        radial-gradient(circle at 22% 0%, rgba(239, 246, 255, 0.32), transparent 28%),
+        linear-gradient(145deg, #111827, #020617 72%);
+    border: 1px solid rgba(147, 197, 253, 0.38);
+    box-shadow: 0 10px 26px rgba(37, 99, 235, 0.24);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    position: relative;
+    overflow: hidden;
+}
+
+.brand-mark::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0.16), transparent 26%);
+    z-index: 1;
+}
+
+.brand-ray {
+    position: absolute;
+    top: -7px;
+    left: 11px;
+    height: 70px;
+    transform-origin: top center;
+    z-index: 2;
+}
+
+.brand-ray-main {
+    width: 18px;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.95),
+        rgba(191, 219, 254, 0.54) 48%,
+        rgba(96, 165, 250, 0.08) 100%
+    );
+    clip-path: polygon(12% 0, 43% 0, 100% 100%, 34% 100%);
+    filter: blur(0.2px) drop-shadow(0 0 8px rgba(219, 234, 254, 0.85));
+    transform: rotate(-13deg);
+}
+
+.brand-ray-soft {
+    width: 34px;
+    background: linear-gradient(
+        180deg,
+        rgba(219, 234, 254, 0.42),
+        rgba(147, 197, 253, 0.18) 62%,
+        rgba(147, 197, 253, 0)
+    );
+    clip-path: polygon(18% 0, 46% 0, 100% 100%, 20% 100%);
+    filter: blur(1.2px);
+    transform: rotate(-18deg);
+}
+
+.brand-ray-side {
+    width: 7px;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.82),
+        rgba(191, 219, 254, 0.16) 72%,
+        transparent
+    );
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 42% 100%);
+    filter: blur(0.4px);
+    transform: translateX(24px) rotate(-27deg);
 }
 
 .navbar-brand h2 {
     margin: 0;
+    color: #f8fafc;
+    font-size: 26px;
+    line-height: 1.05;
+    font-weight: 800;
 }
 
 .navbar-brand span {
-    font-size: 12px;
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    color: #a8b5c8;
+    font-weight: 600;
+}
+
+.navbar-welcome {
+    display: grid;
+    gap: 2px;
+    text-align: right;
+    color: #cbd5e1;
+}
+
+.navbar-welcome span {
     color: #94a3b8;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.navbar-welcome strong {
+    color: #f8fafc;
+    font-size: 17px;
+    text-transform: capitalize;
 }
 
 .navbar-links {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 14px;
     flex-wrap: wrap;
 }
