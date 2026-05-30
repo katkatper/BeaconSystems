@@ -22,6 +22,23 @@ const partnerTypes = [
     "other",
 ];
 
+const fetchLegalOrders = async (token) => {
+    const response = await fetch("http://127.0.0.1:8000/legal-access/", {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error("Could not load legal orders");
+    }
+
+    const data = await response.json();
+    return Array.isArray(data)
+        ? data.filter((item) => orderTypes.includes(item.authority_type))
+        : [];
+};
+
 function LegalOrders() {
     const [orders, setOrders] = useState([]);
     const [message, setMessage] = useState("");
@@ -48,30 +65,31 @@ function LegalOrders() {
     const approvedOrders = orders.filter((order) => order.status === "approved");
 
     const loadOrders = async () => {
-        const response = await fetch("http://127.0.0.1:8000/legal-access/", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error("Could not load legal orders");
-        }
-
-        const data = await response.json();
-        setOrders(
-            Array.isArray(data)
-                ? data.filter((item) => orderTypes.includes(item.authority_type))
-                : []
-        );
+        const data = await fetchLegalOrders(token);
+        setOrders(data);
     };
 
     useEffect(() => {
-        loadOrders().catch((err) => {
-            console.error(err);
-            setMessage("Could not load legal orders.");
-        });
-    }, []);
+        let isMounted = true;
+
+        fetchLegalOrders(token)
+            .then((data) => {
+                if (isMounted) {
+                    setOrders(data);
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+
+                if (isMounted) {
+                    setMessage("Could not load legal orders.");
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [token]);
 
     const handleChange = (event) => {
         setForm((current) => ({

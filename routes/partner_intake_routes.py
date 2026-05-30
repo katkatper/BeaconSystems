@@ -36,10 +36,25 @@ class PartnerIntakeAttach(BaseModel):
     case_id: int
     person_id: Optional[int] = None
     review_notes: Optional[str] = None
+    legal_authority_type: str
+    legal_authority_reference: Optional[str] = None
+    legal_authority_notes: Optional[str] = None
 
 
 class PartnerIntakeReview(BaseModel):
     review_notes: Optional[str] = None
+
+
+LEGAL_AUTHORITY_TYPES = {
+    "consent",
+    "subpoena",
+    "search_warrant",
+    "court_order",
+    "wiretap_order",
+    "emergency_disclosure",
+    "partner_agreement",
+    "other",
+}
 
 
 def normalize_text(value: Any) -> str:
@@ -226,6 +241,35 @@ def get_approved_source(db: Session, source_id: int):
     return source
 
 
+def serialize_partner_intake(intake: PartnerIntakeRecord) -> dict[str, Any]:
+    return {
+        "intake_id": intake.intake_id,
+        "integration_source_id": intake.integration_source_id,
+        "received_by_user_id": intake.received_by_user_id,
+        "reviewed_by_user_id": intake.reviewed_by_user_id,
+        "attached_external_record_id": intake.attached_external_record_id,
+        "suggested_case_id": intake.suggested_case_id,
+        "suggested_person_id": intake.suggested_person_id,
+        "record_type": intake.record_type,
+        "external_id": intake.external_id,
+        "subject_name": intake.subject_name,
+        "location": intake.location,
+        "summary": intake.summary,
+        "raw_data": intake.raw_data,
+        "match_score": intake.match_score,
+        "match_reason": intake.match_reason,
+        "match_case_status": intake.match_case_status,
+        "intake_channel": intake.intake_channel,
+        "legal_authority_type": intake.legal_authority_type,
+        "legal_authority_reference": intake.legal_authority_reference,
+        "legal_authority_notes": intake.legal_authority_notes,
+        "status": intake.status,
+        "review_notes": intake.review_notes,
+        "received_at": intake.received_at,
+        "reviewed_at": intake.reviewed_at,
+    }
+
+
 @router.get("/")
 def list_partner_intake_records(
     status: Optional[str] = None,
@@ -243,7 +287,8 @@ def list_partner_intake_records(
             )
         )
 
-    return query.order_by(PartnerIntakeRecord.received_at.desc()).all()
+    records = query.order_by(PartnerIntakeRecord.received_at.desc()).all()
+    return [serialize_partner_intake(record) for record in records]
 
 
 @router.post("/")
@@ -274,7 +319,7 @@ def receive_partner_intake_record(
         ),
     )
 
-    return intake
+    return serialize_partner_intake(intake)
 
 
 @router.post("/automated")
@@ -314,7 +359,7 @@ def receive_automated_partner_intake_record(
         ),
     )
 
-    return intake
+    return serialize_partner_intake(intake)
 
 
 @router.put("/{intake_id}/attach")
@@ -334,8 +379,24 @@ def attach_partner_intake_to_case(
     if intake.status == "attached":
         raise HTTPException(status_code=400, detail="Partner intake already attached")
 
+    legal_authority_type = normalize_text(data.legal_authority_type)
+    if legal_authority_type not in LEGAL_AUTHORITY_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Select a valid legal authority before attaching partner data",
+        )
+
     assert_case_write_access(db, data.case_id, current_user)
     first_name, last_name = split_subject_name(intake.subject_name)
+    reviewed_at = datetime.utcnow()
+    linked_raw_data = dict(intake.raw_data or {})
+    linked_raw_data["beacon_legal_authority"] = {
+        "type": legal_authority_type,
+        "reference": data.legal_authority_reference,
+        "notes": data.legal_authority_notes,
+        "reviewed_by_user_id": current_user.user_id,
+        "reviewed_at": reviewed_at.isoformat(),
+    }
 
     external_record = ExternalRecord(
         integration_source_id=intake.integration_source_id,
@@ -345,7 +406,7 @@ def attach_partner_intake_to_case(
         last_name=last_name,
         location=intake.location,
         notes=intake.summary,
-        raw_data=intake.raw_data,
+        raw_data=linked_raw_data,
         person_id=data.person_id,
         case_id=data.case_id,
     )
@@ -367,8 +428,11 @@ def attach_partner_intake_to_case(
     intake.status = "attached"
     intake.reviewed_by_user_id = current_user.user_id
     intake.review_notes = data.review_notes
-    intake.reviewed_at = datetime.utcnow()
+    intake.reviewed_at = reviewed_at
     intake.attached_external_record_id = external_record.id
+    intake.legal_authority_type = legal_authority_type
+    intake.legal_authority_reference = data.legal_authority_reference
+    intake.legal_authority_notes = data.legal_authority_notes
 
     db.commit()
     db.refresh(intake)
@@ -380,10 +444,13 @@ def attach_partner_intake_to_case(
         action="ATTACH_PARTNER_INTAKE_TO_CASE",
         entity="partner_intake_record",
         entity_id=intake.intake_id,
-        details=f"Partner intake {intake.intake_id} attached to case {data.case_id}",
+        details=(
+            f"Partner intake {intake.intake_id} attached to case {data.case_id}; "
+            f"legal authority: {legal_authority_type}"
+        ),
     )
 
-    return intake
+    return serialize_partner_intake(intake)
 
 
 @router.put("/{intake_id}/dismiss")
@@ -418,4 +485,4 @@ def dismiss_partner_intake_record(
         details=f"Partner intake {intake.intake_id} dismissed",
     )
 
-    return intake
+    return serialize_partner_intake(intake)

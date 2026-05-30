@@ -1,37 +1,53 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+const fetchCases = async (includeArchived) => {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(
+        `http://127.0.0.1:8000/cases/?include_archived=${includeArchived}&limit=100`,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Failed to load cases");
+    }
+
+    return response.json();
+};
+
 function Cases() {
     const [cases, setCases] = useState([]);
     const [includeArchived, setIncludeArchived] = useState(false);
     const [message, setMessage] = useState("");
 
-    const loadCases = async () => {
-        const token = localStorage.getItem("token");
-
-        const response = await fetch(
-            `http://127.0.0.1:8000/cases/?include_archived=${includeArchived}&limit=100`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error("Failed to load cases");
-        }
-
-        const data = await response.json();
-        setCases(Array.isArray(data) ? data : []);
-        setMessage("");
-    };
-
     useEffect(() => {
-        loadCases().catch((err) => {
-            console.error(err);
-            setMessage("Could not load cases.");
-        });
+        let isMounted = true;
+
+        fetchCases(includeArchived)
+            .then((data) => {
+                if (!isMounted) {
+                    return;
+                }
+
+                setCases(Array.isArray(data) ? data : []);
+                setMessage("");
+            })
+            .catch((err) => {
+                console.error(err);
+
+                if (isMounted) {
+                    setMessage("Could not load cases.");
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
     }, [includeArchived]);
 
     const openCases = cases.filter((caseItem) => {

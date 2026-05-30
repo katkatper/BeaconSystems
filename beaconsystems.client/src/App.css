@@ -2103,6 +2103,7 @@
 .partner-intake-form select,
 .partner-intake-form textarea,
 .partner-intake-review-form input,
+.partner-intake-review-form select,
 .partner-intake-review-form textarea {
     width: 100%;
     min-width: 0;

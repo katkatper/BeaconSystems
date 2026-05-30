@@ -26,6 +26,9 @@ class PartnerIntakeRecord(Base):
     match_reason = Column(Text, nullable=True)
     match_case_status = Column(String(50), nullable=True)
     intake_channel = Column(String(50), default="manual", nullable=False)
+    legal_authority_type = Column(String(100), nullable=True)
+    legal_authority_reference = Column(String(255), nullable=True)
+    legal_authority_notes = Column(Text, nullable=True)
 
     status = Column(String(50), default="pending_review", nullable=False)
     review_notes = Column(Text, nullable=True)

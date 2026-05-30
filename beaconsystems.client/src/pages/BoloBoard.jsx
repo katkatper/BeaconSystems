@@ -1,5 +1,19 @@
 import React, { useEffect, useState } from "react";
 
+const fetchBolos = async (token) => {
+    const response = await fetch("http://127.0.0.1:8000/bolos/", {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error("Could not load BOLO alerts");
+    }
+
+    return response.json();
+};
+
 function BoloBoard() {
     const [bolos, setBolos] = useState([]);
     const [form, setForm] = useState({
@@ -17,26 +31,31 @@ function BoloBoard() {
     const token = localStorage.getItem("token");
 
     const loadBolos = async () => {
-        const response = await fetch("http://127.0.0.1:8000/bolos/", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error("Could not load BOLO alerts");
-        }
-
-        const data = await response.json();
+        const data = await fetchBolos(token);
         setBolos(data);
     };
 
     useEffect(() => {
-        loadBolos().catch((err) => {
-            console.error(err);
-            setMessage("Could not load BOLO alerts");
-        });
-    }, []);
+        let isMounted = true;
+
+        fetchBolos(token)
+            .then((data) => {
+                if (isMounted) {
+                    setBolos(data);
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+
+                if (isMounted) {
+                    setMessage("Could not load BOLO alerts");
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [token]);
 
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;

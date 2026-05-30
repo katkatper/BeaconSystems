@@ -27,6 +27,22 @@ const sourceTypes = [
     "other",
 ];
 
+const fetchLegalAccessRequests = async () => {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch("http://127.0.0.1:8000/legal-access/", {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to load legal access requests");
+    }
+
+    return response.json();
+};
+
 function LegalAccessRequests() {
     const [requests, setRequests] = useState([]);
     const [message, setMessage] = useState("");
@@ -50,24 +66,24 @@ function LegalAccessRequests() {
     });
 
     const loadRequests = async () => {
-        const token = localStorage.getItem("token");
-
-        const response = await fetch("http://127.0.0.1:8000/legal-access/", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to load legal access requests");
-        }
-
-        const data = await response.json();
+        const data = await fetchLegalAccessRequests();
         setRequests(Array.isArray(data) ? data : []);
     };
 
     useEffect(() => {
-        loadRequests().catch((err) => console.error(err));
+        let isMounted = true;
+
+        fetchLegalAccessRequests()
+            .then((data) => {
+                if (isMounted) {
+                    setRequests(Array.isArray(data) ? data : []);
+                }
+            })
+            .catch((err) => console.error(err));
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const handleChange = (e) => {

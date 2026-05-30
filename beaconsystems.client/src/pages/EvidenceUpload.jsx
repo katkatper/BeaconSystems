@@ -1,5 +1,24 @@
 import React, { useEffect, useState } from "react";
 
+const fetchEvidence = async (caseFilter = "") => {
+    const token = localStorage.getItem("token");
+    const url = caseFilter
+        ? `http://127.0.0.1:8000/evidence/?case_id=${caseFilter}`
+        : "http://127.0.0.1:8000/evidence/";
+
+    const response = await fetch(url, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to load evidence");
+    }
+
+    return response.json();
+};
+
 function EvidenceUpload() {
     const [caseId, setCaseId] = useState("");
     const [filterCaseId, setFilterCaseId] = useState("");
@@ -11,27 +30,24 @@ function EvidenceUpload() {
     const [message, setMessage] = useState("");
 
     const loadEvidence = async (caseFilter = filterCaseId) => {
-        const token = localStorage.getItem("token");
-        const url = caseFilter
-            ? `http://127.0.0.1:8000/evidence/?case_id=${caseFilter}`
-            : "http://127.0.0.1:8000/evidence/";
-
-        const response = await fetch(url, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to load evidence");
-        }
-
-        const data = await response.json();
+        const data = await fetchEvidence(caseFilter);
         setEvidence(Array.isArray(data) ? data : []);
     };
 
     useEffect(() => {
-        loadEvidence("").catch((err) => console.error(err));
+        let isMounted = true;
+
+        fetchEvidence("")
+            .then((data) => {
+                if (isMounted) {
+                    setEvidence(Array.isArray(data) ? data : []);
+                }
+            })
+            .catch((err) => console.error(err));
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const submitEvidence = async (e) => {

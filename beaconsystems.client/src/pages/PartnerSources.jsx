@@ -28,6 +28,57 @@ const emptyIntakeForm = {
     raw_data: "",
 };
 
+const legalAuthorityOptions = [
+    { value: "consent", label: "Consent" },
+    { value: "subpoena", label: "Subpoena" },
+    { value: "search_warrant", label: "Search warrant" },
+    { value: "court_order", label: "Court order" },
+    { value: "wiretap_order", label: "Wiretap order" },
+    { value: "emergency_disclosure", label: "Emergency disclosure" },
+    { value: "partner_agreement", label: "Approved partner agreement" },
+    { value: "other", label: "Other approved authority" },
+];
+
+const authHeaders = (includeJson = false) => {
+    const headers = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+    };
+
+    if (includeJson) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    return headers;
+};
+
+const fetchPartnerWorkspace = async () => {
+    const [sourcesResponse, recordsResponse, intakeResponse] = await Promise.all([
+        fetch("http://127.0.0.1:8000/integrations/", {
+            headers: authHeaders(),
+        }),
+        fetch("http://127.0.0.1:8000/external-records/", {
+            headers: authHeaders(),
+        }),
+        fetch("http://127.0.0.1:8000/partner-intake/", {
+            headers: authHeaders(),
+        }),
+    ]);
+
+    if (!sourcesResponse.ok) {
+        throw new Error("Failed to load partner sources");
+    }
+
+    const sourcesData = await sourcesResponse.json();
+    const recordsData = recordsResponse.ok ? await recordsResponse.json() : [];
+    const intakeData = intakeResponse.ok ? await intakeResponse.json() : [];
+
+    return {
+        sources: Array.isArray(sourcesData) ? sourcesData : [],
+        externalRecords: Array.isArray(recordsData) ? recordsData : [],
+        intakeRecords: Array.isArray(intakeData) ? intakeData : [],
+    };
+};
+
 function PartnerSources() {
     const [sources, setSources] = useState([]);
     const [externalRecords, setExternalRecords] = useState([]);
@@ -55,49 +106,38 @@ function PartnerSources() {
         }, {});
     }, [sources]);
 
-    const authHeaders = (includeJson = false) => {
-        const headers = {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-        };
-
-        if (includeJson) {
-            headers["Content-Type"] = "application/json";
-        }
-
-        return headers;
-    };
-
     const loadPartnerWorkspace = async () => {
-        const [sourcesResponse, recordsResponse, intakeResponse] = await Promise.all([
-            fetch("http://127.0.0.1:8000/integrations/", {
-                headers: authHeaders(),
-            }),
-            fetch("http://127.0.0.1:8000/external-records/", {
-                headers: authHeaders(),
-            }),
-            fetch("http://127.0.0.1:8000/partner-intake/", {
-                headers: authHeaders(),
-            }),
-        ]);
+        const workspace = await fetchPartnerWorkspace();
 
-        if (!sourcesResponse.ok) {
-            throw new Error("Failed to load partner sources");
-        }
-
-        const sourcesData = await sourcesResponse.json();
-        const recordsData = recordsResponse.ok ? await recordsResponse.json() : [];
-        const intakeData = intakeResponse.ok ? await intakeResponse.json() : [];
-
-        setSources(Array.isArray(sourcesData) ? sourcesData : []);
-        setExternalRecords(Array.isArray(recordsData) ? recordsData : []);
-        setIntakeRecords(Array.isArray(intakeData) ? intakeData : []);
+        setSources(workspace.sources);
+        setExternalRecords(workspace.externalRecords);
+        setIntakeRecords(workspace.intakeRecords);
     };
 
     useEffect(() => {
-        loadPartnerWorkspace().catch((err) => {
-            console.error(err);
-            setMessage("Could not load partner workspace.");
-        });
+        let isMounted = true;
+
+        fetchPartnerWorkspace()
+            .then((workspace) => {
+                if (!isMounted) {
+                    return;
+                }
+
+                setSources(workspace.sources);
+                setExternalRecords(workspace.externalRecords);
+                setIntakeRecords(workspace.intakeRecords);
+            })
+            .catch((err) => {
+                console.error(err);
+
+                if (isMounted) {
+                    setMessage("Could not load partner workspace.");
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const updateSourceForm = (e) => {
@@ -215,6 +255,11 @@ function PartnerSources() {
             return;
         }
 
+        if (!review.legal_authority_type) {
+            setMessage("Select legal authority before adding partner data to a case.");
+            return;
+        }
+
         try {
             const response = await fetch(
                 `http://127.0.0.1:8000/partner-intake/${record.intake_id}/attach`,
@@ -225,6 +270,11 @@ function PartnerSources() {
                         case_id: Number(caseId),
                         person_id: personId ? Number(personId) : null,
                         review_notes: review.review_notes || null,
+                        legal_authority_type: review.legal_authority_type,
+                        legal_authority_reference:
+                            review.legal_authority_reference || null,
+                        legal_authority_notes:
+                            review.legal_authority_notes || null,
                     }),
                 }
             );
@@ -451,6 +501,46 @@ function PartnerSources() {
                                             }
                                         />
 
+                                        <select
+                                            value={
+                                                reviewForms[record.intake_id]
+                                                    ?.legal_authority_type || ""
+                                            }
+                                            onChange={(e) =>
+                                                updateReviewForm(
+                                                    record.intake_id,
+                                                    "legal_authority_type",
+                                                    e.target.value
+                                                )
+                                            }
+                                            required
+                                        >
+                                            <option value="">Legal authority</option>
+                                            {legalAuthorityOptions.map((option) => (
+                                                <option
+                                                    key={option.value}
+                                                    value={option.value}
+                                                >
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        <input
+                                            placeholder="Authority reference"
+                                            value={
+                                                reviewForms[record.intake_id]
+                                                    ?.legal_authority_reference || ""
+                                            }
+                                            onChange={(e) =>
+                                                updateReviewForm(
+                                                    record.intake_id,
+                                                    "legal_authority_reference",
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+
                                         <textarea
                                             placeholder="Review notes"
                                             value={
@@ -460,6 +550,21 @@ function PartnerSources() {
                                                 updateReviewForm(
                                                     record.intake_id,
                                                     "review_notes",
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+
+                                        <textarea
+                                            placeholder="Legal authority notes"
+                                            value={
+                                                reviewForms[record.intake_id]
+                                                    ?.legal_authority_notes || ""
+                                            }
+                                            onChange={(e) =>
+                                                updateReviewForm(
+                                                    record.intake_id,
+                                                    "legal_authority_notes",
                                                     e.target.value
                                                 )
                                             }
