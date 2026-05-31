@@ -51,20 +51,9 @@ function Navbar() {
                 <NavLink to="/">Dashboard</NavLink>
                 <NavLink to="/cases">Cases</NavLink>
                 <NavLink to="/supervisor">Supervisor</NavLink>
-                <NavLink to="/audit">Audit</NavLink>
-
-
-                {/* Admin-only management links. Backend role checks still enforce access. */}
-
-                {(role === "admin" || role === "agency_admin" || role === "investigator") && (
-                    <NavLink to="/alerts">Alerts</NavLink>
-                )}
 
                 {role === "admin" && (
-                    <>
-                        <NavLink to="/agencies">Agencies</NavLink>
-                        <NavLink to="/admin/users">Users</NavLink>
-                    </>
+                    <NavLink to="/agencies">Agencies</NavLink>
                 )}
 
                 <button onClick={handleLogout} className="logout-button">

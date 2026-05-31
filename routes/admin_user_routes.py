@@ -3,9 +3,68 @@ from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from models.user import User
-from security.auth import require_role
+from schemas.user_schema import AdminUserCreate
+from security.auth import hash_password, require_role
+from services.activity_service import create_activity_log
 
 router = APIRouter(prefix="/admin/users", tags=["Admin Users"])
+
+
+@router.post("/")
+def create_user(
+    data: AdminUserCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin")),
+):
+    existing_user = db.query(User).filter(
+        (User.username == data.username) | (User.email == data.email)
+    ).first()
+
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User already exists")
+
+    admin_roles = ["admin", "agency_admin", "investigator", "analyst", "viewer"]
+    supervisor_roles = ["investigator", "analyst", "viewer"]
+    allowed_roles = admin_roles if current_user.role == "admin" else supervisor_roles
+
+    if data.role not in allowed_roles:
+        raise HTTPException(status_code=400, detail="Invalid role for your permissions")
+
+    agency_id = data.agency_id
+
+    if current_user.role == "agency_admin":
+        agency_id = current_user.agency_id
+
+    new_user = User(
+        username=data.username,
+        email=data.email,
+        password_hash=hash_password(data.password),
+        role=data.role,
+        agency_id=agency_id,
+        is_active=True,
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="CREATE_USER",
+        entity="user",
+        entity_id=new_user.user_id,
+        details=f"Created user {new_user.username} with role {new_user.role}",
+    )
+
+    return {
+        "message": "User created",
+        "user_id": new_user.user_id,
+        "username": new_user.username,
+        "role": new_user.role,
+        "agency_id": new_user.agency_id,
+    }
 
 
 @router.get("/")

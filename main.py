@@ -38,6 +38,7 @@ from models.case import Cases
 from models.alerts import Alerts
 from models.activity_log import ActivityLog
 from models.bolo_alert import BoloAlert
+from models.agency_exchange import AgencyExchange
 
 # Route modules define the API endpoints used by the React frontend.
 # Keep sensitive workflows, such as evidence and legal access, behind auth checks
@@ -63,6 +64,7 @@ from routes.alerts_routes import router as alerts_router
 from routes.bolo_routes import router as bolo_router
 from routes.supervisor_routes import router as supervisor_router
 from routes.audit_routes import router as audit_router
+from routes.agency_exchange_routes import router as agency_exchange_router
 
 
 # Register API areas. Each router owns one operational workflow such as cases,
@@ -133,6 +135,7 @@ app.include_router(alerts_router)
 app.include_router(bolo_router)
 app.include_router(supervisor_router)
 app.include_router(audit_router)
+app.include_router(agency_exchange_router)
 
 # Lightweight health endpoint used to confirm the API process is reachable.
 

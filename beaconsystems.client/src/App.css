@@ -618,7 +618,9 @@
 }
 
 .case-detail-page {
-    padding: 28px;
+    width: min(1120px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 28px 0;
 }
 
 .case-back-link {
@@ -647,12 +649,19 @@
 
 .case-action-button {
     min-width: 140px;
-    background: #1d4ed8;
-    color: #eff6ff;
-    border: 1px solid rgba(147, 197, 253, 0.35);
+    background: rgba(30, 41, 59, 0.76);
+    color: #dbeafe;
+    border: 1px solid rgba(147, 197, 253, 0.28);
     border-radius: 8px;
     padding: 10px 14px;
     font-weight: 800;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 24px rgba(2, 6, 23, 0.24);
+    backdrop-filter: blur(10px);
+}
+
+.case-action-button:hover {
+    border-color: rgba(147, 197, 253, 0.48);
+    background: rgba(51, 65, 85, 0.82);
 }
 
 .case-sighting-form {
@@ -679,12 +688,20 @@
 
 .external-record-links button,
 .external-record-detail button {
-    background: rgba(37, 99, 235, 0.92);
-    color: #eff6ff;
-    border: 1px solid rgba(147, 197, 253, 0.38);
+    background: rgba(30, 41, 59, 0.74);
+    color: #dbeafe;
+    border: 1px solid rgba(147, 197, 253, 0.26);
     border-radius: 8px;
     padding: 9px 12px;
     font-weight: 800;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 18px rgba(2, 6, 23, 0.22);
+    backdrop-filter: blur(10px);
+}
+
+.external-record-links button:hover,
+.external-record-detail button:hover {
+    border-color: rgba(147, 197, 253, 0.5);
+    background: rgba(51, 65, 85, 0.82);
 }
 
 .external-record-detail h3 {
@@ -695,6 +712,48 @@
     margin: 8px 0;
 }
 
+.missing-person-profile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
+    gap: 22px;
+    align-items: start;
+}
+
+.missing-person-details p {
+    margin: 7px 0;
+}
+
+.missing-person-photo {
+    justify-self: end;
+    width: min(100%, 240px);
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border: 1px solid rgba(147, 197, 253, 0.28);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.72);
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.32);
+}
+
+.missing-person-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.missing-person-photo-placeholder {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: #93c5fd;
+    font-weight: 800;
+    text-transform: uppercase;
+    background:
+        linear-gradient(135deg, rgba(59, 130, 246, 0.12), transparent 45%),
+        rgba(15, 23, 42, 0.76);
+}
+
 @media (max-width: 900px) {
     .case-card-header {
         display: grid;
@@ -702,6 +761,14 @@
 
     .case-sighting-form {
         grid-template-columns: 1fr;
+    }
+
+    .missing-person-profile {
+        grid-template-columns: 1fr;
+    }
+
+    .missing-person-photo {
+        justify-self: start;
     }
 }
 
@@ -1590,6 +1657,7 @@
 .dashboard-header,
 .cases-header,
 .case-access-header,
+.agencies-header,
 .evidence-header,
 .intelligence-header,
 .legal-access-header,
@@ -1618,6 +1686,7 @@
 .dashboard-header h1,
 .cases-header h1,
 .case-access-header h1,
+.agencies-header h1,
 .evidence-header h1,
 .intelligence-header h1,
 .legal-access-header h1,
@@ -1635,6 +1704,7 @@
 .dashboard-header p,
 .cases-header p,
 .case-access-header p,
+.agencies-header p,
 .evidence-header p,
 .intelligence-header p,
 .legal-access-header p,
@@ -1657,6 +1727,7 @@
 .cases-page,
 .case-detail-page,
 .case-access-page,
+.agencies-page,
 .evidence-page,
 .intelligence-page,
 .legal-access-page,
@@ -1842,6 +1913,7 @@
     .cases-header h1,
     .case-title,
     .case-access-header h1,
+    .agencies-header h1,
     .evidence-header h1,
     .intelligence-header h1,
     .legal-access-header h1,
@@ -1913,6 +1985,99 @@
     flex-wrap: wrap;
     justify-content: center;
     margin-top: 10px;
+}
+
+.supervisor-admin-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
+    justify-content: center;
+    gap: 12px;
+    max-width: 960px;
+    margin: 0 auto 18px;
+}
+
+.supervisor-admin-card {
+    display: grid;
+    gap: 6px;
+    min-height: 118px;
+    padding: 16px;
+    color: #e5edff;
+    text-decoration: none;
+    background: rgba(15, 23, 42, 0.74);
+    border: 1px solid rgba(147, 197, 253, 0.28);
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.26);
+    backdrop-filter: blur(12px);
+}
+
+.supervisor-admin-card span {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.supervisor-admin-card strong {
+    font-size: 22px;
+}
+
+.supervisor-admin-card small {
+    color: #b8c3d8;
+    line-height: 1.45;
+}
+
+.supervisor-admin-card:hover {
+    border-color: rgba(147, 197, 253, 0.62);
+    background: rgba(30, 41, 59, 0.82);
+}
+
+.supervisor-user-registration {
+    max-width: 960px;
+    margin: 0 auto 18px;
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.26);
+    backdrop-filter: blur(12px);
+}
+
+.supervisor-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.supervisor-panel-header span {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.supervisor-panel-header strong {
+    color: #e5edff;
+    font-size: 22px;
+}
+
+.supervisor-user-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.supervisor-user-form input,
+.supervisor-user-form select {
+    min-height: 42px;
+}
+
+.supervisor-user-form button {
+    justify-self: start;
 }
 
 /* Audit & Compliance Center
@@ -2230,7 +2395,7 @@
    Uses Beacon operational modules in a compact boxed layout inspired by an
    intelligence console, without unrelated chart widgets. */
 .dashboard-board {
-    width: min(100%, 1220px);
+    width: min(100%, 1080px);
     margin: 0 auto;
     padding: 14px;
     border: 1px solid rgba(96, 165, 250, 0.14);
@@ -2340,6 +2505,8 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(130px, 1fr));
     gap: 10px;
+    max-width: 760px;
+    margin: 0 auto;
 }
 
 .dashboard-action-list a {
@@ -2349,11 +2516,19 @@
     min-height: 38px;
     padding: 8px 10px;
     border-radius: 8px;
-    background: rgba(30, 64, 175, 0.9);
-    color: #ffffff;
+    background: rgba(30, 41, 59, 0.74);
+    color: #dbeafe;
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 18px rgba(2, 6, 23, 0.22);
+    backdrop-filter: blur(10px);
     font-size: 14px;
     font-weight: 700;
     text-align: center;
+}
+
+.dashboard-action-list a:hover {
+    border-color: rgba(147, 197, 253, 0.48);
+    background: rgba(51, 65, 85, 0.82);
 }
 
 .partner-intake-layout {
@@ -2502,6 +2677,334 @@
     background: rgba(71, 85, 105, 0.9);
 }
 
+.alerts-page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 22px;
+}
+
+.alerts-header {
+    text-align: center;
+    width: min(100%, 980px);
+    margin: 0 auto 18px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    background: linear-gradient(
+        90deg,
+        rgba(2, 6, 23, 0.18),
+        rgba(2, 6, 23, 0.58),
+        rgba(2, 6, 23, 0.18)
+    );
+}
+
+.alerts-header h1 {
+    margin: 0 0 10px;
+    color: #f8fafc;
+    font-size: 36px;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
+}
+
+.alerts-header p {
+    margin: 0;
+    color: #e2e8f0;
+}
+
+.alerts-panel {
+    max-width: 860px;
+    margin: 0 auto 16px;
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.78);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(10px);
+}
+
+.alerts-panel h2 {
+    margin: 0 0 10px;
+    font-size: 20px;
+}
+
+.agencies-page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 22px;
+}
+
+.agencies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 420px));
+    justify-content: center;
+    align-items: start;
+    gap: 12px;
+}
+
+.agencies-panel,
+.agency-card {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.78);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(10px);
+}
+
+.agency-card {
+    width: 100%;
+    align-self: start;
+    box-sizing: border-box;
+}
+
+.agency-card-topline {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.agency-card h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.agency-card span {
+    color: #bfdbfe;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.agency-card p {
+    margin: 6px 0;
+}
+
+.agency-search-panel {
+    display: grid;
+    gap: 8px;
+    width: min(100%, 760px);
+    margin: 0 auto 18px;
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.24);
+    backdrop-filter: blur(12px);
+}
+
+.agency-search-panel label {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.agency-search-panel input {
+    min-height: 44px;
+    padding: 10px 12px;
+    color: #e5edff;
+    background: rgba(30, 41, 59, 0.72);
+    border: 1px solid rgba(147, 197, 253, 0.26);
+    border-radius: 8px;
+}
+
+.agency-search-panel span {
+    color: #b8c3d8;
+    font-size: 14px;
+}
+
+.agency-name-button {
+    width: 100%;
+    padding: 12px;
+    color: #e5edff;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.35;
+    text-align: left;
+    background: rgba(30, 41, 59, 0.62);
+    border: 1px solid rgba(147, 197, 253, 0.22);
+    border-radius: 8px;
+}
+
+.agency-name-button:hover,
+.agency-name-button[aria-expanded="true"] {
+    background: rgba(51, 65, 85, 0.78);
+    border-color: rgba(147, 197, 253, 0.48);
+}
+
+.agency-card-details {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.48);
+}
+
+.agency-card a {
+    display: inline-flex;
+    width: fit-content;
+    margin-top: 8px;
+    padding: 7px 10px;
+    color: #dbeafe;
+    text-decoration: none;
+    background: rgba(30, 41, 59, 0.74);
+    border: 1px solid rgba(147, 197, 253, 0.26);
+    border-radius: 8px;
+}
+
+.agency-exchange-panel {
+    width: min(100%, 980px);
+    margin: 0 auto 18px;
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.26);
+    backdrop-filter: blur(12px);
+}
+
+.agency-exchange-header,
+.agency-exchange-card div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.agency-exchange-header {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.agency-exchange-header span {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.agency-exchange-header strong {
+    color: #e5edff;
+    font-size: 22px;
+}
+
+.agency-exchange-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.agency-exchange-form textarea {
+    grid-column: span 3;
+    min-height: 84px;
+}
+
+.agency-exchange-form button {
+    justify-self: start;
+}
+
+.agency-exchange-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.case-agency-exchanges {
+    display: grid;
+    gap: 10px;
+    max-width: 860px;
+}
+
+.supervisor-exchange-panel {
+    margin-bottom: 18px;
+}
+
+.agency-exchange-card {
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 8px;
+    background: rgba(30, 41, 59, 0.64);
+}
+
+.agency-exchange-card strong {
+    color: #f8fafc;
+}
+
+.agency-exchange-card span,
+.agency-exchange-card small {
+    color: #93c5fd;
+    font-weight: 800;
+}
+
+.agency-exchange-card p {
+    margin: 8px 0;
+}
+
+.alerts-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.alerts-form textarea {
+    grid-column: 1 / -1;
+    min-height: 82px;
+}
+
+.alerts-form button {
+    justify-self: start;
+}
+
+.alerts-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 400px));
+    justify-content: center;
+    gap: 10px;
+}
+
+.alert-card {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(30, 41, 59, 0.72);
+}
+
+.alert-card-topline {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.alert-card h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.alert-card p {
+    margin: 8px 0 0;
+}
+
+.alert-card span {
+    color: #bfdbfe;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.alert-card-critical {
+    border-color: rgba(248, 113, 113, 0.42);
+}
+
+.alert-card-high {
+    border-color: rgba(251, 146, 60, 0.42);
+}
+
+.alert-card-medium {
+    border-color: rgba(250, 204, 21, 0.34);
+}
+
 @media (max-width: 900px) {
     .legal-access-layout,
     .partner-layout,
@@ -2512,5 +3015,333 @@
     .intelligence-layout {
         grid-template-columns: 1fr;
         width: min(100%, 560px);
+    }
+}
+
+/* Final Beacon glass polish
+   Keeps operational cards from stretching too wide and replaces bright action
+   buttons with a darker translucent control style across the app. */
+.dashboard-board,
+.case-detail-page,
+.cases-page,
+.case-access-page,
+.agencies-page,
+.evidence-page,
+.legal-access-page,
+.partner-page,
+.external-records-page,
+.bolo-page,
+.audit-page,
+.supervisor-page {
+    max-width: 1120px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.dashboard-feature-grid,
+.dashboard-columns,
+.case-management-grid,
+.cases-grid,
+.external-record-grid,
+.audit-grid,
+.supervisor-grid {
+    justify-content: center;
+}
+
+.dashboard-feature-grid {
+    grid-template-columns: repeat(2, minmax(280px, 520px));
+}
+
+.dashboard-feature-grid .dashboard-panel,
+.dashboard-panel,
+.case-section,
+.case-access-panel,
+.legal-panel,
+.partner-panel,
+.evidence-panel,
+.bolo-panel,
+.audit-panel,
+.supervisor-panel {
+    max-width: 980px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.dashboard-action-list,
+.quick-actions,
+.case-actions,
+.legal-actions,
+.partner-actions,
+.evidence-actions,
+.supervisor-actions,
+.partner-intake-actions,
+.external-record-links,
+.case-button-row {
+    justify-content: center;
+}
+
+button,
+.quick-actions a,
+.dashboard-action-list a,
+.case-actions a,
+.legal-actions a,
+.partner-actions a,
+.evidence-actions a,
+.case-access-panel a,
+.dashboard-panel-header a {
+    background: rgba(30, 41, 59, 0.74);
+    color: #dbeafe;
+    border: 1px solid rgba(147, 197, 253, 0.26);
+    border-radius: 8px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 8px 18px rgba(2, 6, 23, 0.22);
+    backdrop-filter: blur(10px);
+}
+
+button:hover,
+.quick-actions a:hover,
+.dashboard-action-list a:hover,
+.case-actions a:hover,
+.legal-actions a:hover,
+.partner-actions a:hover,
+.evidence-actions a:hover,
+.case-access-panel a:hover,
+.dashboard-panel-header a:hover {
+    background: rgba(51, 65, 85, 0.84);
+    border-color: rgba(147, 197, 253, 0.5);
+}
+
+.dashboard-panel-header a {
+    padding: 6px 10px;
+    text-decoration: none;
+}
+
+/* Dashboard-specific correction after the global polish pass. Panels inside
+   the command board should fill their grid cells instead of shrinking inward. */
+.dashboard-board {
+    width: min(100%, 1160px);
+}
+
+.dashboard-board .dashboard-feature-grid {
+    grid-template-columns: minmax(340px, 1.05fr) minmax(340px, 1fr);
+    align-items: start;
+}
+
+.dashboard-board .dashboard-panel {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.dashboard-board .queue-item {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+.dashboard-board .dashboard-action-list {
+    max-width: none;
+}
+
+.users-page {
+    width: min(100%, 1040px);
+    margin: 0 auto;
+    padding: 22px;
+    box-sizing: border-box;
+}
+
+.users-header {
+    max-width: 760px;
+    margin: 0 auto 18px;
+    padding: 30px 18px;
+    text-align: center;
+    background: rgba(15, 23, 42, 0.56);
+    border-radius: 8px;
+    backdrop-filter: blur(12px);
+}
+
+.users-header h1 {
+    margin: 0 0 10px;
+    color: #f8fafc;
+    font-size: 38px;
+}
+
+.users-header p {
+    max-width: 620px;
+    margin: 0 auto;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+
+.users-panel {
+    width: min(100%, 820px);
+    margin: 0 auto;
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    border-radius: 8px;
+    box-shadow: 0 12px 26px rgba(2, 6, 23, 0.28);
+    backdrop-filter: blur(12px);
+}
+
+.users-panel-header,
+.user-card-main,
+.user-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.users-panel-header {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.users-panel-header span {
+    color: #93c5fd;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.users-panel-header strong {
+    color: #e5edff;
+}
+
+.users-list {
+    display: grid;
+    gap: 10px;
+}
+
+.user-card {
+    display: grid;
+    gap: 14px;
+    padding: 14px;
+    background: rgba(30, 41, 59, 0.62);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 8px;
+}
+
+.user-card h2 {
+    margin: 0 0 4px;
+    font-size: 22px;
+}
+
+.user-card p {
+    margin: 0;
+    color: #b8c3d8;
+}
+
+.status-pill {
+    padding: 7px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.status-pill.active {
+    color: #bbf7d0;
+    background: rgba(22, 101, 52, 0.62);
+}
+
+.status-pill.inactive {
+    color: #fecaca;
+    background: rgba(127, 29, 29, 0.62);
+}
+
+.user-details {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+
+.user-details div {
+    padding: 10px;
+    background: rgba(15, 23, 42, 0.42);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 8px;
+}
+
+.user-details dt {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.user-details dd {
+    margin: 4px 0 0;
+    color: #e5edff;
+}
+
+.user-actions {
+    justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+    .dashboard-feature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-board,
+    .case-detail-page,
+    .cases-page,
+    .case-access-page,
+    .agencies-page,
+    .evidence-page,
+    .legal-access-page,
+    .partner-page,
+    .external-records-page,
+    .bolo-page,
+    .audit-page,
+    .supervisor-page {
+        width: min(100%, calc(100% - 24px));
+    }
+
+    .users-page {
+        width: min(100%, calc(100% - 24px));
+        padding: 18px 0;
+    }
+
+    .users-header h1 {
+        font-size: 32px;
+    }
+
+    .user-card-main,
+    .user-actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .user-details {
+        grid-template-columns: 1fr;
+    }
+
+    .supervisor-user-form {
+        grid-template-columns: 1fr;
+    }
+
+    .supervisor-panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .agency-exchange-form {
+        grid-template-columns: 1fr;
+    }
+
+    .agency-exchange-form textarea {
+        grid-column: auto;
+    }
+
+    .agency-exchange-header,
+    .agency-exchange-card div {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

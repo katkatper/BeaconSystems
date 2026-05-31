@@ -16,6 +16,7 @@ function CaseDetail() {
     const [evidenceChains, setEvidenceChains] = useState({});
     const [selectedExternalRecord, setSelectedExternalRecord] = useState(null);
     const [showSightingForm, setShowSightingForm] = useState(false);
+    const [agencyExchanges, setAgencyExchanges] = useState([]);
 
     const [sightingForm, setSightingForm] = useState({
         location: "",
@@ -54,6 +55,7 @@ function CaseDetail() {
                     evidenceResponse,
                     personResponse,
                     externalRecordsResponse,
+                    agencyExchangesResponse,
                 ] = await Promise.all([
                     fetch(`http://127.0.0.1:8000/sightings/?case_id=${id}`, {
                         headers: authHeaders,
@@ -69,6 +71,9 @@ function CaseDetail() {
                         `http://127.0.0.1:8000/external-records/?person_id=${caseData.person_id}`,
                         { headers: authHeaders }
                     ),
+                    fetch(`http://127.0.0.1:8000/agency-exchanges/?case_id=${id}`, {
+                        headers: authHeaders,
+                    }),
                 ]);
 
                 const [
@@ -77,12 +82,14 @@ function CaseDetail() {
                     evidenceData,
                     personData,
                     externalRecordsData,
+                    agencyExchangesData,
                 ] = await Promise.all([
                     sightingsResponse.ok ? sightingsResponse.json() : [],
                     timelineResponse.ok ? timelineResponse.json() : [],
                     evidenceResponse.ok ? evidenceResponse.json() : [],
                     personResponse.ok ? personResponse.json() : null,
                     externalRecordsResponse.ok ? externalRecordsResponse.json() : [],
+                    agencyExchangesResponse.ok ? agencyExchangesResponse.json() : [],
                 ]);
 
                 if (!isMounted) return;
@@ -93,6 +100,9 @@ function CaseDetail() {
                 setPerson(personData);
                 setExternalRecords(
                     Array.isArray(externalRecordsData) ? externalRecordsData : []
+                );
+                setAgencyExchanges(
+                    Array.isArray(agencyExchangesData) ? agencyExchangesData : []
                 );
             } catch (err) {
                 console.error(err);
@@ -343,18 +353,33 @@ function CaseDetail() {
             </div>
 
             {person && (
-                <div className="case-section">
-                    <h2>Missing Person Profile</h2>
-                    <p>Name: {person.first_name} {person.last_name}</p>
-                    <p>Age: {person.age}</p>
-                    <p>Eye Color: {person.eye_color}</p>
-                    <p>Hair Color: {person.hair_color}</p>
-                    <p>Height: {person.height}</p>
-                    <p>Weight: {person.weight}</p>
-                    <p>Risk Level: {person.risk_level}</p>
-                    <p>Status: {person.status}</p>
-                    <p>Last Seen: {person.last_seen_location}</p>
-                    <p>Description: {person.description}</p>
+                <div className="case-section missing-person-profile">
+                    <div className="missing-person-details">
+                        <h2>Missing Person Profile</h2>
+                        <p>Name: {person.first_name} {person.last_name}</p>
+                        <p>Age: {person.age}</p>
+                        <p>Eye Color: {person.eye_color}</p>
+                        <p>Hair Color: {person.hair_color}</p>
+                        <p>Height: {person.height}</p>
+                        <p>Weight: {person.weight}</p>
+                        <p>Risk Level: {person.risk_level}</p>
+                        <p>Status: {person.status}</p>
+                        <p>Last Seen: {person.last_seen_location}</p>
+                        <p>Description: {person.description}</p>
+                    </div>
+
+                    <div className="missing-person-photo">
+                        {person.photo_url ? (
+                            <img
+                                src={person.photo_url}
+                                alt={`${person.first_name} ${person.last_name}`}
+                            />
+                        ) : (
+                            <div className="missing-person-photo-placeholder">
+                                <span>No Photo</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -395,6 +420,28 @@ function CaseDetail() {
                     <p>Age: {selectedExternalRecord.age || "Not provided"}</p>
                     <p>Location: {selectedExternalRecord.location || "Not provided"}</p>
                     <p>Notes: {selectedExternalRecord.notes || "Not provided"}</p>
+                </div>
+            )}
+
+            <hr />
+
+            <h2>Agency Information Exchanges</h2>
+            {agencyExchanges.length === 0 ? (
+                <p>No agency exchanges recorded for this case.</p>
+            ) : (
+                <div className="case-agency-exchanges">
+                    {agencyExchanges.map((exchange) => (
+                        <article key={exchange.exchange_id} className="agency-exchange-card">
+                            <div>
+                                <strong>{exchange.from_agency} to {exchange.to_agency}</strong>
+                                <span>{exchange.information_type}</span>
+                            </div>
+                            <p>{exchange.summary}</p>
+                            <small>
+                                Approved by user {exchange.approved_by} | {exchange.status}
+                            </small>
+                        </article>
+                    ))}
                 </div>
             )}
 

@@ -8,7 +8,6 @@ function Dashboard() {
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
     );
-    const role = localStorage.getItem("role");
 
     // Refresh the dashboard summary so command-center data stays current while
     // the user keeps the page open.
@@ -69,8 +68,7 @@ function Dashboard() {
     return (
         <div className="dashboard-page">
             <div className="dashboard-header">
-                <h1>Beacon Command Center</h1>
-                <p>Operational overview, compliance watch, and urgent work queue.</p>
+                <h1>Command Center</h1>
             </div>
 
             {error && (
@@ -211,9 +209,7 @@ function Dashboard() {
                                     <Link to="/legal-access">Request Legal Access</Link>
                                     <Link to="/legal-orders">Request Legal Order</Link>
                                     <Link to="/bolos">Create BOLO</Link>
-                                    {role === "admin" && (
-                                        <Link to="/partner-sources">Add Partner Source</Link>
-                                    )}
+                                    <Link to="/cases">Shared Agency Information</Link>
                                     <Link to="/partner-sources">Review Partner Data</Link>
                                     <Link to="/intelligence">Open Intelligence</Link>
                                 </div>

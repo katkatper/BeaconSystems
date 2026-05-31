@@ -87,7 +87,6 @@ function AuditCenter() {
         <div className="audit-page">
             <div className="audit-header">
                 <h1>Audit & Compliance Center</h1>
-                <p>Search a user and review their access, evidence, and operational activity.</p>
             </div>
 
             {message && <p className="alert-banner">{message}</p>}

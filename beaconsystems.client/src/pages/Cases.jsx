@@ -96,10 +96,6 @@ function Cases() {
             <div className="cases-header">
                 <div>
                     <h1>Cases</h1>
-                    <p>
-                        Review assigned cases by status. Select a case number to open
-                        the full investigative workspace.
-                    </p>
                 </div>
 
                 <label className="archive-toggle">

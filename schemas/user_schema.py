@@ -8,6 +8,11 @@ class UserCreate(BaseModel):
     password: str
 
 
+class AdminUserCreate(UserCreate):
+    role: str = "investigator"
+    agency_id: int | None = None
+
+
 class UserLogin(BaseModel):
     username: str
     password: str

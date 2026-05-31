@@ -99,131 +99,123 @@ function Alerts() {
     };
 
     return (
-        <div>
-            <h1>Operational Alerts</h1>
+        <div className="alerts-page">
+            <div className="alerts-header">
+                <h1>Operational Alerts</h1>
+            </div>
 
             {error && <p>{error}</p>}
             {message && <p>{message}</p>}
 
-            <h2>Create Alert</h2>
+            <section className="alerts-panel">
+                <h2>Create Alert</h2>
 
-            <form onSubmit={createAlert}>
-                <input
-                    name="case_id"
-                    type="number"
-                    placeholder="Case ID"
-                    value={form.case_id}
-                    onChange={handleChange}
-                />
+                <form className="alerts-form" onSubmit={createAlert}>
+                    <input
+                        name="case_id"
+                        type="number"
+                        placeholder="Case ID"
+                        value={form.case_id}
+                        onChange={handleChange}
+                    />
 
-                <input
-                    name="person_id"
-                    type="number"
-                    placeholder="Person ID"
-                    value={form.person_id}
-                    onChange={handleChange}
-                />
+                    <input
+                        name="person_id"
+                        type="number"
+                        placeholder="Person ID"
+                        value={form.person_id}
+                        onChange={handleChange}
+                    />
 
-                <input
-                    name="title"
-                    placeholder="Alert Title"
-                    value={form.title}
-                    onChange={handleChange}
-                />
+                    <input
+                        name="title"
+                        placeholder="Alert Title"
+                        value={form.title}
+                        onChange={handleChange}
+                    />
 
-                <textarea
-                    name="description"
-                    placeholder="Alert Description"
-                    value={form.description}
-                    onChange={handleChange}
-                />
+                    <textarea
+                        name="description"
+                        placeholder="Alert Description"
+                        value={form.description}
+                        onChange={handleChange}
+                    />
 
-                <select
-                    name="alert_type"
-                    value={form.alert_type}
-                    onChange={handleChange}
-                >
-                    <option value="HIGH_CONFIDENCE_SIGHTING">
-                        High Confidence Sighting
-                    </option>
-                    <option value="EVIDENCE_UPLOADED">
-                        Evidence Uploaded
-                    </option>
-                    <option value="CASE_ESCALATION">
-                        Case Escalation
-                    </option>
-                    <option value="GENERAL_ALERT">
-                        General Alert
-                    </option>
-                </select>
-
-                <select
-                    name="severity"
-                    value={form.severity}
-                    onChange={handleChange}
-                >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
-                </select>
-
-                <button type="submit">Create Alert</button>
-            </form>
-
-            <hr />
-
-            <h2>Active Alerts</h2>
-
-            {alerts.length === 0 ? (
-                <p>No active alerts.</p>
-            ) : (
-                alerts.map((alert) => (
-                    <div
-                        key={alert.alert_id}
-                        style={{
-                            border: "1px solid gray",
-                            margin: "12px",
-                            padding: "15px",
-                            borderRadius: "8px",
-                            backgroundColor:
-                                alert.severity === "critical"
-                                    ? "#ffb3b3"
-                                    : alert.severity === "high"
-                                        ? "#ffdddd"
-                                        : alert.severity === "medium"
-                                            ? "#fff4cc"
-                                            : "#ddffdd",
-                        }}
+                    <select
+                        name="alert_type"
+                        value={form.alert_type}
+                        onChange={handleChange}
                     >
-                        <h2>{alert.title}</h2>
+                        <option value="HIGH_CONFIDENCE_SIGHTING">
+                            High Confidence Sighting
+                        </option>
+                        <option value="EVIDENCE_UPLOADED">
+                            Evidence Uploaded
+                        </option>
+                        <option value="CASE_ESCALATION">
+                            Case Escalation
+                        </option>
+                        <option value="GENERAL_ALERT">
+                            General Alert
+                        </option>
+                    </select>
 
-                        <p>
-                            <strong>Type:</strong> {alert.alert_type}
-                        </p>
+                    <select
+                        name="severity"
+                        value={form.severity}
+                        onChange={handleChange}
+                    >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                    </select>
 
-                        <p>
-                            <strong>Severity:</strong> {alert.severity}
-                        </p>
+                    <button type="submit">Create Alert</button>
+                </form>
+            </section>
 
-                        <p>
-                            <strong>Description:</strong> {alert.description}
-                        </p>
+            <section className="alerts-panel">
+                <h2>Active Alerts</h2>
 
-                        <p>
-                            <strong>Case ID:</strong> {alert.case_id}
-                        </p>
+                {alerts.length === 0 ? (
+                    <p>No active alerts.</p>
+                ) : (
+                    <div className="alerts-list">
+                        {alerts.map((alert) => (
+                            <article
+                                key={alert.alert_id}
+                                className={`alert-card alert-card-${alert.severity}`}
+                            >
+                                <div className="alert-card-topline">
+                                    <h3>{alert.title}</h3>
+                                    <span>{alert.severity}</span>
+                                </div>
 
-                        <p>
-                            <strong>Person ID:</strong> {alert.person_id}
-                        </p>
+                                <p>
+                                    <strong>Type:</strong> {alert.alert_type}
+                                </p>
 
-                        <p>
-                            <strong>Status:</strong> {alert.alert_status}
-                        </p>
+                                <p>
+                                    <strong>Description:</strong> {alert.description}
+                                </p>
+
+                                <p>
+                                    <strong>Case ID:</strong> {alert.case_id}
+                                </p>
+
+                                <p>
+                                    <strong>Person ID:</strong> {alert.person_id}
+                                </p>
+
+                                <p>
+                                    <strong>Status:</strong> {alert.alert_status}
+                                </p>
+                            </article>
+                        ))}
                     </div>
-                ))
-            )}
+                )}
+            </section>
         </div>
     );
 }

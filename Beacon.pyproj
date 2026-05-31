@@ -66,6 +66,7 @@
     <Compile Include="integrations\service.py" />
     <Compile Include="Lambda_handler.py" />
     <Compile Include="models\activity_log.py" />
+    <Compile Include="models\agency_exchange.py" />
     <Compile Include="models\agencies.py" />
     <Compile Include="models\alerts.py" />
     <Compile Include="models\cameras.py" />
@@ -86,6 +87,7 @@
     <Compile Include="models\person.py" />
     <Compile Include="models\sighting.py" />
     <Compile Include="models\timeline_events.py" />
+    <Compile Include="routes\agency_exchange_routes.py" />
     <Compile Include="routes\supervisor_routes.py" />
     <Compile Include="routes\timeline_events_routes.py" />
     <Compile Include="routes\users_routes.py" />
