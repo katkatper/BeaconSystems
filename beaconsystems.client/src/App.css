@@ -52,6 +52,49 @@
     font-weight: bold;
 }
 
+.login-recovery-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.login-recovery-actions button {
+    margin-top: 0;
+    padding: 10px 12px;
+    color: #dbeafe;
+    background: rgba(30, 41, 59, 0.72);
+    border: 1px solid rgba(147, 197, 253, 0.35);
+    border-radius: 8px;
+}
+
+.login-recovery-panel,
+.password-change-panel {
+    margin-top: 16px;
+    padding: 14px;
+    text-align: left;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(147, 197, 253, 0.28);
+    border-radius: 8px;
+}
+
+.login-recovery-panel h2,
+.password-change-panel h2 {
+    margin: 0 0 8px;
+    font-size: 18px;
+}
+
+.login-recovery-panel p,
+.password-change-panel p {
+    margin: 0 0 10px;
+    color: #cbd5e1;
+    line-height: 1.45;
+}
+
+.login-message {
+    color: #bfdbfe;
+}
+
 .error-text {
     color: #fca5a5;
 }
@@ -710,6 +753,268 @@
 
 .external-record-detail p {
     margin: 8px 0;
+}
+
+.sighting-map-workspace {
+    display: grid;
+    gap: 14px;
+}
+
+.sighting-map-3d-shell {
+    position: relative;
+    min-height: 500px;
+    overflow: hidden;
+    border: 1px solid rgba(96, 165, 250, 0.36);
+    border-radius: 8px;
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.72));
+    box-shadow: 0 28px 44px rgba(2, 6, 23, 0.36);
+}
+
+.sighting-map-3d-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 400;
+    pointer-events: none;
+    background:
+        linear-gradient(180deg, rgba(2, 6, 23, 0.08), rgba(15, 23, 42, 0.24)),
+        radial-gradient(circle at 50% 30%, rgba(147, 197, 253, 0.12), transparent 42%);
+}
+
+.sighting-map-3d {
+    height: 500px;
+    width: 100%;
+    background: #020617;
+}
+
+.sighting-map-3d .leaflet-tile-pane {
+    filter: saturate(0.78) contrast(1.08) brightness(0.82);
+}
+
+.sighting-map-3d .leaflet-overlay-pane svg {
+    filter: drop-shadow(0 12px 12px rgba(2, 6, 23, 0.42));
+}
+
+.sighting-pin {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 900;
+    background: var(--pin-color);
+    border: 3px solid rgba(255, 255, 255, 0.92);
+    border-radius: 50%;
+    box-shadow:
+        0 0 0 8px color-mix(in srgb, var(--pin-color) 24%, transparent),
+        0 18px 18px rgba(2, 6, 23, 0.38);
+}
+
+.sighting-pin::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -17px;
+    width: 4px;
+    height: 18px;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, var(--pin-color), rgba(15, 23, 42, 0.2));
+    border-radius: 999px;
+}
+
+.route-arrow {
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-left: 16px solid #dbeafe;
+    filter: drop-shadow(0 0 8px rgba(147, 197, 253, 0.8));
+}
+
+.sighting-map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    padding: 12px;
+    color: #dbeafe;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(147, 197, 253, 0.28);
+    border-radius: 8px;
+}
+
+.sighting-map-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px currentColor;
+}
+
+.legend-dot.high {
+    color: #ef4444;
+    background: #ef4444;
+}
+
+.legend-dot.medium {
+    color: #f59e0b;
+    background: #f59e0b;
+}
+
+.legend-dot.low {
+    color: #94a3b8;
+    background: #94a3b8;
+}
+
+.legend-ring {
+    width: 15px;
+    height: 15px;
+    border: 2px solid #93c5fd;
+    border-radius: 50%;
+    background: rgba(147, 197, 253, 0.16);
+}
+
+.legend-line {
+    width: 26px;
+    height: 0;
+    border-top: 3px dashed #93c5fd;
+}
+
+.legend-area {
+    width: 18px;
+    height: 12px;
+    background: rgba(56, 189, 248, 0.18);
+    border: 1px dashed #38bdf8;
+}
+
+/* Case workspace sizing
+   Keeps case details readable instead of letting each section stretch across the page. */
+.case-detail-page {
+    width: min(100%, calc(100% - 32px));
+    max-width: 980px;
+}
+
+.case-detail-page > h2,
+.case-detail-page > p,
+.case-detail-page > hr,
+.case-detail-page > .external-record-links,
+.case-detail-page > .case-agency-exchanges,
+.case-detail-page > .sighting-map-workspace {
+    width: min(100%, 860px);
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+.case-detail-page > h2 {
+    margin-top: 18px;
+}
+
+.case-detail-page > hr {
+    margin-top: 18px;
+    margin-bottom: 18px;
+    opacity: 0.45;
+}
+
+.case-detail-page .case-section {
+    width: min(100%, 860px);
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+.case-detail-page .timeline-card,
+.case-detail-page .agency-exchange-card,
+.case-detail-page .external-record-detail {
+    width: min(100%, 780px);
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+.case-detail-page .external-record-links {
+    justify-content: center;
+}
+
+/* Final supervisor review queue override.
+   Keeps oversight items in a compact, readable grid instead of letting older
+   shared panel rules scatter the cards across the page. */
+.supervisor-page .supervisor-review-section {
+    width: min(100%, 980px);
+    max-width: 980px;
+    margin: 22px auto;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.supervisor-page .supervisor-review-section .supervisor-panel-header {
+    align-items: center;
+    flex-direction: row;
+    margin-bottom: 16px;
+}
+
+.supervisor-page .supervisor-review-section .supervisor-panel-header strong {
+    text-align: right;
+}
+
+.supervisor-page .supervisor-review-section .supervisor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: 14px;
+    justify-content: stretch;
+    align-items: start;
+}
+
+.supervisor-page .supervisor-review-section .supervisor-panel {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    max-height: 420px;
+    margin: 0;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.supervisor-page .supervisor-review-section .queue-item {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.supervisor-page .supervisor-review-section .queue-item-meta {
+    color: #93c5fd;
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+@media (max-width: 760px) {
+    .supervisor-page .supervisor-review-section {
+        width: min(100%, calc(100% - 24px));
+        padding: 14px;
+    }
+
+    .supervisor-page .supervisor-review-section .supervisor-panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .supervisor-page .supervisor-review-section .supervisor-panel-header strong {
+        text-align: left;
+    }
+
+    .supervisor-page .supervisor-review-section .supervisor-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .missing-person-profile {
@@ -1954,6 +2259,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 540px));
     justify-content: center;
+    align-items: start;
     gap: 12px;
 }
 /* Shared operational panel style for review categories like legal, partners, BOLOs, and case access. */
@@ -1989,10 +2295,10 @@
 
 .supervisor-admin-links {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     justify-content: center;
     gap: 12px;
-    max-width: 960px;
+    max-width: 1120px;
     margin: 0 auto 18px;
 }
 
@@ -2078,6 +2384,72 @@
 
 .supervisor-user-form button {
     justify-self: start;
+}
+
+.supervisor-command-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: 12px;
+    width: min(100%, 1120px);
+    margin: 0 auto 18px;
+}
+
+.supervisor-metric-card {
+    display: grid;
+    gap: 10px;
+    min-height: 92px;
+    padding: 14px;
+    background: rgba(30, 41, 59, 0.66);
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.24);
+    backdrop-filter: blur(12px);
+}
+
+.supervisor-metric-card span {
+    color: #b8c3d8;
+    font-weight: 800;
+}
+
+.supervisor-metric-card strong {
+    color: #f8fafc;
+    font-size: 34px;
+}
+
+.supervisor-operations-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
+    align-items: start;
+    gap: 16px;
+    width: min(100%, 1120px);
+    margin: 0 auto 18px;
+}
+
+.supervisor-operations-grid .supervisor-user-registration,
+.supervisor-operations-grid .agency-exchange-panel {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.supervisor-operations-grid .supervisor-user-form,
+.supervisor-operations-grid .agency-exchange-form {
+    grid-template-columns: 1fr;
+}
+
+.supervisor-operations-grid .agency-exchange-form textarea {
+    grid-column: auto;
+}
+
+.supervisor-review-section {
+    width: min(100%, 1120px);
+    margin: 0 auto;
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.56);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+    backdrop-filter: blur(12px);
 }
 
 /* Audit & Compliance Center
@@ -3326,6 +3698,11 @@ button:hover,
         grid-template-columns: 1fr;
     }
 
+    .supervisor-command-strip,
+    .supervisor-operations-grid {
+        grid-template-columns: 1fr;
+    }
+
     .supervisor-panel-header {
         align-items: flex-start;
         flex-direction: column;
@@ -3344,4 +3721,44 @@ button:hover,
         align-items: flex-start;
         flex-direction: column;
     }
+}
+
+/* Final case-detail width override.
+   This stays at the end so older shared panel rules cannot stretch case cards back out. */
+.case-detail-page {
+    width: min(100%, calc(100% - 32px));
+    max-width: 980px;
+}
+
+.case-detail-page > h2,
+.case-detail-page > p,
+.case-detail-page > hr,
+.case-detail-page > .external-record-links,
+.case-detail-page > .case-agency-exchanges,
+.case-detail-page > .sighting-map-workspace {
+    width: min(100%, 860px);
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+.case-detail-page .case-section {
+    width: min(100%, 860px);
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+.case-detail-page .timeline-card,
+.case-detail-page .agency-exchange-card,
+.case-detail-page .external-record-detail {
+    width: min(100%, 780px);
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
+.case-detail-page .external-record-links {
+    justify-content: center;
 }

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from database.connection import get_db
 from models.user import User
@@ -23,8 +24,8 @@ def create_user(
     if existing_user:
         raise HTTPException(status_code=400, detail="User already exists")
 
-    admin_roles = ["admin", "agency_admin", "investigator", "analyst", "viewer"]
-    supervisor_roles = ["investigator", "analyst", "viewer"]
+    admin_roles = ["admin", "agency_admin", "supervisor", "investigator", "analyst", "viewer"]
+    supervisor_roles = ["supervisor", "investigator", "analyst", "viewer"]
     allowed_roles = admin_roles if current_user.role == "admin" else supervisor_roles
 
     if data.role not in allowed_roles:
@@ -42,6 +43,8 @@ def create_user(
         role=data.role,
         agency_id=agency_id,
         is_active=True,
+        password_changed_at=datetime.utcnow(),
+        must_change_password=True,
     )
 
     db.add(new_user)
@@ -87,7 +90,7 @@ def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    allowed_roles = ["admin", "agency_admin", "investigator", "analyst", "viewer"]
+    allowed_roles = ["admin", "agency_admin", "supervisor", "investigator", "analyst", "viewer"]
 
     if role not in allowed_roles:
         raise HTTPException(status_code=400, detail="Invalid role")

@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
 
 from database.connection import get_db
 from models.user import User
-from schemas.user_schema import UserCreate, UserLogin, UserResponse, UserRoleUpdate
+from schemas.user_schema import PasswordChange, UserCreate, UserLogin, UserResponse, UserRoleUpdate
 from security.auth import hash_password, verify_password, create_access_token, require_role, get_current_user
 from services.activity_service import create_activity_log
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+PASSWORD_ROTATION_DAYS = 120
 
 # USER ROUTES WITH ACTIVITY LOGGING
 
@@ -42,7 +45,11 @@ def register_user(
 
         password_hash=hash_password(data.password),
 
-        role="admin"
+        role="admin",
+
+        password_changed_at=datetime.utcnow(),
+
+        must_change_password=False,
     )
 
 
@@ -91,6 +98,17 @@ def login(
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="User account is inactive")
+
+
+    password_changed_at = user.password_changed_at or user.created_at or datetime.utcnow()
+
+    password_expires_at = password_changed_at + timedelta(days=PASSWORD_ROTATION_DAYS)
+
+    password_change_required = user.must_change_password or datetime.utcnow() >= password_expires_at
+
+
     token = create_access_token({
 
         "sub": user.username,
@@ -99,9 +117,6 @@ def login(
 
         "role": user.role
     })
-
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="User account is inactive")
 
     create_activity_log(
 
@@ -132,7 +147,64 @@ def login(
         "role": user.role,
 
         "agency_id": user.agency_id,
+
+        "password_change_required": password_change_required,
+
+        "password_expires_at": password_expires_at.isoformat(),
     }
+
+
+@router.put("/change-password")
+
+def change_password(
+
+    data: PasswordChange,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    if not verify_password(data.current_password, current_user.password_hash):
+
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+
+    if len(data.new_password) < 12:
+
+        raise HTTPException(status_code=400, detail="New password must be at least 12 characters")
+
+
+    current_user.password_hash = hash_password(data.new_password)
+
+    current_user.password_changed_at = datetime.utcnow()
+
+    current_user.must_change_password = False
+
+    db.commit()
+
+    db.refresh(current_user)
+
+
+    create_activity_log(
+
+        db=db,
+
+        user_id=current_user.user_id,
+
+        agency_id=current_user.agency_id,
+
+        action="PASSWORD_CHANGE",
+
+        entity="user",
+
+        entity_id=current_user.user_id,
+
+        details=f"User {current_user.username} changed password",
+    )
+
+
+    return {"message": "Password updated"}
 
 # UPDATE USER ROLE ROUTE WITH ROLE-BASED ACCESS CONTROL AND ACTIVITY LOGGING
 
@@ -156,7 +228,7 @@ def update_user_role(
         raise HTTPException(status_code=404, detail="User not found")
 
 
-    allowed_roles = ["admin", "investigator", "analyst", "viewer"]
+    allowed_roles = ["admin", "agency_admin", "supervisor", "investigator", "analyst", "viewer"]
 
 
     if data.role not in allowed_roles:

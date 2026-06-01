@@ -25,3 +25,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    password_changed_at = Column(DateTime, default=datetime.utcnow)
+
+    must_change_password = Column(Boolean, default=False)

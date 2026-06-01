@@ -32,7 +32,7 @@ class CaseAccessReview(BaseModel):
 
 def get_supervisor_queue(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     case_query = db.query(Cases)
     legal_query = db.query(LegalAccessRequest)
@@ -56,7 +56,7 @@ def get_supervisor_queue(
     pending_legal_requests = (
         legal_query
         .filter(LegalAccessRequest.status == "pending")
-        .order_by(LegalAccessRequest.created_at.desc())
+        .order_by(LegalAccessRequest.requested_at.desc())
         .limit(10)
         .all()
     )
@@ -76,6 +76,30 @@ def get_supervisor_queue(
         .limit(10)
         .all()
     )
+
+    investigator_ids = {
+        case.investigator_id for case in high_priority_cases if case.investigator_id
+    }
+    investigators = (
+        {
+            user.user_id: user.username
+            for user in db.query(User).filter(User.user_id.in_(investigator_ids)).all()
+        }
+        if investigator_ids
+        else {}
+    )
+    high_priority_case_summaries = [
+        {
+            "case_id": case.case_id,
+            "case_number": case.case_number,
+            "title": case.title,
+            "priority_level": case.priority_level,
+            "case_status": case.case_status,
+            "investigator_id": case.investigator_id,
+            "investigator_name": investigators.get(case.investigator_id),
+        }
+        for case in high_priority_cases
+    ]
 
  # Restricted case access is surfaced for supervisor review because each access
 # should have a documented reason and may need follow-up.
@@ -101,7 +125,7 @@ def get_supervisor_queue(
     return {
         "pending_legal_requests": pending_legal_requests,
         "pending_partner_sources": pending_partner_sources,
-        "high_priority_cases": high_priority_cases,
+        "high_priority_cases": high_priority_case_summaries,
         "pending_case_access": (
             access_query
             .filter(CaseAccessGrant.status == "pending")
@@ -137,7 +161,7 @@ def approve_case_access_request(
     grant_id: int,
     data: CaseAccessReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     grant = get_reviewable_case_access_grant(db, grant_id, current_user)
 
@@ -169,7 +193,7 @@ def deny_case_access_request(
     grant_id: int,
     data: CaseAccessReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     grant = get_reviewable_case_access_grant(db, grant_id, current_user)
 

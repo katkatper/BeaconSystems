@@ -11,6 +11,7 @@ function Navbar() {
     const roleLabels = {
         admin: "Administrator",
         agency_admin: "Supervisor",
+        supervisor: "Supervisor",
         investigator: "Detective",
         analyst: "Analyst",
         viewer: "Viewer",

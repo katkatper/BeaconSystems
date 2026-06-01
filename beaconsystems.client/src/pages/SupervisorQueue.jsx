@@ -30,6 +30,25 @@ function SupervisorQueue() {
 
     const token = localStorage.getItem("token");
 
+    const getApiErrorMessage = (errorData, fallback) => {
+        if (Array.isArray(errorData.detail)) {
+            return errorData.detail
+                .map((item) => `${item.loc?.slice(1).join(".") || "field"}: ${item.msg}`)
+                .join("; ");
+        }
+
+        return errorData.detail || fallback;
+    };
+
+    const queueMetrics = queue
+        ? [
+            ["Legal Requests", queue.pending_legal_requests?.length || 0],
+            ["Case Access", queue.pending_case_access?.length || 0],
+            ["Partner Reviews", queue.pending_partner_sources?.length || 0],
+            ["Active BOLOs", queue.active_bolos?.length || 0],
+        ]
+        : [];
+
 
  // Load the review queue once when the page opens. The backend enforces that
 // only admins and agency admins can access this endpoint.
@@ -180,7 +199,9 @@ function SupervisorQueue() {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not register user");
+                throw new Error(
+                    getApiErrorMessage(errorData, "Could not register user")
+                );
             }
 
             const data = await response.json();
@@ -261,6 +282,20 @@ function SupervisorQueue() {
                 <p>Central review area for high-risk operational and compliance items.</p>
             </div>
 
+            <section className="supervisor-command-strip">
+                {(queueMetrics.length > 0 ? queueMetrics : [
+                    ["Legal Requests", 0],
+                    ["Case Access", 0],
+                    ["Partner Reviews", 0],
+                    ["Active BOLOs", 0],
+                ]).map(([label, value]) => (
+                    <div key={label} className="supervisor-metric-card">
+                        <span>{label}</span>
+                        <strong>{value}</strong>
+                    </div>
+                ))}
+            </section>
+
             <section className="supervisor-admin-links" aria-label="Supervisor administration links">
                 <Link to="/audit" className="supervisor-admin-card">
                     <span>Compliance</span>
@@ -281,157 +316,160 @@ function SupervisorQueue() {
                 </Link>
             </section>
 
-            <section className="supervisor-user-registration">
-                <div className="supervisor-panel-header">
-                    <span>User Access</span>
-                    <strong>Register New User</strong>
-                </div>
+            <div className="supervisor-operations-grid">
+                <section className="supervisor-user-registration">
+                    <div className="supervisor-panel-header">
+                        <span>User Access</span>
+                        <strong>Register New User</strong>
+                    </div>
 
-                <form className="supervisor-user-form" onSubmit={registerUser}>
-                    <input
-                        type="text"
-                        placeholder="Username"
-                        value={newUser.username}
-                        onChange={(event) =>
-                            setNewUser((current) => ({ ...current, username: event.target.value }))
-                        }
-                        required
-                    />
+                    <form className="supervisor-user-form" onSubmit={registerUser}>
+                        <input
+                            type="text"
+                            placeholder="Username"
+                            value={newUser.username}
+                            onChange={(event) =>
+                                setNewUser((current) => ({ ...current, username: event.target.value }))
+                            }
+                            required
+                        />
 
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        value={newUser.email}
-                        onChange={(event) =>
-                            setNewUser((current) => ({ ...current, email: event.target.value }))
-                        }
-                        required
-                    />
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            value={newUser.email}
+                            onChange={(event) =>
+                                setNewUser((current) => ({ ...current, email: event.target.value }))
+                            }
+                            required
+                        />
 
-                    <input
-                        type="password"
-                        placeholder="Temporary password"
-                        value={newUser.password}
-                        onChange={(event) =>
-                            setNewUser((current) => ({ ...current, password: event.target.value }))
-                        }
-                        required
-                    />
+                        <input
+                            type="password"
+                            placeholder="Temporary password"
+                            value={newUser.password}
+                            onChange={(event) =>
+                                setNewUser((current) => ({ ...current, password: event.target.value }))
+                            }
+                            required
+                        />
 
-                    <select
-                        value={newUser.role}
-                        onChange={(event) =>
-                            setNewUser((current) => ({ ...current, role: event.target.value }))
-                        }
-                    >
-                        <option value="investigator">Investigator</option>
-                        <option value="analyst">Analyst</option>
-                        <option value="viewer">Viewer</option>
-                        <option value="agency_admin">Agency Admin</option>
-                        <option value="admin">Admin</option>
-                    </select>
+                        <select
+                            value={newUser.role}
+                            onChange={(event) =>
+                                setNewUser((current) => ({ ...current, role: event.target.value }))
+                            }
+                        >
+                            <option value="investigator">Investigator</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="analyst">Analyst</option>
+                            <option value="viewer">Viewer</option>
+                            <option value="agency_admin">Agency Admin</option>
+                            <option value="admin">Admin</option>
+                        </select>
 
-                    <input
-                        type="number"
-                        min="1"
-                        placeholder="Agency ID"
-                        value={newUser.agency_id}
-                        onChange={(event) =>
-                            setNewUser((current) => ({ ...current, agency_id: event.target.value }))
-                        }
-                    />
+                        <input
+                            type="number"
+                            min="1"
+                            placeholder="Agency ID"
+                            value={newUser.agency_id}
+                            onChange={(event) =>
+                                setNewUser((current) => ({ ...current, agency_id: event.target.value }))
+                            }
+                        />
 
-                    <button type="submit">Register User</button>
-                </form>
-            </section>
+                        <button type="submit">Register User</button>
+                    </form>
+                </section>
 
-            <section className="agency-exchange-panel supervisor-exchange-panel">
-                <div className="agency-exchange-header">
-                    <span>Information Sharing</span>
-                    <strong>Agency Exchange Log</strong>
-                </div>
+                <section className="agency-exchange-panel supervisor-exchange-panel">
+                    <div className="agency-exchange-header">
+                        <span>Information Sharing</span>
+                        <strong>Agency Exchange Log</strong>
+                    </div>
 
-                <form className="agency-exchange-form" onSubmit={submitExchange}>
-                    <input
-                        type="number"
-                        name="case_id"
-                        min="1"
-                        placeholder="Case ID"
-                        value={exchangeForm.case_id}
-                        onChange={handleExchangeChange}
-                        required
-                    />
+                    <form className="agency-exchange-form" onSubmit={submitExchange}>
+                        <input
+                            type="number"
+                            name="case_id"
+                            min="1"
+                            placeholder="Case ID"
+                            value={exchangeForm.case_id}
+                            onChange={handleExchangeChange}
+                            required
+                        />
 
-                    <input
-                        name="from_agency"
-                        placeholder="From agency"
-                        value={exchangeForm.from_agency}
-                        onChange={handleExchangeChange}
-                        required
-                    />
+                        <input
+                            name="from_agency"
+                            placeholder="From agency"
+                            value={exchangeForm.from_agency}
+                            onChange={handleExchangeChange}
+                            required
+                        />
 
-                    <input
-                        name="to_agency"
-                        placeholder="To agency"
-                        value={exchangeForm.to_agency}
-                        onChange={handleExchangeChange}
-                        required
-                    />
+                        <input
+                            name="to_agency"
+                            placeholder="To agency"
+                            value={exchangeForm.to_agency}
+                            onChange={handleExchangeChange}
+                            required
+                        />
 
-                    <input
-                        name="information_type"
-                        placeholder="Information type"
-                        value={exchangeForm.information_type}
-                        onChange={handleExchangeChange}
-                        required
-                    />
+                        <input
+                            name="information_type"
+                            placeholder="Information type"
+                            value={exchangeForm.information_type}
+                            onChange={handleExchangeChange}
+                            required
+                        />
 
-                    <input
-                        name="legal_authority"
-                        placeholder="Legal authority or agreement"
-                        value={exchangeForm.legal_authority}
-                        onChange={handleExchangeChange}
-                    />
+                        <input
+                            name="legal_authority"
+                            placeholder="Legal authority or agreement"
+                            value={exchangeForm.legal_authority}
+                            onChange={handleExchangeChange}
+                        />
 
-                    <textarea
-                        name="reason"
-                        placeholder="Why this exchange is approved"
-                        value={exchangeForm.reason}
-                        onChange={handleExchangeChange}
-                        required
-                    />
+                        <textarea
+                            name="reason"
+                            placeholder="Why this exchange is approved"
+                            value={exchangeForm.reason}
+                            onChange={handleExchangeChange}
+                            required
+                        />
 
-                    <textarea
-                        name="summary"
-                        placeholder="Information exchanged"
-                        value={exchangeForm.summary}
-                        onChange={handleExchangeChange}
-                        required
-                    />
+                        <textarea
+                            name="summary"
+                            placeholder="Information exchanged"
+                            value={exchangeForm.summary}
+                            onChange={handleExchangeChange}
+                            required
+                        />
 
-                    <button type="submit">Record Approved Exchange</button>
-                </form>
+                        <button type="submit">Record Approved Exchange</button>
+                    </form>
 
-                <div className="agency-exchange-list">
-                    {exchanges.length === 0 ? (
-                        <p>No agency exchanges recorded yet.</p>
-                    ) : (
-                        exchanges.map((exchange) => (
-                            <article key={exchange.exchange_id} className="agency-exchange-card">
-                                <div>
-                                    <strong>{exchange.from_agency} to {exchange.to_agency}</strong>
-                                    <span>Case {exchange.case_id}</span>
-                                </div>
-                                <p>{exchange.summary}</p>
-                                <p>Reason: {exchange.reason}</p>
-                                <small>
-                                    Approved by user {exchange.approved_by} | {exchange.status}
-                                </small>
-                            </article>
-                        ))
-                    )}
-                </div>
-            </section>
+                    <div className="agency-exchange-list">
+                        {exchanges.length === 0 ? (
+                            <p>No agency exchanges recorded yet.</p>
+                        ) : (
+                            exchanges.slice(0, 5).map((exchange) => (
+                                <article key={exchange.exchange_id} className="agency-exchange-card">
+                                    <div>
+                                        <strong>{exchange.from_agency} to {exchange.to_agency}</strong>
+                                        <span>Case {exchange.case_id}</span>
+                                    </div>
+                                    <p>{exchange.summary}</p>
+                                    <p>Reason: {exchange.reason}</p>
+                                    <small>
+                                        Approved by user {exchange.approved_by} | {exchange.status}
+                                    </small>
+                                </article>
+                            ))
+                        )}
+                    </div>
+                </section>
+            </div>
 
             {message && <p className="alert-banner">{message}</p>}
 
@@ -440,7 +478,12 @@ function SupervisorQueue() {
                 // Each panel represents a supervisor review category. Keeping them separate
                 // makes the page scannable during active investigations
 
-                <div className="supervisor-grid">
+                <section className="supervisor-review-section">
+                    <div className="supervisor-panel-header">
+                        <span>Review Queue</span>
+                        <strong>Items Requiring Oversight</strong>
+                    </div>
+                    <div className="supervisor-grid">
                     <section className="supervisor-panel">
                         <h2>Pending Legal Access</h2>
 
@@ -492,6 +535,13 @@ function SupervisorQueue() {
                                         <span>{item.priority_level}</span>
                                     </div>
                                     <p>{item.title}</p>
+                                    <p className="queue-item-meta">
+                                        Assigned to: {item.investigator_name || (
+                                            item.investigator_id
+                                                ? `Investigator ${item.investigator_id}`
+                                                : "Unassigned"
+                                        )}
+                                    </p>
                                     <Link to={`/cases/${item.case_id}`}>Open Case</Link>
                                 </article>
                             ))
@@ -580,7 +630,8 @@ function SupervisorQueue() {
                             ))
                         )}
                     </section>
-                </div>
+                    </div>
+                </section>
             )}
         </div>
     );
