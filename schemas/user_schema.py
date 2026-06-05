@@ -23,6 +23,10 @@ class PasswordChange(BaseModel):
     new_password: str
 
 
+class AdminPasswordReset(BaseModel):
+    temporary_password: str
+
+
 class UserResponse(BaseModel):
     user_id: int
     username: str

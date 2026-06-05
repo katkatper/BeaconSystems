@@ -10,6 +10,7 @@ from models.IntegrationSource import IntegrationSource
 from models.bolo_alert import BoloAlert
 from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
+from models.case_team_member import CaseTeamMember
 from models.legal_access_request import LegalAccessRequest
 from models.user import User
 from security.auth import require_role
@@ -21,6 +22,19 @@ router = APIRouter(prefix="/supervisor", tags=["Supervisor Review"])
 
 class CaseAccessReview(BaseModel):
     review_notes: str | None = None
+
+
+class CaseTeamAssignment(BaseModel):
+    user_id: int
+    role: str = "support_investigator"
+    reason: str | None = None
+
+
+TEAM_MEMBER_ROLES = {
+    "support_investigator",
+    "analyst_support",
+    "supervisor_observer",
+}
 
 
 @router.get("/queue")
@@ -136,6 +150,178 @@ def get_supervisor_queue(
         "recent_case_access": recent_case_access,
         "active_bolos": active_bolos,
     }
+
+
+def get_supervisor_case(
+    db: Session,
+    case_id: int,
+    current_user: User,
+):
+    query = db.query(Cases).filter(Cases.case_id == case_id)
+
+    if current_user.role != "admin":
+        query = query.filter(Cases.agency_id == current_user.agency_id)
+
+    case = query.first()
+
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
+
+    return case
+
+
+@router.get("/cases/{case_id}/team")
+def get_case_team(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+):
+    case = get_supervisor_case(db, case_id, current_user)
+    lead = db.query(User).filter(User.user_id == case.investigator_id).first()
+    team_members = (
+        db.query(CaseTeamMember, User)
+        .join(User, CaseTeamMember.user_id == User.user_id)
+        .filter(
+            CaseTeamMember.case_id == case_id,
+            CaseTeamMember.status == "active",
+        )
+        .order_by(CaseTeamMember.assigned_at.desc())
+        .all()
+    )
+
+    return {
+        "case_id": case.case_id,
+        "case_number": case.case_number,
+        "lead_investigator": {
+            "user_id": lead.user_id,
+            "username": lead.username,
+            "role": "lead_investigator",
+        } if lead else None,
+        "team_members": [
+            {
+                "team_member_id": member.team_member_id,
+                "user_id": user.user_id,
+                "username": user.username,
+                "role": member.role,
+                "reason": member.reason,
+                "assigned_by": member.assigned_by,
+                "assigned_at": member.assigned_at,
+            }
+            for member, user in team_members
+        ],
+    }
+
+
+@router.post("/cases/{case_id}/team")
+def assign_case_team_member(
+    case_id: int,
+    data: CaseTeamAssignment,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+):
+    case = get_supervisor_case(db, case_id, current_user)
+    role = data.role.strip().lower()
+
+    if role not in TEAM_MEMBER_ROLES:
+        raise HTTPException(status_code=400, detail="Unsupported case team role")
+
+    user = db.query(User).filter(User.user_id == data.user_id).first()
+
+    if not user or not user.is_active:
+        raise HTTPException(status_code=404, detail="Active user not found")
+
+    if current_user.role != "admin" and user.agency_id != current_user.agency_id:
+        raise HTTPException(status_code=403, detail="Cannot assign a user from another agency")
+
+    if user.user_id == case.investigator_id:
+        raise HTTPException(status_code=400, detail="Lead investigator is already assigned to this case")
+
+    existing_member = (
+        db.query(CaseTeamMember)
+        .filter(
+            CaseTeamMember.case_id == case_id,
+            CaseTeamMember.user_id == data.user_id,
+        )
+        .first()
+    )
+
+    if existing_member:
+        existing_member.role = role
+        existing_member.status = "active"
+        existing_member.reason = data.reason
+        existing_member.assigned_by = current_user.user_id
+        existing_member.assigned_at = datetime.utcnow()
+        existing_member.removed_at = None
+        member = existing_member
+    else:
+        member = CaseTeamMember(
+            case_id=case_id,
+            user_id=data.user_id,
+            agency_id=case.agency_id,
+            role=role,
+            reason=data.reason,
+            assigned_by=current_user.user_id,
+        )
+        db.add(member)
+
+    db.commit()
+    db.refresh(member)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="CASE_TEAM_MEMBER_ASSIGNED",
+        entity="case",
+        entity_id=case_id,
+        details=(
+            f"Assigned user {data.user_id} to case {case.case_number} as {role}. "
+            f"Reason: {data.reason or 'None'}"
+        ),
+    )
+
+    return {
+        "message": "Case team member assigned and logged",
+        "team_member_id": member.team_member_id,
+    }
+
+
+@router.delete("/cases/{case_id}/team/{user_id}")
+def remove_case_team_member(
+    case_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+):
+    case = get_supervisor_case(db, case_id, current_user)
+    member = (
+        db.query(CaseTeamMember)
+        .filter(
+            CaseTeamMember.case_id == case_id,
+            CaseTeamMember.user_id == user_id,
+            CaseTeamMember.status == "active",
+        )
+        .first()
+    )
+
+    if not member:
+        raise HTTPException(status_code=404, detail="Active case team member not found")
+
+    member.status = "removed"
+    member.removed_at = datetime.utcnow()
+    db.commit()
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="CASE_TEAM_MEMBER_REMOVED",
+        entity="case",
+        entity_id=case_id,
+        details=f"Removed user {user_id} from case {case.case_number}",
+    )
+
+    return {"message": "Case team member removed and logged"}
 
 
 def get_reviewable_case_access_grant(

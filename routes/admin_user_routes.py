@@ -4,7 +4,7 @@ from datetime import datetime
 
 from database.connection import get_db
 from models.user import User
-from schemas.user_schema import AdminUserCreate
+from schemas.user_schema import AdminPasswordReset, AdminUserCreate
 from security.auth import hash_password, require_role
 from services.activity_service import create_activity_log
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/admin/users", tags=["Admin Users"])
 def create_user(
     data: AdminUserCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     existing_user = db.query(User).filter(
         (User.username == data.username) | (User.email == data.email)
@@ -33,7 +33,7 @@ def create_user(
 
     agency_id = data.agency_id
 
-    if current_user.role == "agency_admin":
+    if current_user.role in {"agency_admin", "supervisor"}:
         agency_id = current_user.agency_id
 
     new_user = User(
@@ -73,9 +73,14 @@ def create_user(
 @router.get("/")
 def get_users(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
-    return db.query(User).all()
+    query = db.query(User)
+
+    if current_user.role != "admin":
+        query = query.filter(User.agency_id == current_user.agency_id)
+
+    return query.order_by(User.username.asc()).all()
 
 
 @router.put("/{user_id}/role")
@@ -134,9 +139,14 @@ def update_user_status(
     user_id: int,
     is_active: bool = Query(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
-    user = db.query(User).filter(User.user_id == user_id).first()
+    query = db.query(User).filter(User.user_id == user_id)
+
+    if current_user.role != "admin":
+        query = query.filter(User.agency_id == current_user.agency_id)
+
+    user = query.first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -149,4 +159,56 @@ def update_user_status(
         "message": f"Updated {user.username} status",
         "user_id": user.user_id,
         "is_active": user.is_active,
+    }
+
+
+@router.put("/{user_id}/reset-password")
+def reset_user_password(
+    user_id: int,
+    data: AdminPasswordReset,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+):
+    if len(data.temporary_password) < 12:
+        raise HTTPException(
+            status_code=400,
+            detail="Temporary password must be at least 12 characters",
+        )
+
+    query = db.query(User).filter(User.user_id == user_id)
+
+    if current_user.role != "admin":
+        query = query.filter(User.agency_id == current_user.agency_id)
+
+    user = query.first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if current_user.role == "supervisor" and user.role in {"admin", "agency_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Supervisors cannot reset admin account passwords",
+        )
+
+    user.password_hash = hash_password(data.temporary_password)
+    user.password_changed_at = datetime.utcnow()
+    user.must_change_password = True
+    db.commit()
+    db.refresh(user)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="RESET_USER_PASSWORD",
+        entity="user",
+        entity_id=user.user_id,
+        details=f"Reset password for user {user.username}",
+    )
+
+    return {
+        "message": f"Temporary password set for {user.username}",
+        "user_id": user.user_id,
+        "must_change_password": user.must_change_password,
     }

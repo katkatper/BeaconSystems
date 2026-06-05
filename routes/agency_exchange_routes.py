@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 from database.connection import get_db
 from models.agency_exchange import AgencyExchange
 from models.case import Cases
-from models.case_access_grant import CaseAccessGrant
 from models.user import User
 from security.auth import require_role
+from security.case_access import accessible_case_ids
 from services.activity_service import create_activity_log
 
 
@@ -43,22 +43,7 @@ def list_agency_exchanges(
         )
 
     if current_user.role == "investigator":
-        assigned_case_ids = [
-            item.case_id
-            for item in db.query(Cases.case_id)
-            .filter(Cases.investigator_id == current_user.user_id)
-            .all()
-        ]
-        granted_case_ids = [
-            item.case_id
-            for item in db.query(CaseAccessGrant.case_id)
-            .filter(
-                CaseAccessGrant.user_id == current_user.user_id,
-                CaseAccessGrant.status != "denied",
-            )
-            .all()
-        ]
-        allowed_case_ids = set(assigned_case_ids + granted_case_ids)
+        allowed_case_ids = set(accessible_case_ids(db, current_user))
 
         if not allowed_case_ids:
             return []

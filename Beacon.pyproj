@@ -71,6 +71,7 @@
     <Compile Include="models\alerts.py" />
     <Compile Include="models\cameras.py" />
     <Compile Include="models\case.py" />
+    <Compile Include="models\case_team_member.py" />
     <Compile Include="database\connection.py" />
     <Compile Include="database\leads.py" />
     <Compile Include="integrations\financial_transactions.py" />

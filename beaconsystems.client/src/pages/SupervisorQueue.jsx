@@ -10,12 +10,21 @@ function SupervisorQueue() {
     const [queue, setQueue] = useState(null);
     const [message, setMessage] = useState("");
     const [reviewNotes, setReviewNotes] = useState({});
+    const [activeWorkspace, setActiveWorkspace] = useState("access");
+    const [users, setUsers] = useState([]);
+    const [resetPasswords, setResetPasswords] = useState({});
     const [newUser, setNewUser] = useState({
         username: "",
         email: "",
         password: "",
         role: "investigator",
         agency_id: "",
+    });
+    const [teamForm, setTeamForm] = useState({
+        case_id: "",
+        user_id: "",
+        role: "support_investigator",
+        reason: "",
     });
     const [exchanges, setExchanges] = useState([]);
     const [exchangeForm, setExchangeForm] = useState({
@@ -40,14 +49,13 @@ function SupervisorQueue() {
         return errorData.detail || fallback;
     };
 
-    const queueMetrics = queue
-        ? [
-            ["Legal Requests", queue.pending_legal_requests?.length || 0],
-            ["Case Access", queue.pending_case_access?.length || 0],
-            ["Partner Reviews", queue.pending_partner_sources?.length || 0],
-            ["Active BOLOs", queue.active_bolos?.length || 0],
-        ]
-        : [];
+    const workspaceCards = [
+        ["access", "Access", "Review pending legal/case access and restricted access activity."],
+        ["users", "Users", "Register users, disable accounts, and manage team access."],
+        ["case-teams", "Case Teams", "Assign the lead investigator and assemble the investigative team."],
+        ["court-docs", "Court Documents", "Track warrants, subpoenas, court orders, and legal authority."],
+        ["bolos", "BOLO", "Create and monitor BOLO alerts for field awareness."],
+    ];
 
 
  // Load the review queue once when the page opens. The backend enforces that
@@ -93,6 +101,39 @@ function SupervisorQueue() {
 
         return () => {
             isMounted = false;
+        };
+    }, [token]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadUsers = async () => {
+            try {
+                const response = await fetch("http://127.0.0.1:8000/admin/users/", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error("Could not load users");
+                }
+
+                const data = await response.json();
+
+                if (isMounted) {
+                    setUsers(Array.isArray(data) ? data : []);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        const timer = setTimeout(loadUsers, 0);
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timer);
         };
     }, [token]);
 
@@ -206,6 +247,9 @@ function SupervisorQueue() {
 
             const data = await response.json();
             setMessage(`${data.username} was registered as ${data.role}.`);
+            setUsers((currentUsers) => [...currentUsers, data].sort((a, b) =>
+                (a.username || "").localeCompare(b.username || "")
+            ));
             setNewUser({
                 username: "",
                 email: "",
@@ -219,11 +263,124 @@ function SupervisorQueue() {
         }
     };
 
+    const updateUserStatus = async (userId, isActive) => {
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:8000/admin/users/${userId}/status?is_active=${isActive}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Could not update user status");
+            }
+
+            setUsers((currentUsers) =>
+                currentUsers.map((user) =>
+                    user.user_id === userId ? { ...user, is_active: isActive } : user
+                )
+            );
+            setMessage(isActive ? "User reactivated." : "User disabled and archived from active work.");
+        } catch (err) {
+            console.error(err);
+            setMessage(err.message || "Could not update user status.");
+        }
+    };
+
+    const resetUserPassword = async (userId) => {
+        const temporaryPassword = resetPasswords[userId] || "";
+
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:8000/admin/users/${userId}/reset-password`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        temporary_password: temporaryPassword,
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(
+                    getApiErrorMessage(errorData, "Could not reset user password")
+                );
+            }
+
+            const data = await response.json();
+            setResetPasswords((currentPasswords) => ({
+                ...currentPasswords,
+                [userId]: "",
+            }));
+            setMessage(`${data.message}. They must change it on next login.`);
+        } catch (err) {
+            console.error(err);
+            setMessage(err.message || "Could not reset user password.");
+        }
+    };
+
     const handleExchangeChange = (event) => {
         setExchangeForm({
             ...exchangeForm,
             [event.target.name]: event.target.value,
         });
+    };
+
+    const handleTeamChange = (event) => {
+        setTeamForm({
+            ...teamForm,
+            [event.target.name]: event.target.value,
+        });
+    };
+
+    const assignCaseTeamMember = async (event) => {
+        event.preventDefault();
+
+        try {
+            const payload = {
+                user_id: Number(teamForm.user_id),
+                role: teamForm.role,
+                reason: teamForm.reason,
+            };
+
+            const response = await fetch(
+                `http://127.0.0.1:8000/supervisor/cases/${Number(teamForm.case_id)}/team`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(payload),
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Could not assign case team member");
+            }
+
+            setMessage("Case team member assigned and logged.");
+            setTeamForm({
+                case_id: "",
+                user_id: "",
+                role: "support_investigator",
+                reason: "",
+            });
+        } catch (err) {
+            console.error(err);
+            setMessage(err.message || "Could not assign case team member.");
+        }
     };
 
     const submitExchange = async (event) => {
@@ -278,44 +435,24 @@ function SupervisorQueue() {
     return (
         <div className="supervisor-page">
             <div className="supervisor-header">
-                <h1>Supervisor Review Queue</h1>
-                <p>Central review area for high-risk operational and compliance items.</p>
+                <h1>Supervisor Workspace</h1>
             </div>
 
-            <section className="supervisor-command-strip">
-                {(queueMetrics.length > 0 ? queueMetrics : [
-                    ["Legal Requests", 0],
-                    ["Case Access", 0],
-                    ["Partner Reviews", 0],
-                    ["Active BOLOs", 0],
-                ]).map(([label, value]) => (
-                    <div key={label} className="supervisor-metric-card">
-                        <span>{label}</span>
-                        <strong>{value}</strong>
-                    </div>
+            <section className="supervisor-admin-links" aria-label="Supervisor administration links">
+                {workspaceCards.map(([key, title, description]) => (
+                    <button
+                        key={key}
+                        type="button"
+                        className={`supervisor-admin-card ${activeWorkspace === key ? "active" : ""}`}
+                        onClick={() => setActiveWorkspace(key)}
+                    >
+                        <strong>{title}</strong>
+                        <small>{description}</small>
+                    </button>
                 ))}
             </section>
 
-            <section className="supervisor-admin-links" aria-label="Supervisor administration links">
-                <Link to="/audit" className="supervisor-admin-card">
-                    <span>Compliance</span>
-                    <strong>Audit Center</strong>
-                    <small>Review access, evidence, and user activity.</small>
-                </Link>
-
-                <Link to="/alerts" className="supervisor-admin-card">
-                    <span>Operations</span>
-                    <strong>Alerts</strong>
-                    <small>Create and monitor field alerts.</small>
-                </Link>
-
-                <Link to="/admin/users" className="supervisor-admin-card">
-                    <span>Administration</span>
-                    <strong>Users</strong>
-                    <small>Manage roles and investigator access.</small>
-                </Link>
-            </section>
-
+            {activeWorkspace === "users" && (
             <div className="supervisor-operations-grid">
                 <section className="supervisor-user-registration">
                     <div className="supervisor-panel-header">
@@ -382,6 +519,59 @@ function SupervisorQueue() {
                     </form>
                 </section>
 
+                <section className="supervisor-user-registration">
+                    <div className="supervisor-panel-header">
+                        <span>User Access</span>
+                        <strong>Disable or Restore Users</strong>
+                    </div>
+
+                    <div className="supervisor-user-list">
+                        {users.length === 0 ? (
+                            <p>No users found for your agency.</p>
+                        ) : (
+                            users.map((user) => (
+                                <article key={user.user_id} className="queue-item">
+                                    <div>
+                                        <strong>{user.username}</strong>
+                                        <span>{user.is_active ? "active" : "disabled"}</span>
+                                    </div>
+                                    <p>{user.email}</p>
+                                    <p>{user.role} | Agency {user.agency_id || "Unassigned"}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateUserStatus(user.user_id, !user.is_active)}
+                                    >
+                                        {user.is_active ? "Disable / Archive" : "Restore User"}
+                                    </button>
+                                    <div className="supervisor-password-reset">
+                                        <input
+                                            type="password"
+                                            placeholder="New temporary password"
+                                            value={resetPasswords[user.user_id] || ""}
+                                            onChange={(event) =>
+                                                setResetPasswords((currentPasswords) => ({
+                                                    ...currentPasswords,
+                                                    [user.user_id]: event.target.value,
+                                                }))
+                                            }
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => resetUserPassword(user.user_id)}
+                                        >
+                                            Reset Password
+                                        </button>
+                                    </div>
+                                </article>
+                            ))
+                        )}
+                    </div>
+                </section>
+            </div>
+            )}
+
+            {activeWorkspace === "case-teams" && (
+            <div className="supervisor-operations-grid">
                 <section className="agency-exchange-panel supervisor-exchange-panel">
                     <div className="agency-exchange-header">
                         <span>Information Sharing</span>
@@ -469,11 +659,123 @@ function SupervisorQueue() {
                         )}
                     </div>
                 </section>
+
+                <section className="case-team-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Case Team</span>
+                        <strong>Assemble Case Team</strong>
+                    </div>
+
+                    <p className="supervisor-panel-note">
+                        Assign the lead investigator on the case record first, then add support
+                        investigators, analysts, or supervisor observers as needed.
+                    </p>
+
+                    <form className="case-team-form" onSubmit={assignCaseTeamMember}>
+                        <input
+                            type="number"
+                            name="case_id"
+                            min="1"
+                            placeholder="Case ID"
+                            value={teamForm.case_id}
+                            onChange={handleTeamChange}
+                            required
+                        />
+
+                        <input
+                            type="number"
+                            name="user_id"
+                            min="1"
+                            placeholder="Team Member User ID"
+                            value={teamForm.user_id}
+                            onChange={handleTeamChange}
+                            required
+                        />
+
+                        <select
+                            name="role"
+                            value={teamForm.role}
+                            onChange={handleTeamChange}
+                        >
+                            <option value="support_investigator">Support Investigator</option>
+                            <option value="analyst_support">Analyst Support</option>
+                            <option value="supervisor_observer">Supervisor Observer</option>
+                        </select>
+
+                        <textarea
+                            name="reason"
+                            placeholder="Why this user is being added to the case team"
+                            value={teamForm.reason}
+                            onChange={handleTeamChange}
+                        />
+
+                        <button type="submit">Assign to Case Team</button>
+                    </form>
+                </section>
             </div>
+            )}
+
+            {activeWorkspace === "court-docs" && (
+                <section className="supervisor-review-section">
+                    <div className="supervisor-panel-header">
+                        <span>Legal Compliance</span>
+                        <strong>Court Documents</strong>
+                    </div>
+                    <div className="supervisor-grid">
+                        <section className="supervisor-panel">
+                            <h2>Warrants, Subpoenas, and Court Orders</h2>
+                            <p>
+                                Use this workspace to track legal authority tied to partner
+                                records, search warrants, subpoenas, wiretap orders, and court
+                                approved requests.
+                            </p>
+                            <Link to="/legal-orders">Open Legal Orders</Link>
+                        </section>
+                        <section className="supervisor-panel">
+                            <h2>Legal Access Requests</h2>
+                            <p>
+                                Review whether requests are approved, pending, denied, or missing
+                                information before they are used with partner sources.
+                            </p>
+                            <Link to="/legal-access">Open Legal Access</Link>
+                        </section>
+                    </div>
+                </section>
+            )}
+
+            {activeWorkspace === "bolos" && (
+                <section className="supervisor-review-section">
+                    <div className="supervisor-panel-header">
+                        <span>Field Awareness</span>
+                        <strong>BOLO Alerts</strong>
+                    </div>
+                    <div className="supervisor-grid">
+                        <section className="supervisor-panel">
+                            <h2>Create or Review BOLOs</h2>
+
+                            {queue?.active_bolos?.length === 0 ? (
+                                <p>No active BOLO alerts.</p>
+                            ) : (
+                                queue?.active_bolos?.map((item) => (
+                                    <article key={item.bolo_id} className="queue-item bolo-preview-item">
+                                        <div>
+                                            <strong>{item.title}</strong>
+                                            <span>{item.risk_level}</span>
+                                        </div>
+                                        <p>{item.description}</p>
+                                    </article>
+                                ))
+                            )}
+
+                            <Link to="/bolos">Open BOLO Board</Link>
+                        </section>
+                    </div>
+                </section>
+            )}
 
             {message && <p className="alert-banner">{message}</p>}
 
-            {queue && (
+            {queue && activeWorkspace === "access" && (
 
                 // Each panel represents a supervisor review category. Keeping them separate
                 // makes the page scannable during active investigations
@@ -498,51 +800,6 @@ function SupervisorQueue() {
                                     </div>
                                     <p>{item.purpose}</p>
                                     <Link to="/legal-access">Review Legal Queue</Link>
-                                </article>
-                            ))
-                        )}
-                    </section>
-
-                    <section className="supervisor-panel">
-                        <h2>Pending Partners</h2>
-
-                        {queue.pending_partner_sources.length === 0 ? (
-                            <p>No pending partner integrations.</p>
-                        ) : (
-                            queue.pending_partner_sources.map((item) => (
-                                <article key={item.integration_source_id || item.id} className="queue-item">
-                                    <div>
-                                        <strong>{item.source_name}</strong>
-                                        <span>{item.status}</span>
-                                    </div>
-                                    <p>{item.source_type}</p>
-                                    <Link to="/partner-sources">Review Partners</Link>
-                                </article>
-                            ))
-                        )}
-                    </section>
-
-                    <section className="supervisor-panel">
-                        <h2>High Priority Cases</h2>
-
-                        {queue.high_priority_cases.length === 0 ? (
-                            <p>No high priority cases.</p>
-                        ) : (
-                            queue.high_priority_cases.map((item) => (
-                                <article key={item.case_id} className="queue-item">
-                                    <div>
-                                        <strong>{item.case_number}</strong>
-                                        <span>{item.priority_level}</span>
-                                    </div>
-                                    <p>{item.title}</p>
-                                    <p className="queue-item-meta">
-                                        Assigned to: {item.investigator_name || (
-                                            item.investigator_id
-                                                ? `Investigator ${item.investigator_id}`
-                                                : "Unassigned"
-                                        )}
-                                    </p>
-                                    <Link to={`/cases/${item.case_id}`}>Open Case</Link>
                                 </article>
                             ))
                         )}
@@ -607,25 +864,6 @@ function SupervisorQueue() {
                                         <span>User {item.user_id}</span>
                                     </div>
                                     <p>{item.reason}</p>
-                                </article>
-                            ))
-                        )}
-                    </section>
-
-                    <section className="supervisor-panel">
-                        <h2>Active BOLO Alerts</h2>
-
-                        {queue.active_bolos.length === 0 ? (
-                            <p>No active BOLO alerts.</p>
-                        ) : (
-                            queue.active_bolos.map((item) => (
-                                <article key={item.bolo_id} className="queue-item bolo-preview-item">
-                                    <div>
-                                        <strong>{item.title}</strong>
-                                        <span>{item.risk_level}</span>
-                                    </div>
-                                    <p>{item.description}</p>
-                                    <Link to="/bolos">Open BOLO Board</Link>
                                 </article>
                             ))
                         )}

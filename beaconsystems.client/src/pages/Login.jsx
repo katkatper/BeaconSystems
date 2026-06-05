@@ -15,6 +15,14 @@ function Login({ onLogin }) {
     const [pendingToken, setPendingToken] = useState("");
     const navigate = useNavigate();
 
+    const getLandingPath = (role) => {
+        if (role === "agency_admin" || role === "supervisor") {
+            return "/supervisor";
+        }
+
+        return "/";
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
@@ -53,7 +61,7 @@ function Login({ onLogin }) {
                 onLogin(data.access_token);
             }
 
-            navigate("/");
+            navigate(getLandingPath(data.role));
         } catch (err) {
             console.error(err);
             setError("Invalid username or password");
@@ -92,7 +100,7 @@ function Login({ onLogin }) {
                 onLogin(pendingToken);
             }
 
-            navigate("/");
+            navigate(getLandingPath(localStorage.getItem("role")));
         } catch (err) {
             console.error(err);
             setError(err.message || "Could not update password");

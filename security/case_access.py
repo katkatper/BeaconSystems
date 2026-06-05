@@ -6,11 +6,13 @@ from sqlalchemy.orm import Session
 
 from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
+from models.case_team_member import CaseTeamMember
 from models.user import User
 
 
 # Case access is the core "need-to-know" boundary for Beacon. Investigators see
-# assigned cases plus active grants; supervisors see agency cases; admins see all.
+# lead-assigned cases, active case-team memberships, and active grants.
+# Supervisors see agency cases; admins see all.
 def apply_case_access_filter(query, current_user: User, include_grants: bool = True):
     if current_user.role == "admin":
         return query
@@ -20,6 +22,12 @@ def apply_case_access_filter(query, current_user: User, include_grants: bool = T
 
     if current_user.role == "investigator":
         filters = [Cases.investigator_id == current_user.user_id]
+
+        team_case_ids = query.session.query(CaseTeamMember.case_id).filter(
+            CaseTeamMember.user_id == current_user.user_id,
+            CaseTeamMember.status == "active",
+        )
+        filters.append(Cases.case_id.in_(team_case_ids))
 
         if include_grants:
             granted_case_ids = query.session.query(CaseAccessGrant.case_id).filter(

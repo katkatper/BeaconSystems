@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import FileResponse
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from pathlib import Path
 import shutil
@@ -9,10 +8,12 @@ from uuid import uuid4
 from database.connection import get_db
 from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
-from models.case_access_grant import CaseAccessGrant
 from models.user import User
-from models.case import Cases
 from security.auth import get_current_user
+from security.case_access import (
+    apply_related_case_access_filter,
+    assert_case_write_access as assert_authorized_case_write_access,
+)
 from services.activity_service import create_activity_log
 
 router = APIRouter(
@@ -25,32 +26,12 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 def apply_evidence_case_access(query, current_user: User, include_grants: bool = True):
-    if current_user.role == "admin":
-        return query
-
-    case_query = query.session.query(Cases.case_id)
-
-    if current_user.role == "agency_admin":
-        case_query = case_query.filter(Cases.agency_id == current_user.agency_id)
-        return query.filter(Evidence.case_id.in_(case_query))
-
-    if current_user.role == "investigator":
-        filters = [Cases.investigator_id == current_user.user_id]
-
-        if include_grants:
-            granted_case_ids = query.session.query(CaseAccessGrant.case_id).filter(
-                CaseAccessGrant.user_id == current_user.user_id,
-                CaseAccessGrant.status == "active",
-            )
-            filters.append(Cases.case_id.in_(granted_case_ids))
-
-        case_query = case_query.filter(Cases.agency_id == current_user.agency_id).filter(
-            or_(*filters)
-        )
-
-        return query.filter(Evidence.case_id.in_(case_query))
-
-    return query.filter(Evidence.evidence_id == -1)
+    return apply_related_case_access_filter(
+        query=query,
+        case_id_column=Evidence.case_id,
+        current_user=current_user,
+        include_grants=include_grants,
+    )
 
 
 def get_authorized_evidence(
@@ -69,24 +50,7 @@ def get_authorized_evidence(
 
 
 def assert_case_write_access(db: Session, case_id: int, current_user: User):
-    query = db.query(Cases).filter(Cases.case_id == case_id)
-
-    if current_user.role == "admin":
-        case = query.first()
-    elif current_user.role == "agency_admin":
-        case = query.filter(Cases.agency_id == current_user.agency_id).first()
-    elif current_user.role == "investigator":
-        case = query.filter(
-            Cases.agency_id == current_user.agency_id,
-            Cases.investigator_id == current_user.user_id,
-        ).first()
-    else:
-        case = None
-
-    if not case:
-        raise HTTPException(status_code=403, detail="Case access denied")
-
-    return case
+    return assert_authorized_case_write_access(db, case_id, current_user)
 
 
 @router.get("/")
@@ -225,17 +189,9 @@ def view_evidence(
     evidence = get_authorized_evidence(db, evidence_id, current_user)
 
     if evidence.is_sensitive:
-        case = db.query(Cases).filter(
-            Cases.case_id == evidence.case_id
-        ).first()
-
-        allowed_roles = ["admin", "agency_admin"]
-
-        is_assigned_investigator = (
-            case and case.investigator_id == current_user.user_id
-        )
-
-        if current_user.role not in allowed_roles and not is_assigned_investigator:
+        try:
+            assert_authorized_case_write_access(db, evidence.case_id, current_user)
+        except HTTPException:
             raise HTTPException(
                 status_code=403,
                 detail="You do not have permission to access sensitive evidence.",

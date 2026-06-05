@@ -8,6 +8,104 @@ function Dashboard() {
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
     );
+    const role = localStorage.getItem("role") || "viewer";
+    const username = localStorage.getItem("username") || "Beacon User";
+    const dashboardProfiles = {
+        admin: {
+            title: "Command Center",
+            greeting: `Administrator overview for ${username}`,
+            showCompliance: true,
+            showBolos: true,
+            showEvidence: true,
+            actions: [
+                ["Create Case", "/create-case"],
+                ["Request Case Access", "/case-access"],
+                ["Upload Evidence", "/evidence-upload"],
+                ["Request Legal Access", "/legal-access"],
+                ["Request Legal Order", "/legal-orders"],
+                ["Create BOLO", "/bolos"],
+                ["Review Partner Data", "/partner-sources"],
+                ["Manage Users", "/admin/users"],
+                ["Audit Center", "/audit"],
+                ["Agencies", "/agencies"],
+                ["Open Intelligence", "/intelligence"],
+            ],
+        },
+        agency_admin: {
+            title: "Supervisor Operations",
+            greeting: `Agency oversight queue for ${username}`,
+            showCompliance: true,
+            showBolos: true,
+            showEvidence: true,
+            actions: [
+                ["Create Case", "/create-case"],
+                ["Assign Case Teams", "/supervisor"],
+                ["Request Legal Access", "/legal-access"],
+                ["Request Legal Order", "/legal-orders"],
+                ["Create BOLO", "/bolos"],
+                ["Review Partner Data", "/partner-sources"],
+                ["Shared Agency Information", "/cases"],
+                ["Open Intelligence", "/intelligence"],
+            ],
+        },
+        supervisor: {
+            title: "Supervisor Operations",
+            greeting: `Team workload and case oversight for ${username}`,
+            showCompliance: true,
+            showBolos: true,
+            showEvidence: true,
+            actions: [
+                ["Assign Case Teams", "/supervisor"],
+                ["Review Case Access", "/supervisor"],
+                ["Request Legal Access", "/legal-access"],
+                ["Request Legal Order", "/legal-orders"],
+                ["Create BOLO", "/bolos"],
+                ["Review Partner Data", "/partner-sources"],
+                ["Open Intelligence", "/intelligence"],
+            ],
+        },
+        investigator: {
+            title: "Investigator Workspace",
+            greeting: `Assigned cases and team activity for ${username}`,
+            showCompliance: false,
+            showBolos: true,
+            showEvidence: true,
+            actions: [
+                ["Open My Cases", "/cases"],
+                ["Request Case Access", "/case-access"],
+                ["Upload Evidence", "/evidence-upload"],
+                ["Request Legal Access", "/legal-access"],
+                ["Review Partner Data", "/partner-sources"],
+                ["Open Intelligence", "/intelligence"],
+                ["Create BOLO", "/bolos"],
+            ],
+        },
+        analyst: {
+            title: "Intelligence Workspace",
+            greeting: `Analytical work queue for ${username}`,
+            showCompliance: false,
+            showBolos: true,
+            showEvidence: true,
+            actions: [
+                ["Open Cases", "/cases"],
+                ["Review Evidence", "/evidence-upload"],
+                ["Review Partner Data", "/partner-sources"],
+                ["Open Intelligence", "/intelligence"],
+                ["BOLO Board", "/bolos"],
+            ],
+        },
+        viewer: {
+            title: "Beacon Workspace",
+            greeting: `Authorized view for ${username}`,
+            showCompliance: false,
+            showBolos: false,
+            showEvidence: false,
+            actions: [
+                ["Open Cases", "/cases"],
+            ],
+        },
+    };
+    const profile = dashboardProfiles[role] || dashboardProfiles.viewer;
 
     // Refresh the dashboard summary so command-center data stays current while
     // the user keeps the page open.
@@ -68,7 +166,8 @@ function Dashboard() {
     return (
         <div className="dashboard-page">
             <div className="dashboard-header">
-                <h1>Command Center</h1>
+                <h1>{profile.title}</h1>
+                <p>{profile.greeting}</p>
             </div>
 
             {error && (
@@ -122,6 +221,7 @@ function Dashboard() {
 
                             {/* Active BOLOs are surfaced on the dashboard for urgent field awareness. */}
 
+                            {profile.showBolos && (
                             <section className="dashboard-panel">
                                 <div className="dashboard-panel-header">
                                     <span>Field Awareness</span>
@@ -146,7 +246,9 @@ function Dashboard() {
                                 ))
                             )}
                             </section>
+                            )}
                         
+                            {profile.showEvidence && (
                             <section className="dashboard-panel">
                                 <div className="dashboard-panel-header">
                                     <span>Evidence</span>
@@ -167,8 +269,9 @@ function Dashboard() {
                                 ))
                             )}
                             </section>
+                            )}
 
-                       
+                            {profile.showCompliance && (
                             <section className="dashboard-panel">
                                 <div className="dashboard-panel-header">
                                     <span>Compliance</span>
@@ -195,6 +298,7 @@ function Dashboard() {
                                     </span>
                                 </div>
                             </section>
+                            )}
 
                             <section className="dashboard-panel dashboard-actions-panel">
                                 <div className="dashboard-panel-header">
@@ -203,15 +307,11 @@ function Dashboard() {
                                 </div>
                                 <h2>Command Actions</h2>
                                 <div className="dashboard-action-list">
-                                    <Link to="/create-case">Create Case</Link>
-                                    <Link to="/case-access">Request Case Access</Link>
-                                    <Link to="/evidence-upload">Upload Evidence</Link>
-                                    <Link to="/legal-access">Request Legal Access</Link>
-                                    <Link to="/legal-orders">Request Legal Order</Link>
-                                    <Link to="/bolos">Create BOLO</Link>
-                                    <Link to="/cases">Shared Agency Information</Link>
-                                    <Link to="/partner-sources">Review Partner Data</Link>
-                                    <Link to="/intelligence">Open Intelligence</Link>
+                                    {profile.actions.map(([label, path]) => (
+                                        <Link key={`${label}-${path}`} to={path}>
+                                            {label}
+                                        </Link>
+                                    ))}
                                 </div>
                             </section>
                         </div>

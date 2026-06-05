@@ -25,6 +25,7 @@ from models.external_record import ExternalRecord
 from models.evidence_chain import EvidenceChain
 from models.legal_access_request import LegalAccessRequest
 from models.case_access_grant import CaseAccessGrant
+from models.case_team_member import CaseTeamMember
 
 
 

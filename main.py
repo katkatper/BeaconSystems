@@ -26,6 +26,7 @@ from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
 from models.legal_access_request import LegalAccessRequest
 from models.case_access_grant import CaseAccessGrant
+from models.case_team_member import CaseTeamMember
 from models.leads import Leads
 from models.person import Person
 from models.timeline_events import Timeline_Event
