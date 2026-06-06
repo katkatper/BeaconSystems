@@ -3,9 +3,11 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
+from models.IntegrationSource import IntegrationSource
 from models.activity_log import ActivityLog
 from models.case_access_grant import CaseAccessGrant
 from models.evidence_chain import EvidenceChain
+from models.legal_access_request import LegalAccessRequest
 from models.user import User
 from security.auth import require_role
 
@@ -24,6 +26,8 @@ def get_audit_summary(
     activity_query = db.query(ActivityLog)
     access_query = db.query(CaseAccessGrant)
     evidence_query = db.query(EvidenceChain)
+    legal_query = db.query(LegalAccessRequest)
+    partner_query = db.query(IntegrationSource)
 
     # Admin can review the whole system. Agency admins only see audit records
     # scoped to their agency where the table supports agency scoping.
@@ -34,8 +38,30 @@ def get_audit_summary(
         access_query = access_query.filter(
             CaseAccessGrant.agency_id == current_user.agency_id
         )
+        legal_query = legal_query.filter(
+            LegalAccessRequest.agency_id == current_user.agency_id
+        )
 
     return {
+        "compliance_readiness": {
+            "audit_logging_active": True,
+            "evidence_chain_active": True,
+            "missing_info_legal_requests": legal_query.filter(
+                LegalAccessRequest.status == "missing_info"
+            ).count(),
+            "denied_legal_requests": legal_query.filter(
+                LegalAccessRequest.status == "denied"
+            ).count(),
+            "pending_legal_requests": legal_query.filter(
+                LegalAccessRequest.status == "pending"
+            ).count(),
+            "approved_legal_requests": legal_query.filter(
+                LegalAccessRequest.status == "approved"
+            ).count(),
+            "pending_partner_sources": partner_query.filter(
+                IntegrationSource.status == "pending"
+            ).count(),
+        },
         "recent_activity": (
             activity_query
             .order_by(ActivityLog.timestamp.desc())

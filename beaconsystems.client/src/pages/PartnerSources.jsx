@@ -87,9 +87,29 @@ function PartnerSources() {
     const [sourceForm, setSourceForm] = useState(emptySourceForm);
     const [intakeForm, setIntakeForm] = useState(emptyIntakeForm);
     const [reviewForms, setReviewForms] = useState({});
+    const [expandedLists, setExpandedLists] = useState({});
+    const [sourceSearch, setSourceSearch] = useState("");
+    const [sourceStatusFilter, setSourceStatusFilter] = useState("all");
+    const [sourceTypeFilter, setSourceTypeFilter] = useState("all");
     const role = localStorage.getItem("role");
     const canCreatePartnerSource = role === "admin";
     const canReceivePartnerData = role === "admin" || role === "agency_admin";
+    const visibleItems = (key, items) =>
+        (items || []).slice(0, expandedLists[key] ? 6 : 2);
+    const renderListToggle = (key, count, label) => count > 2 ? (
+        <button
+            type="button"
+            className="list-toggle-button"
+            onClick={() =>
+                setExpandedLists((current) => ({
+                    ...current,
+                    [key]: !current[key],
+                }))
+            }
+        >
+            {expandedLists[key] ? "Show fewer" : `Show ${Math.min(4, count - 2)} more ${label}`}
+        </button>
+    ) : null;
 
     const approvedSources = useMemo(
         () =>
@@ -98,6 +118,31 @@ function PartnerSources() {
             ),
         [sources]
     );
+    const filteredSources = useMemo(() => {
+        const searchTerm = sourceSearch.trim().toLowerCase();
+
+        return sources
+            .filter((source) => {
+                const searchText = [
+                    source.name,
+                    source.source_type,
+                    source.status,
+                    source.description,
+                    source.api_url,
+                ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .toLowerCase();
+                const matchesSearch = !searchTerm || searchText.includes(searchTerm);
+                const matchesStatus = sourceStatusFilter === "all" || source.status === sourceStatusFilter;
+                const matchesType = sourceTypeFilter === "all" || source.source_type === sourceTypeFilter;
+
+                return matchesSearch && matchesStatus && matchesType;
+            })
+            .sort((firstSource, secondSource) =>
+                (firstSource.name || "").localeCompare(secondSource.name || "")
+            );
+    }, [sourceSearch, sourceStatusFilter, sourceTypeFilter, sources]);
 
     const sourceNameById = useMemo(() => {
         return sources.reduce((lookup, source) => {
@@ -414,7 +459,7 @@ function PartnerSources() {
                         <p>No partner data waiting for review.</p>
                     ) : (
                         <div className="partner-intake-list">
-                            {intakeRecords.map((record) => (
+                            {visibleItems("intakeRecords", intakeRecords).map((record) => (
                                 <article
                                     key={record.intake_id}
                                     className="partner-intake-card"
@@ -588,18 +633,49 @@ function PartnerSources() {
                                     </div>
                                 </article>
                             ))}
+                            {renderListToggle("intakeRecords", intakeRecords.length, "records")}
                         </div>
                     )}
                 </section>
 
                 <section className="partner-panel">
                     <h2>Source Registry</h2>
+                    <div className="partner-source-controls">
+                        <input
+                            type="search"
+                            placeholder="Search partners"
+                            value={sourceSearch}
+                            onChange={(event) => setSourceSearch(event.target.value)}
+                        />
+                        <select
+                            value={sourceStatusFilter}
+                            onChange={(event) => setSourceStatusFilter(event.target.value)}
+                        >
+                            <option value="all">All statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="suspended">Suspended</option>
+                            <option value="revoked">Revoked</option>
+                            <option value="denied">Denied</option>
+                        </select>
+                        <select
+                            value={sourceTypeFilter}
+                            onChange={(event) => setSourceTypeFilter(event.target.value)}
+                        >
+                            <option value="all">All types</option>
+                            {sourceTypes.map((type) => (
+                                <option key={type} value={type}>
+                                    {type.replace("_", " ")}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                    {sources.length === 0 ? (
-                        <p>No partner sources registered yet.</p>
+                    {filteredSources.length === 0 ? (
+                        <p>No partner sources match the current filters.</p>
                     ) : (
                         <div className="partner-list">
-                            {sources.map((source) => {
+                            {filteredSources.map((source) => {
                                 const recordCount = externalRecords.filter(
                                     (record) =>
                                         record.integration_source_id === source.id

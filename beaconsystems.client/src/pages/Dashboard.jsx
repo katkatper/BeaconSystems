@@ -14,94 +14,75 @@ function Dashboard() {
         admin: {
             title: "Command Center",
             greeting: `Administrator overview for ${username}`,
-            showCompliance: true,
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Create Case", "/create-case"],
-                ["Request Case Access", "/case-access"],
-                ["Upload Evidence", "/evidence-upload"],
-                ["Request Legal Access", "/legal-access"],
-                ["Request Legal Order", "/legal-orders"],
-                ["Create BOLO", "/alerts"],
-                ["Review Partner Data", "/partner-sources"],
-                ["Manage Users", "/admin/users"],
+                ["Case", "/cases"],
+                ["Legal Order", "/legal-orders"],
+                ["Alert", "/alerts"],
+                ["Personnel", "/supervisor/personnel"],
                 ["Audit Center", "/audit"],
-                ["Agencies", "/agencies"],
-                ["Open Intelligence", "/intelligence"],
+                ["Evidence", "/evidence-upload"],
             ],
         },
         agency_admin: {
             title: "Supervisor Operations",
             greeting: `Agency oversight queue for ${username}`,
-            showCompliance: true,
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Create Case", "/create-case"],
-                ["Assign Case Teams", "/supervisor"],
-                ["Request Legal Access", "/legal-access"],
-                ["Request Legal Order", "/legal-orders"],
-                ["Create BOLO", "/alerts"],
-                ["Review Partner Data", "/partner-sources"],
-                ["Shared Agency Information", "/cases"],
-                ["Open Intelligence", "/intelligence"],
+                ["Case", "/cases"],
+                ["Legal Order", "/legal-orders"],
+                ["Alert", "/alerts"],
+                ["Personnel", "/supervisor/personnel"],
+                ["Audit Center", "/audit"],
+                ["Evidence", "/evidence-upload"],
             ],
         },
         supervisor: {
             title: "Supervisor Operations",
             greeting: `Team workload and case oversight for ${username}`,
-            showCompliance: true,
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Assign Case Teams", "/supervisor"],
-                ["Review Case Access", "/supervisor"],
-                ["Request Legal Access", "/legal-access"],
-                ["Request Legal Order", "/legal-orders"],
-                ["Create BOLO", "/alerts"],
-                ["Review Partner Data", "/partner-sources"],
-                ["Open Intelligence", "/intelligence"],
+                ["Case", "/cases"],
+                ["Legal Order", "/legal-orders"],
+                ["Alert", "/alerts"],
+                ["Personnel", "/supervisor/personnel"],
+                ["Audit Center", "/audit"],
+                ["Evidence", "/evidence-upload"],
             ],
         },
         investigator: {
             title: "Investigator Workspace",
             greeting: `Assigned cases and team activity for ${username}`,
-            showCompliance: false,
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Open My Cases", "/cases"],
-                ["Request Case Access", "/case-access"],
-                ["Upload Evidence", "/evidence-upload"],
-                ["Request Legal Access", "/legal-access"],
-                ["Review Partner Data", "/partner-sources"],
-                ["Open Intelligence", "/intelligence"],
-                ["Create BOLO", "/alerts"],
+                ["Case", "/cases"],
+                ["Legal Order", "/legal-orders"],
+                ["Alert", "/alerts"],
+                ["Evidence", "/evidence-upload"],
             ],
         },
         analyst: {
             title: "Intelligence Workspace",
             greeting: `Analytical work queue for ${username}`,
-            showCompliance: false,
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Open Cases", "/cases"],
-                ["Review Evidence", "/evidence-upload"],
-                ["Review Partner Data", "/partner-sources"],
-                ["Open Intelligence", "/intelligence"],
-                ["BOLO Board", "/alerts"],
+                ["Case", "/cases"],
+                ["Alert", "/alerts"],
+                ["Evidence", "/evidence-upload"],
             ],
         },
         viewer: {
             title: "Beacon Workspace",
             greeting: `Authorized view for ${username}`,
-            showCompliance: false,
             showBolos: false,
             showEvidence: false,
             actions: [
-                ["Open Cases", "/cases"],
+                ["Case", "/cases"],
             ],
         },
     };
@@ -204,7 +185,7 @@ function Dashboard() {
                             {!summary || summary.urgent_cases?.length === 0 ? (
                                 <p>No high priority cases in your queue.</p>
                             ) : (
-                                summary.urgent_cases?.map((caseItem) => (
+                                summary.urgent_cases?.slice(0, 2).map((caseItem) => (
                                     <article key={caseItem.case_id} className="queue-item">
                                         <div>
                                             <strong>{caseItem.case_number}</strong>
@@ -232,7 +213,7 @@ function Dashboard() {
                             {!summary || summary.active_bolos?.length === 0 ? (
                                 <p>No active BOLO alerts.</p>
                             ) : (
-                                summary.active_bolos?.map((bolo) => (
+                                summary.active_bolos?.slice(0, 2).map((bolo) => (
                                     <article key={bolo.bolo_id} className="queue-item bolo-preview-item">
                                         <div>
                                             <strong>{bolo.title}</strong>
@@ -252,13 +233,13 @@ function Dashboard() {
                             <section className="dashboard-panel">
                                 <div className="dashboard-panel-header">
                                     <span>Evidence</span>
-                                    <Link to="/evidence">Open</Link>
+                                    <Link to="/evidence-upload">Open</Link>
                                 </div>
                                 <h2>Evidence Watch</h2>
                             {!summary || summary.recent_evidence?.length === 0 ? (
                                 <p>No recent evidence uploads.</p>
                             ) : (
-                                summary.recent_evidence?.map((item) => (
+                                summary.recent_evidence?.slice(0, 2).map((item) => (
                                     <article key={item.evidence_id} className="queue-item">
                                         <div>
                                             <strong>{item.file_name || "Unnamed file"}</strong>
@@ -268,35 +249,6 @@ function Dashboard() {
                                     </article>
                                 ))
                             )}
-                            </section>
-                            )}
-
-                            {profile.showCompliance && (
-                            <section className="dashboard-panel">
-                                <div className="dashboard-panel-header">
-                                    <span>Compliance</span>
-                                    <Link to="/audit">Audit</Link>
-                                </div>
-                                <h2>Compliance Readiness</h2>
-                                <div className="compliance-list">
-                                    <span className="compliance-ok">Audit logging active</span>
-                                    <span className="compliance-ok">Evidence chain of custody active</span>
-                                    <span className="compliance-warning">
-                                        Missing legal info: {summary?.missing_info_legal_requests ?? 0}
-                                    </span>
-                                    <span className="compliance-danger">
-                                        Denied legal docs: {summary?.denied_legal_requests ?? 0}
-                                    </span>
-                                    <span className="compliance-pending">
-                                        Legal docs pending review: {summary?.pending_legal_requests ?? 0}
-                                    </span>
-                                    <span className="compliance-ok">
-                                        Approved legal docs: {summary?.approved_legal_requests ?? 0}
-                                    </span>
-                                    <span className="compliance-pending">
-                                        Partner source approvals: {summary?.pending_partner_sources ?? 0}
-                                    </span>
-                                </div>
                             </section>
                             )}
 

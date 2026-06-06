@@ -35,43 +35,62 @@ function PersonDetail() {
             });
     }, [id]);
 
+    if (!person) {
+        return (
+            <div className="person-detail-page">
+                <p>Loading person profile...</p>
+            </div>
+        );
+    }
 
     return (
 
-        <div>
-            <h1>{person.first_name} {person.last_name}</h1>
+        <div className="person-detail-page">
+            <header className="person-detail-header">
+                <h1>{person.first_name} {person.last_name}</h1>
+            </header>
 
-            <p>Age: {person.age}</p>
-            <p>Eye Color: {person.eye_color}</p>
-            <p>Hair Color: {person.hair_color}</p>
-            <p>Height: {person.height}</p>
-            <p>Weight: {person.weight}</p>
+            <div className="person-detail-grid">
+                <section className="person-profile-card">
+                    <h2>Profile</h2>
+                    <p>Age: {person.age || "Unknown"}</p>
+                    <p>Eye Color: {person.eye_color || "Not recorded"}</p>
+                    <p>Hair Color: {person.hair_color || "Not recorded"}</p>
+                    <p>Height: {person.height || "Not recorded"}</p>
+                    <p>Weight: {person.weight || "Not recorded"}</p>
+                    <p>Risk Level: {person.risk_level || "Unknown"}</p>
+                    <p>Status: {person.status || "Unknown"}</p>
+                    <p>Last Seen: {person.last_seen_location || "Not recorded"}</p>
+                    <p>{person.description || "No description recorded."}</p>
+                </section>
 
-            <p>Risk Level: {person.risk_level}</p>
-            <p>Status: {person.status}</p>
+                <section className="person-profile-card">
+                    <h2>Related Cases</h2>
 
-            <p>Last Seen: {person.last_seen_location}</p>
-            <p>Description: {person.description}</p>
+                    {cases.length === 0 && <p>No cases found.</p>}
 
+                    {[...cases]
+                        .sort((firstCase, secondCase) =>
+                            (firstCase.case_number || "").localeCompare(secondCase.case_number || "")
+                        )
+                        .slice(0, 6)
+                        .map((c) => (
+                            <article key={c.case_id} className="queue-item">
+                                <p>Case #: {c.case_number}</p>
+                                <p>Status: {c.case_status}</p>
 
-            <h2>Related Cases</h2>
-
-            {cases.length === 0 && <p>No cases found.</p>}
-
-            {cases.map((c) => (
-                <div key={c.case_id}>
-                    <p>Case #: {c.case_number}</p>
-                    <p>Status: {c.case_status}</p>
-
-                    <button
-                        onClick={() => {
-                            window.location.href = `/cases/${c.case_id}`;
-                        }}
-                    >
-                        Open Case
-                    </button>
-                </div>
-            ))}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        window.location.href = `/cases/${c.case_id}`;
+                                    }}
+                                >
+                                    Open Case
+                                </button>
+                            </article>
+                        ))}
+                </section>
+            </div>
         </div>
     );
 }

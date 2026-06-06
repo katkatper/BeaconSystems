@@ -42,6 +42,8 @@ const fetchLegalOrders = async (token) => {
 function LegalOrders() {
     const [orders, setOrders] = useState([]);
     const [message, setMessage] = useState("");
+    const [showMorePending, setShowMorePending] = useState(false);
+    const [showMoreApproved, setShowMoreApproved] = useState(false);
     const [form, setForm] = useState({
         case_id: "",
         requester_name: "",
@@ -278,7 +280,7 @@ function LegalOrders() {
                         <p>No legal order requests awaiting approval.</p>
                     ) : (
                         <div className="legal-request-list">
-                            {pendingOrders.map((order) => (
+                            {pendingOrders.slice(0, showMorePending ? 6 : 2).map((order) => (
                                 <article
                                     key={order.request_id}
                                     className="legal-request-card"
@@ -300,6 +302,15 @@ function LegalOrders() {
                                     <p>{order.scope_description}</p>
                                 </article>
                             ))}
+                            {pendingOrders.length > 2 && (
+                                <button
+                                    type="button"
+                                    className="list-toggle-button"
+                                    onClick={() => setShowMorePending((current) => !current)}
+                                >
+                                    {showMorePending ? "Show fewer" : `Show ${Math.min(4, pendingOrders.length - 2)} more requests`}
+                                </button>
+                            )}
                         </div>
                     )}
                 </section>
@@ -311,7 +322,7 @@ function LegalOrders() {
                         <p>No approved legal orders ready for partner service.</p>
                     ) : (
                         <div className="legal-request-list">
-                            {approvedOrders.map((order) => (
+                            {approvedOrders.slice(0, showMoreApproved ? 6 : 2).map((order) => (
                                 <article
                                     key={order.request_id}
                                     className="legal-request-card"
@@ -334,6 +345,15 @@ function LegalOrders() {
                                     <p>{order.scope_description}</p>
                                 </article>
                             ))}
+                            {approvedOrders.length > 2 && (
+                                <button
+                                    type="button"
+                                    className="list-toggle-button"
+                                    onClick={() => setShowMoreApproved((current) => !current)}
+                                >
+                                    {showMoreApproved ? "Show fewer" : `Show ${Math.min(4, approvedOrders.length - 2)} more orders`}
+                                </button>
+                            )}
                         </div>
                     )}
                 </section>

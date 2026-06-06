@@ -155,6 +155,7 @@ function AgencyManagement() {
     const [message, setMessage] = useState("");
     const [expandedAgencyId, setExpandedAgencyId] = useState(null);
     const [agencySearch, setAgencySearch] = useState("");
+    const [showMoreAgencies, setShowMoreAgencies] = useState(false);
 
     const token = localStorage.getItem("token");
 
@@ -213,13 +214,7 @@ function AgencyManagement() {
             return searchText.includes(agencySearch.trim().toLowerCase());
         })
         .sort((firstAgency, secondAgency) => {
-            const firstState = firstAgency.state || "";
-            const secondState = secondAgency.state || "";
-
-            return (
-                firstState.localeCompare(secondState) ||
-                (firstAgency.agency_name || "").localeCompare(secondAgency.agency_name || "")
-            );
+            return (firstAgency.agency_name || "").localeCompare(secondAgency.agency_name || "");
         });
 
     return (
@@ -250,7 +245,7 @@ function AgencyManagement() {
                 </section>
             ) : (
                 <div className="agencies-grid">
-                    {filteredAgencies.map((agency) => (
+                    {filteredAgencies.slice(0, showMoreAgencies ? 6 : 2).map((agency) => (
                         <article key={agency.agency_id} className="agency-card">
                             <div className="agency-card-topline">
                                 <button
@@ -284,6 +279,15 @@ function AgencyManagement() {
                             )}
                         </article>
                     ))}
+                    {filteredAgencies.length > 2 && (
+                        <button
+                            type="button"
+                            className="list-toggle-button"
+                            onClick={() => setShowMoreAgencies((current) => !current)}
+                        >
+                            {showMoreAgencies ? "Show fewer" : `Show ${Math.min(4, filteredAgencies.length - 2)} more agencies`}
+                        </button>
+                    )}
                 </div>
             )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 
 // SupervisorQueue gives agency leadership one place to review items that need
@@ -10,12 +10,12 @@ function SupervisorQueue() {
     const [queue, setQueue] = useState(null);
     const [message, setMessage] = useState("");
     const [reviewNotes, setReviewNotes] = useState({});
-    const [activeWorkspace, setActiveWorkspace] = useState("investigations");
     const [users, setUsers] = useState([]);
     const [userSearch, setUserSearch] = useState("");
     const [userRoleFilter, setUserRoleFilter] = useState("all");
     const [userStatusFilter, setUserStatusFilter] = useState("active");
     const [resetPasswords, setResetPasswords] = useState({});
+    const [expandedSections, setExpandedSections] = useState({});
     const [newUser, setNewUser] = useState({
         username: "",
         email: "",
@@ -42,6 +42,9 @@ function SupervisorQueue() {
 
     const token = localStorage.getItem("token");
     const currentRole = localStorage.getItem("role") || "viewer";
+    const location = useLocation();
+    const workspaceFromPath = location.pathname.split("/")[2] || "";
+    const activeWorkspace = workspaceFromPath || null;
 
     const getApiErrorMessage = (errorData, fallback) => {
         if (Array.isArray(errorData.detail)) {
@@ -99,14 +102,54 @@ function SupervisorQueue() {
     const oversightCount = (queue?.pending_legal_requests?.length || 0) +
         (queue?.pending_case_access?.length || 0) +
         (queue?.recent_case_access?.length || 0);
+    const commandDashboard = queue?.command_dashboard || {};
+    const investigatorWorkload = queue?.investigator_workload || [];
+    const overloadedInvestigators = investigatorWorkload.filter((item) =>
+        item.workload_status === "overloaded"
+    );
+    const capacityInvestigators = investigatorWorkload.filter((item) =>
+        item.workload_status === "capacity"
+    );
+    const productiveInvestigators = [...investigatorWorkload]
+        .sort((a, b) => (b.recent_results || 0) - (a.recent_results || 0))
+        .slice(0, 6);
+    const stallRiskSummary = queue?.stall_risk_summary || {};
+    const leadSummary = queue?.lead_summary || {};
+    const timelineSummary = queue?.timeline_summary || {};
+    const agencyCoordination = queue?.agency_coordination || {};
     const workspaceCards = [
-        ["personnel", "Personnel", "Keep investigators staffed, active, and able to work.", users.length],
-        ["investigations", "Investigations", "Move missing person cases forward faster.", queue?.high_priority_cases?.length || 0],
-        ["operations", "Operations", "Coordinate alerts, BOLOs, and urgent field activity.", queue?.active_bolos?.length || 0],
-        ["compliance", "Compliance", "Keep legal, access, audit, and evidence reviews clean.", oversightCount],
-        ["community", "Agency Coordination", "Reduce handoffs across partner agencies and public leads.", exchanges.length],
-        ["reports", "Reports", "Give command staff a clear operating picture.", users.length + oversightCount],
+        ["personnel", "Personnel", "Staffing, users, teams, and workload.", capacityInvestigators.length],
+        ["investigations", "Investigations", "Stalls, leads, timelines, sightings, and evidence.", commandDashboard.cases_needing_attention_today || 0],
+        ["operations", "Operations", "Alerts, BOLOs, and urgent field activity.", commandDashboard.critical_alerts || queue?.active_bolos?.length || 0],
+        ["compliance", "Compliance", "Legal, access, audit, and evidence reviews.", oversightCount],
+        ["community", "Agency Coordination", "Partner agencies, shared intelligence, and requests.", agencyCoordination.shared_intelligence || exchanges.length],
+        ["reports", "Reports", "Command snapshots and performance summaries.", commandDashboard.active_cases || 0],
     ];
+    const visibleItems = (sectionKey, items, collapsedCount = 2, expandedCount = 6) =>
+        (items || []).slice(0, expandedSections[sectionKey] ? expandedCount : collapsedCount);
+    const renderListToggle = (sectionKey, totalCount, label = "items", expandedCount = 6) => {
+        if (totalCount <= 2) {
+            return null;
+        }
+
+        const isExpanded = expandedSections[sectionKey];
+        const visibleMoreCount = Math.min(expandedCount, totalCount) - 2;
+
+        return (
+            <button
+                type="button"
+                className="supervisor-list-toggle"
+                onClick={() =>
+                    setExpandedSections((current) => ({
+                        ...current,
+                        [sectionKey]: !current[sectionKey],
+                    }))
+                }
+            >
+                {isExpanded ? "Show fewer" : `Show ${visibleMoreCount} more ${label}`}
+            </button>
+        );
+    };
 
 
  // Load the review queue once when the page opens. The backend enforces that
@@ -491,17 +534,39 @@ function SupervisorQueue() {
 
             <section className="supervisor-admin-links" aria-label="Supervisor administration links">
                 {workspaceCards.map(([key, title, description, count]) => (
-                    <button
+                    <Link
                         key={key}
-                        type="button"
+                        to={`/supervisor/${key}`}
                         className={`supervisor-admin-card ${activeWorkspace === key ? "active" : ""}`}
-                        onClick={() => setActiveWorkspace(key)}
                     >
                         <span className="supervisor-workspace-count">{count}</span>
                         <strong>{title}</strong>
                         <small>{description}</small>
-                    </button>
+                    </Link>
                 ))}
+            </section>
+
+            <section className="supervisor-command-strip" aria-label="Command dashboard">
+                <article className="supervisor-metric-card">
+                    <span>Active Cases</span>
+                    <strong>{commandDashboard.active_cases || 0}</strong>
+                    <small>Open investigations now</small>
+                </article>
+                <article className="supervisor-metric-card">
+                    <span>High-Risk Missing Persons</span>
+                    <strong>{commandDashboard.high_risk_missing_persons || 0}</strong>
+                    <small>High or critical priority</small>
+                </article>
+                <article className="supervisor-metric-card">
+                    <span>Critical Alerts</span>
+                    <strong>{commandDashboard.critical_alerts || 0}</strong>
+                    <small>Need command awareness</small>
+                </article>
+                <article className="supervisor-metric-card">
+                    <span>Need Attention Today</span>
+                    <strong>{commandDashboard.cases_needing_attention_today || 0}</strong>
+                    <small>Stall, lead, or warrant risk</small>
+                </article>
             </section>
 
             {activeWorkspace === "personnel" && (
@@ -522,14 +587,114 @@ function SupervisorQueue() {
                         {activeInvestigators.length === 0 ? (
                             <p>No active investigators found for your agency.</p>
                         ) : (
-                            activeInvestigators.map((user) => (
+                            visibleItems("activeInvestigators", activeInvestigators).map((user) => (
                                 <article key={user.user_id} className="supervisor-investigator-item">
                                     <strong>{user.username}</strong>
                                     <small>{user.email}</small>
                                 </article>
                             ))
                         )}
+                        {renderListToggle("activeInvestigators", activeInvestigators.length, "investigators")}
                     </div>
+                </section>
+
+                <section className="supervisor-user-registration supervisor-workload-card">
+                    <div className="supervisor-panel-header">
+                        <span>Workload Management</span>
+                        <strong>Capacity & Results</strong>
+                    </div>
+
+                    <div className="supervisor-workload-summary">
+                        <div>
+                            <span>Overloaded</span>
+                            <strong>{overloadedInvestigators.length}</strong>
+                        </div>
+                        <div>
+                            <span>Capacity</span>
+                            <strong>{capacityInvestigators.length}</strong>
+                        </div>
+                        <div>
+                            <span>Unassigned Cases</span>
+                            <strong>{commandDashboard.unassigned_cases || 0}</strong>
+                        </div>
+                    </div>
+
+                    <div className="supervisor-investigator-list">
+                        {investigatorWorkload.length === 0 ? (
+                            <p>No workload data available yet.</p>
+                        ) : (
+                            visibleItems("investigatorWorkload", investigatorWorkload).map((item) => (
+                                <article key={item.user_id} className={`supervisor-workload-item ${item.workload_status}`}>
+                                    <div>
+                                        <strong>{item.username}</strong>
+                                        <span>{item.workload_status}</span>
+                                    </div>
+                                    <p>{item.active_cases} active cases | {item.recent_results} recent actions</p>
+                                </article>
+                            ))
+                        )}
+                        {renderListToggle("investigatorWorkload", investigatorWorkload.length, "investigators")}
+                    </div>
+                </section>
+
+                <section className="case-team-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Case Team</span>
+                        <strong>Assemble Case Team</strong>
+                    </div>
+
+                    <p className="supervisor-panel-note">
+                        Add support investigators, analysts, or supervisor observers when a
+                        case needs additional staffing.
+                    </p>
+
+                    <form className="case-team-form" onSubmit={assignCaseTeamMember}>
+                        <input
+                            type="number"
+                            name="case_id"
+                            min="1"
+                            placeholder="Case ID"
+                            value={teamForm.case_id}
+                            onChange={handleTeamChange}
+                            required
+                        />
+
+                        <select
+                            name="user_id"
+                            value={teamForm.user_id}
+                            onChange={handleTeamChange}
+                            required
+                        >
+                            <option value="">Select team member</option>
+                            {activeUsers.map((user) => (
+                                <option
+                                    key={user.user_id}
+                                    value={user.user_id}
+                                >
+                                    {user.username} ({user.role})
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            name="role"
+                            value={teamForm.role}
+                            onChange={handleTeamChange}
+                        >
+                            <option value="support_investigator">Support Investigator</option>
+                            <option value="analyst_support">Analyst Support</option>
+                            <option value="supervisor_observer">Supervisor Observer</option>
+                        </select>
+
+                        <textarea
+                            name="reason"
+                            placeholder="Why this user is being added to the case team"
+                            value={teamForm.reason}
+                            onChange={handleTeamChange}
+                        />
+
+                        <button type="submit">Assign to Case Team</button>
+                    </form>
                 </section>
 
                 <section className="supervisor-user-registration">
@@ -634,7 +799,7 @@ function SupervisorQueue() {
                         {filteredUsers.length === 0 ? (
                             <p>No users found for your agency.</p>
                         ) : (
-                            filteredUsers.map((user) => (
+                            visibleItems("filteredUsers", filteredUsers).map((user) => (
                                 <article key={user.user_id} className="queue-item">
                                     <div>
                                         <strong>{user.username}</strong>
@@ -672,6 +837,7 @@ function SupervisorQueue() {
                                 </article>
                             ))
                         )}
+                        {renderListToggle("filteredUsers", filteredUsers.length, "users")}
                     </div>
                 </section>
             </div>
@@ -679,6 +845,41 @@ function SupervisorQueue() {
 
             {activeWorkspace === "investigations" && (
             <div className="supervisor-operations-grid">
+                <section className="case-team-panel supervisor-stall-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Stall Risk</span>
+                        <strong>Needs Attention Today</strong>
+                    </div>
+
+                    <div className="supervisor-risk-grid">
+                        <span>No activity 7+ days<strong>{stallRiskSummary.inactive_7_days || 0}</strong></span>
+                        <span>No activity 14+ days<strong>{stallRiskSummary.inactive_14_days || 0}</strong></span>
+                        <span>No activity 30+ days<strong>{stallRiskSummary.inactive_30_days || 0}</strong></span>
+                        <span>Unassigned leads<strong>{stallRiskSummary.unassigned_leads || 0}</strong></span>
+                        <span>Missing follow-ups<strong>{stallRiskSummary.missing_followups || 0}</strong></span>
+                        <span>Pending warrants<strong>{stallRiskSummary.pending_warrants || 0}</strong></span>
+                        <span>Missing reports<strong>{stallRiskSummary.missing_reports || 0}</strong></span>
+                    </div>
+                </section>
+
+                <section className="case-team-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Lead Management</span>
+                        <strong>Lead Follow-Up Queue</strong>
+                    </div>
+
+                    <div className="supervisor-report-grid">
+                        <span>New Leads<strong>{leadSummary.new || 0}</strong></span>
+                        <span>Assigned Leads<strong>{leadSummary.assigned || 0}</strong></span>
+                        <span>Pending Leads<strong>{leadSummary.pending || 0}</strong></span>
+                        <span>Closed Leads<strong>{leadSummary.closed || 0}</strong></span>
+                    </div>
+                    <p className="supervisor-panel-note">
+                        Overdue follow-ups: {leadSummary.overdue_followups || 0}
+                    </p>
+                    <Link to="/intelligence">Open Leads & Sightings</Link>
+                </section>
+
                 <section className="case-team-panel">
                     <div className="supervisor-panel-header">
                         <span>Case Command</span>
@@ -700,66 +901,6 @@ function SupervisorQueue() {
 
                 <section className="case-team-panel">
                     <div className="supervisor-panel-header">
-                        <span>Case Team</span>
-                        <strong>Assemble Case Team</strong>
-                    </div>
-
-                    <p className="supervisor-panel-note">
-                        Assign the lead investigator on the case record first, then add support
-                        investigators, analysts, or supervisor observers as needed.
-                    </p>
-
-                    <form className="case-team-form" onSubmit={assignCaseTeamMember}>
-                        <input
-                            type="number"
-                            name="case_id"
-                            min="1"
-                            placeholder="Case ID"
-                            value={teamForm.case_id}
-                            onChange={handleTeamChange}
-                            required
-                        />
-
-                        <select
-                            name="user_id"
-                            value={teamForm.user_id}
-                            onChange={handleTeamChange}
-                            required
-                        >
-                            <option value="">Select team member</option>
-                            {activeUsers.map((user) => (
-                                <option
-                                    key={user.user_id}
-                                    value={user.user_id}
-                                >
-                                    {user.username} ({user.role})
-                                </option>
-                            ))}
-                        </select>
-
-                        <select
-                            name="role"
-                            value={teamForm.role}
-                            onChange={handleTeamChange}
-                        >
-                            <option value="support_investigator">Support Investigator</option>
-                            <option value="analyst_support">Analyst Support</option>
-                            <option value="supervisor_observer">Supervisor Observer</option>
-                        </select>
-
-                        <textarea
-                            name="reason"
-                            placeholder="Why this user is being added to the case team"
-                            value={teamForm.reason}
-                            onChange={handleTeamChange}
-                        />
-
-                        <button type="submit">Assign to Case Team</button>
-                    </form>
-                </section>
-
-                <section className="case-team-panel">
-                    <div className="supervisor-panel-header">
                         <span>Case Progress</span>
                         <strong>Cases Needing Command Attention</strong>
                     </div>
@@ -768,7 +909,7 @@ function SupervisorQueue() {
                         <p>No command attention items surfaced.</p>
                     ) : (
                         <div className="supervisor-user-list">
-                            {queue.high_priority_cases.map((item) => (
+                            {visibleItems("highPriorityCases", queue.high_priority_cases).map((item) => (
                                 <article key={item.case_id} className="queue-item">
                                     <div>
                                         <strong>{item.case_number}</strong>
@@ -785,14 +926,100 @@ function SupervisorQueue() {
                                     <Link to={`/cases/${item.case_id}`}>Open Case</Link>
                                 </article>
                             ))}
+                            {renderListToggle("highPriorityCases", queue.high_priority_cases.length, "cases")}
                         </div>
                     )}
+                </section>
+
+                <section className="case-team-panel supervisor-timeline-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Timeline Management</span>
+                        <strong>Recent Case Activity</strong>
+                    </div>
+
+                    <div className="supervisor-timeline-list">
+                        {(timelineSummary.recent_events || []).length === 0 ? (
+                            <p>No recent timeline events found.</p>
+                        ) : (
+                            visibleItems("timelineEvents", timelineSummary.recent_events).map((event) => (
+                                <article key={event.event_id} className="supervisor-timeline-item">
+                                    <strong>{event.case_number} | {event.event_type}</strong>
+                                    <span>{formatDateTime(event.timestamp)}</span>
+                                    <p>{event.description || event.location || "No details recorded."}</p>
+                                </article>
+                            ))
+                        )}
+                        {renderListToggle("timelineEvents", (timelineSummary.recent_events || []).length, "events")}
+                    </div>
+                </section>
+
+                <section className="case-team-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Signals</span>
+                        <strong>Sightings & Evidence</strong>
+                    </div>
+
+                    <div className="supervisor-signal-grid">
+                        <div>
+                            <h3>Recent Sightings</h3>
+                            {(timelineSummary.recent_sightings || []).length === 0 ? (
+                                <p>No recent sightings.</p>
+                            ) : (
+                                visibleItems("recentSightings", timelineSummary.recent_sightings).map((sighting) => (
+                                    <article key={sighting.sighting_id} className="supervisor-mini-item">
+                                        <strong>{sighting.case_number}</strong>
+                                        <span>{sighting.location || "Location not recorded"}</span>
+                                    </article>
+                                ))
+                            )}
+                            {renderListToggle("recentSightings", (timelineSummary.recent_sightings || []).length, "sightings")}
+                        </div>
+                        <div>
+                            <h3>Evidence Collected</h3>
+                            {(timelineSummary.recent_evidence || []).length === 0 ? (
+                                <p>No recent evidence.</p>
+                            ) : (
+                                visibleItems("recentEvidence", timelineSummary.recent_evidence).map((item) => (
+                                    <article key={item.evidence_id} className="supervisor-mini-item">
+                                        <strong>{item.case_number}</strong>
+                                        <span>{item.evidence_type} | {item.custody_status || "collected"}</span>
+                                    </article>
+                                ))
+                            )}
+                            {renderListToggle("recentEvidence", (timelineSummary.recent_evidence || []).length, "items")}
+                        </div>
+                    </div>
                 </section>
             </div>
             )}
 
             {activeWorkspace === "community" && (
             <div className="supervisor-operations-grid">
+                <section className="case-team-panel supervisor-coordination-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Regional Coordination</span>
+                        <strong>Agency Involvement</strong>
+                    </div>
+
+                    <div className="supervisor-report-grid">
+                        <span>Agencies Involved<strong>{(agencyCoordination.involved_agencies || []).length}</strong></span>
+                        <span>Shared Intelligence<strong>{agencyCoordination.shared_intelligence || 0}</strong></span>
+                        <span>Joint Investigations<strong>{agencyCoordination.joint_investigations || 0}</strong></span>
+                        <span>Outstanding Requests<strong>{agencyCoordination.outstanding_requests || 0}</strong></span>
+                    </div>
+
+                    <div className="supervisor-agency-list">
+                        {(agencyCoordination.involved_agencies || []).length === 0 ? (
+                            <p>No partner agency activity surfaced yet.</p>
+                        ) : (
+                            visibleItems("involvedAgencies", agencyCoordination.involved_agencies).map((agency) => (
+                                <span key={agency}>{agency}</span>
+                            ))
+                        )}
+                        {renderListToggle("involvedAgencies", (agencyCoordination.involved_agencies || []).length, "agencies")}
+                    </div>
+                </section>
+
                 <section className="agency-exchange-panel supervisor-exchange-panel">
                     <div className="agency-exchange-header">
                         <span>Agency Coordination</span>
@@ -864,7 +1091,7 @@ function SupervisorQueue() {
                         {exchanges.length === 0 ? (
                             <p>No agency exchanges recorded yet.</p>
                         ) : (
-                            exchanges.slice(0, 5).map((exchange) => (
+                            visibleItems("agencyExchanges", exchanges).map((exchange) => (
                                 <article key={exchange.exchange_id} className="agency-exchange-card">
                                     <div>
                                         <strong>{exchange.from_agency} to {exchange.to_agency}</strong>
@@ -878,25 +1105,10 @@ function SupervisorQueue() {
                                 </article>
                             ))
                         )}
+                        {renderListToggle("agencyExchanges", exchanges.length, "exchanges")}
                     </div>
                 </section>
 
-                <section className="case-team-panel">
-                    <div className="supervisor-panel-header">
-                        <span>Public & Partner Liaison</span>
-                        <strong>Community Relations</strong>
-                    </div>
-                    <p className="supervisor-panel-note">
-                        Track approved information sharing, partner leads, public-facing alerts,
-                        and agency-to-agency coordination tied to missing person investigations.
-                    </p>
-                    <div className="supervisor-action-grid">
-                        <Link to="/partner-sources">Review Partner Leads</Link>
-                        <Link to="/alerts">Open Public Alerts</Link>
-                        <Link to="/alerts">Review BOLO Sharing</Link>
-                        <Link to="/agencies">Agency Directory</Link>
-                    </div>
-                </section>
             </div>
             )}
 
@@ -941,7 +1153,7 @@ function SupervisorQueue() {
                             {queue?.active_bolos?.length === 0 ? (
                                 <p>No active BOLO alerts.</p>
                             ) : (
-                                queue?.active_bolos?.map((item) => (
+                                visibleItems("activeBolos", queue?.active_bolos || []).map((item) => (
                                     <article key={item.bolo_id} className="queue-item bolo-preview-item">
                                         <div>
                                             <strong>{item.title}</strong>
@@ -951,22 +1163,11 @@ function SupervisorQueue() {
                                     </article>
                                 ))
                             )}
+                            {renderListToggle("activeBolos", (queue?.active_bolos || []).length, "BOLOs")}
 
                             <Link to="/alerts">Open Operational Alerts</Link>
                         </section>
 
-                        <section className="supervisor-panel">
-                            <h2>Daily Operations</h2>
-                            <p>
-                                Monitor field alerts, staffing-sensitive incidents, and active
-                                operational notifications for missing person cases.
-                            </p>
-                            <div className="supervisor-action-grid">
-                                <Link to="/alerts">Open Alerts</Link>
-                                <Link to="/cases">Review Staffing Levels</Link>
-                                <Link to="/create-case">Start New Case</Link>
-                            </div>
-                        </section>
                     </div>
                 </section>
             )}
@@ -981,10 +1182,29 @@ function SupervisorQueue() {
                         <section className="supervisor-panel">
                             <h2>Investigator Productivity</h2>
                             <div className="supervisor-report-grid">
-                                <span>Available staff<strong>{activeUsers.length}</strong></span>
-                                <span>Total personnel<strong>{users.length}</strong></span>
-                                <span>Cases needing attention<strong>{queue?.high_priority_cases?.length || 0}</strong></span>
-                                <span>Active BOLOs<strong>{queue?.active_bolos?.length || 0}</strong></span>
+                                <span>Overloaded investigators<strong>{overloadedInvestigators.length}</strong></span>
+                                <span>With capacity<strong>{capacityInvestigators.length}</strong></span>
+                                <span>Producing results<strong>{productiveInvestigators.filter((item) => item.recent_results > 0).length}</strong></span>
+                                <span>Unassigned cases<strong>{commandDashboard.unassigned_cases || 0}</strong></span>
+                            </div>
+                            <div className="supervisor-investigator-list">
+                                {visibleItems("productiveInvestigators", productiveInvestigators).map((item) => (
+                                    <article key={item.user_id} className="supervisor-mini-item">
+                                        <strong>{item.username}</strong>
+                                        <span>{item.recent_results} recent actions | {item.active_cases} cases</span>
+                                    </article>
+                                ))}
+                                {renderListToggle("productiveInvestigators", productiveInvestigators.length, "investigators")}
+                            </div>
+                        </section>
+
+                        <section className="supervisor-panel">
+                            <h2>Command Snapshot</h2>
+                            <div className="supervisor-report-grid">
+                                <span>Active cases<strong>{commandDashboard.active_cases || 0}</strong></span>
+                                <span>High-risk persons<strong>{commandDashboard.high_risk_missing_persons || 0}</strong></span>
+                                <span>Critical alerts<strong>{commandDashboard.critical_alerts || 0}</strong></span>
+                                <span>Attention today<strong>{commandDashboard.cases_needing_attention_today || 0}</strong></span>
                             </div>
                         </section>
 
@@ -994,19 +1214,10 @@ function SupervisorQueue() {
                                 <span>Legal reviews<strong>{queue?.pending_legal_requests?.length || 0}</strong></span>
                                 <span>Access approvals<strong>{queue?.pending_case_access?.length || 0}</strong></span>
                                 <span>Access log entries<strong>{queue?.recent_case_access?.length || 0}</strong></span>
-                                <span>Agency exchanges<strong>{exchanges.length}</strong></span>
+                                <span>Agency exchanges<strong>{agencyCoordination.shared_intelligence || exchanges.length}</strong></span>
                             </div>
                         </section>
 
-                        <section className="supervisor-panel">
-                            <h2>Fewer Systems to Check</h2>
-                            <div className="supervisor-action-grid">
-                                <Link to="/">Agency Dashboard</Link>
-                                <Link to="/audit">Audit Center</Link>
-                                <Link to="/cases">Case Statistics</Link>
-                                <Link to="/intelligence">Intelligence View</Link>
-                            </div>
-                        </section>
                     </div>
                 </section>
             )}
@@ -1030,7 +1241,7 @@ function SupervisorQueue() {
                         {queue.pending_legal_requests.length === 0 ? (
                             <p>No pending legal requests.</p>
                         ) : (
-                            queue.pending_legal_requests.map((item) => (
+                            visibleItems("pendingLegalRequests", queue.pending_legal_requests).map((item) => (
                                 <article key={item.request_id} className="queue-item">
                                     <div>
                                         <strong>{item.source_type}</strong>
@@ -1041,6 +1252,7 @@ function SupervisorQueue() {
                                 </article>
                             ))
                         )}
+                        {renderListToggle("pendingLegalRequests", queue.pending_legal_requests.length, "requests")}
                     </section>
 
                     <section className="supervisor-panel">
@@ -1049,7 +1261,7 @@ function SupervisorQueue() {
                         {(queue.pending_case_access || []).length === 0 ? (
                             <p>No pending case access requests.</p>
                         ) : (
-                            queue.pending_case_access.map((item) => (
+                            visibleItems("pendingCaseAccess", queue.pending_case_access).map((item) => (
                                 <article key={item.grant_id} className="queue-item">
                                     <div>
                                         <strong>{item.case_number || `Case ${item.case_id}`}</strong>
@@ -1088,6 +1300,7 @@ function SupervisorQueue() {
                                 </article>
                             ))
                         )}
+                        {renderListToggle("pendingCaseAccess", (queue.pending_case_access || []).length, "requests")}
                     </section>
 
                     <section className="supervisor-panel">
@@ -1096,7 +1309,7 @@ function SupervisorQueue() {
                         {queue.recent_case_access.length === 0 ? (
                             <p>No recent restricted access.</p>
                         ) : (
-                            queue.recent_case_access.map((item) => (
+                            visibleItems("recentCaseAccess", queue.recent_case_access).map((item) => (
                                 <article key={item.grant_id} className="queue-item">
                                     <div>
                                         <strong>{item.username || `User ${item.user_id}`}</strong>
@@ -1113,6 +1326,7 @@ function SupervisorQueue() {
                                 </article>
                             ))
                         )}
+                        {renderListToggle("recentCaseAccess", queue.recent_case_access.length, "entries")}
                     </section>
                     </div>
                 </section>

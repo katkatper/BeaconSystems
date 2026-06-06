@@ -51,6 +51,7 @@ function EvidenceUpload() {
     const [evidence, setEvidence] = useState([]);
     const [evidenceChains, setEvidenceChains] = useState({});
     const [custodyForms, setCustodyForms] = useState({});
+    const [showMoreEvidence, setShowMoreEvidence] = useState(false);
     const [message, setMessage] = useState("");
     const custodyActions = [
         ["TRANSFERRED", "Transferred"],
@@ -510,7 +511,7 @@ function EvidenceUpload() {
                         <p>No evidence uploaded yet.</p>
                     ) : (
                         <div className="evidence-list">
-                            {visibleEvidence.map((item) => (
+                            {visibleEvidence.slice(0, showMoreEvidence ? 6 : 2).map((item) => (
                                 <article key={item.evidence_id} className="evidence-card">
                                     <div className="evidence-card-topline">
                                         <strong>{item.file_name || "Unnamed file"}</strong>
@@ -640,6 +641,15 @@ function EvidenceUpload() {
                                     ))}
                                 </article>
                             ))}
+                            {visibleEvidence.length > 2 && (
+                                <button
+                                    type="button"
+                                    className="list-toggle-button"
+                                    onClick={() => setShowMoreEvidence((current) => !current)}
+                                >
+                                    {showMoreEvidence ? "Show fewer" : `Show ${Math.min(4, visibleEvidence.length - 2)} more evidence items`}
+                                </button>
+                            )}
                         </div>
                     )}
                 </section>

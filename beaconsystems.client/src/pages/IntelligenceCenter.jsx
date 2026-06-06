@@ -4,6 +4,7 @@ import IntelligenceMap3D from "./IntelligenceMap3D.jsx";
 function IntelligenceCenter() {
     const [sightings, setSightings] = useState([]);
     const [externalRecords, setExternalRecords] = useState([]);
+    const [showMoreRecords, setShowMoreRecords] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(null);
 
     useEffect(() => {
@@ -80,7 +81,7 @@ function IntelligenceCenter() {
                         <p>No authorized external records available.</p>
                     ) : (
                         <div className="feed-list">
-                            {externalRecords.map((record) => (
+                            {externalRecords.slice(0, showMoreRecords ? 6 : 2).map((record) => (
                                 <article key={record.id} className="feed-item">
                                     <div>
                                         <strong>{record.record_type}</strong>
@@ -93,6 +94,15 @@ function IntelligenceCenter() {
                                     <p>{record.notes || "No notes provided"}</p>
                                 </article>
                             ))}
+                            {externalRecords.length > 2 && (
+                                <button
+                                    type="button"
+                                    className="list-toggle-button"
+                                    onClick={() => setShowMoreRecords((current) => !current)}
+                                >
+                                    {showMoreRecords ? "Show fewer" : `Show ${Math.min(4, externalRecords.length - 2)} more records`}
+                                </button>
+                            )}
                         </div>
                     )}
                 </section>

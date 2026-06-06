@@ -2,16 +2,23 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from models.IntegrationSource import IntegrationSource
+from models.activity_log import ActivityLog
+from models.agency_exchange import AgencyExchange
+from models.alerts import Alerts
 from models.bolo_alert import BoloAlert
 from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
 from models.case_team_member import CaseTeamMember
+from models.evidence import Evidence
+from models.leads import Leads
 from models.legal_access_request import LegalAccessRequest
+from models.sighting import Sighting
+from models.timeline_events import Timeline_Event
 from models.user import User
 from security.auth import require_role
 from services.activity_service import create_activity_log
@@ -48,11 +55,22 @@ def get_supervisor_queue(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
+    now = datetime.utcnow()
+    seven_days_ago = now - timedelta(days=7)
+    fourteen_days_ago = now - timedelta(days=14)
+    inactive_statuses = ["closed", "resolved", "archived"]
     case_query = db.query(Cases)
     legal_query = db.query(LegalAccessRequest)
     partner_query = db.query(IntegrationSource)
     access_query = db.query(CaseAccessGrant)
     bolo_query = db.query(BoloAlert)
+    alert_query = db.query(Alerts)
+    evidence_query = db.query(Evidence)
+    exchange_query = db.query(AgencyExchange)
+    investigator_query = db.query(User).filter(
+        User.role == "investigator",
+        User.is_active == True,  # noqa: E712
+    )
 
 # Admin can see all agencies. Agency admins are restricted to their own agency
 # to avoid cross-agency data exposure.
@@ -66,6 +84,203 @@ def get_supervisor_queue(
             CaseAccessGrant.agency_id == current_user.agency_id
         )
         bolo_query = bolo_query.filter(BoloAlert.agency_id == current_user.agency_id)
+        alert_query = alert_query.filter(
+            Alerts.recipient_agency_id == current_user.agency_id
+        )
+        investigator_query = investigator_query.filter(
+            User.agency_id == current_user.agency_id
+        )
+
+    open_case_query = case_query.filter(
+        or_(
+            Cases.case_status == None,  # noqa: E711
+            ~func.lower(Cases.case_status).in_(inactive_statuses),
+        )
+    )
+    open_cases = open_case_query.all()
+    open_case_ids = [case.case_id for case in open_cases]
+    open_case_filter = open_case_ids or [-1]
+
+    evidence_query = evidence_query.filter(Evidence.case_id.in_(open_case_filter))
+    exchange_query = exchange_query.filter(AgencyExchange.case_id.in_(open_case_filter))
+    leads_query = db.query(Leads).filter(Leads.case_id.in_(open_case_filter))
+    sighting_query = db.query(Sighting).filter(Sighting.case_id.in_(open_case_filter))
+    timeline_query = db.query(Timeline_Event).filter(
+        Timeline_Event.case_id.in_(open_case_filter)
+    )
+
+    active_case_counts = {
+        investigator_id: count
+        for investigator_id, count in (
+            open_case_query
+            .filter(Cases.investigator_id != None)  # noqa: E711
+            .with_entities(Cases.investigator_id, func.count(Cases.case_id))
+            .group_by(Cases.investigator_id)
+            .all()
+        )
+    }
+    recent_activity_counts = {
+        user_id: count
+        for user_id, count in (
+            db.query(ActivityLog.user_id, func.count(ActivityLog.id))
+            .filter(ActivityLog.timestamp >= fourteen_days_ago)
+            .group_by(ActivityLog.user_id)
+            .all()
+        )
+    }
+    investigator_workload = []
+
+    for investigator in investigator_query.order_by(User.username.asc()).all():
+        active_cases = active_case_counts.get(investigator.user_id, 0)
+        recent_results = recent_activity_counts.get(investigator.user_id, 0)
+        workload_status = "balanced"
+
+        if active_cases >= 5:
+            workload_status = "overloaded"
+        elif active_cases <= 2:
+            workload_status = "capacity"
+
+        investigator_workload.append({
+            "user_id": investigator.user_id,
+            "username": investigator.username,
+            "email": investigator.email,
+            "active_cases": active_cases,
+            "recent_results": recent_results,
+            "workload_status": workload_status,
+        })
+
+    inactive_cases = (
+        open_case_query
+        .filter(Cases.updated_at <= seven_days_ago)
+        .order_by(Cases.updated_at.asc())
+        .limit(12)
+        .all()
+    )
+    inactive_case_summaries = []
+
+    for case in inactive_cases:
+        last_update = case.updated_at or case.created_at or now
+        days_inactive = (now - last_update).days
+        inactive_case_summaries.append({
+            "case_id": case.case_id,
+            "case_number": case.case_number,
+            "title": case.title,
+            "case_status": case.case_status,
+            "priority_level": case.priority_level,
+            "investigator_id": case.investigator_id,
+            "days_inactive": days_inactive,
+            "bucket": "30+ days" if days_inactive >= 30 else "14+ days" if days_inactive >= 14 else "7+ days",
+            "updated_at": case.updated_at,
+        })
+
+    lead_status_counts = {
+        "new": 0,
+        "assigned": 0,
+        "pending": 0,
+        "closed": 0,
+        "unassigned": 0,
+        "overdue_followups": 0,
+    }
+
+    for lead in leads_query.all():
+        status = (lead.status or "new").strip().lower()
+
+        if status in lead_status_counts:
+            lead_status_counts[status] += 1
+        elif status in {"open", "active"}:
+            lead_status_counts["assigned"] += 1
+        else:
+            lead_status_counts["new"] += 1
+
+        if status in {"new", "unassigned"}:
+            lead_status_counts["unassigned"] += 1
+
+        if status in {"pending", "assigned", "open", "active"} and lead.created_at <= seven_days_ago:
+            lead_status_counts["overdue_followups"] += 1
+
+    unassigned_case_count = open_case_query.filter(
+        Cases.investigator_id == None  # noqa: E711
+    ).count()
+    pending_warrants = (
+        legal_query
+        .filter(
+            LegalAccessRequest.status == "pending",
+            func.lower(LegalAccessRequest.authority_type).like("%warrant%"),
+        )
+        .count()
+    )
+    missing_reports = len([
+        case for case in open_cases
+        if (case.updated_at or case.created_at or now) <= fourteen_days_ago
+    ])
+    high_risk_case_count = (
+        open_case_query
+        .filter(func.lower(Cases.priority_level).in_(["high", "critical"]))
+        .count()
+    )
+    active_alert_count = (
+        alert_query
+        .filter(func.lower(Alerts.alert_status) == "active")
+        .count()
+    )
+    critical_alert_count = (
+        alert_query
+        .filter(
+            func.lower(Alerts.alert_status) == "active",
+            func.lower(Alerts.severity).in_(["high", "critical"]),
+        )
+        .count()
+    )
+    cases_needing_attention_today = (
+        len(inactive_case_summaries) +
+        unassigned_case_count +
+        lead_status_counts["overdue_followups"] +
+        pending_warrants
+    )
+
+    command_dashboard = {
+        "active_cases": len(open_cases),
+        "high_risk_missing_persons": high_risk_case_count,
+        "critical_alerts": critical_alert_count,
+        "active_alerts": active_alert_count,
+        "cases_needing_attention_today": cases_needing_attention_today,
+        "unassigned_cases": unassigned_case_count,
+    }
+
+    stall_risk_summary = {
+        "inactive_7_days": len([item for item in inactive_case_summaries if item["days_inactive"] >= 7]),
+        "inactive_14_days": len([item for item in inactive_case_summaries if item["days_inactive"] >= 14]),
+        "inactive_30_days": len([item for item in inactive_case_summaries if item["days_inactive"] >= 30]),
+        "unassigned_leads": lead_status_counts["unassigned"],
+        "missing_followups": lead_status_counts["overdue_followups"],
+        "pending_warrants": pending_warrants,
+        "missing_reports": missing_reports,
+    }
+
+    recent_timeline_events = (
+        timeline_query
+        .order_by(Timeline_Event.timestamp.desc())
+        .limit(8)
+        .all()
+    )
+    recent_sightings = (
+        sighting_query
+        .order_by(Sighting.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    recent_evidence = (
+        evidence_query
+        .order_by(Evidence.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    recent_exchanges = (
+        exchange_query
+        .order_by(AgencyExchange.created_at.desc())
+        .limit(8)
+        .all()
+    )
 
     pending_legal_requests = (
         legal_query
@@ -185,8 +400,82 @@ def get_supervisor_queue(
         .limit(10)
         .all()
     )
+    case_lookup = {case.case_id: case for case in open_cases}
+
+    def case_label(case_id: int):
+        case = case_lookup.get(case_id)
+        return case.case_number if case else f"Case {case_id}"
 
     return {
+        "command_dashboard": command_dashboard,
+        "investigator_workload": investigator_workload,
+        "inactive_cases": inactive_case_summaries,
+        "stall_risk_summary": stall_risk_summary,
+        "lead_summary": lead_status_counts,
+        "timeline_summary": {
+            "recent_events": [
+                {
+                    "event_id": event.event_id,
+                    "case_id": event.case_id,
+                    "case_number": case_label(event.case_id),
+                    "event_type": event.event_type,
+                    "source_type": event.source_type,
+                    "location": event.location,
+                    "description": event.description,
+                    "timestamp": event.timestamp,
+                }
+                for event in recent_timeline_events
+            ],
+            "recent_sightings": [
+                {
+                    "sighting_id": sighting.sighting_id,
+                    "case_id": sighting.case_id,
+                    "case_number": case_label(sighting.case_id),
+                    "location": sighting.location,
+                    "confidence_score": sighting.confidence_score,
+                    "created_at": sighting.created_at,
+                }
+                for sighting in recent_sightings
+            ],
+            "recent_evidence": [
+                {
+                    "evidence_id": item.evidence_id,
+                    "case_id": item.case_id,
+                    "case_number": case_label(item.case_id),
+                    "evidence_type": item.evidence_type,
+                    "custody_status": item.custody_status,
+                    "created_at": item.created_at,
+                }
+                for item in recent_evidence
+            ],
+        },
+        "agency_coordination": {
+            "involved_agencies": sorted({
+                agency
+                for exchange in recent_exchanges
+                for agency in [exchange.from_agency, exchange.to_agency]
+                if agency
+            }),
+            "shared_intelligence": len(recent_exchanges),
+            "joint_investigations": len({exchange.case_id for exchange in recent_exchanges}),
+            "outstanding_requests": len([
+                item for item in pending_legal_requests if item.case_id in case_lookup
+            ]),
+            "recent_exchanges": [
+                {
+                    "exchange_id": exchange.exchange_id,
+                    "case_id": exchange.case_id,
+                    "case_number": case_label(exchange.case_id),
+                    "from_agency": exchange.from_agency,
+                    "to_agency": exchange.to_agency,
+                    "information_type": exchange.information_type,
+                    "summary": exchange.summary,
+                    "status": exchange.status,
+                    "created_at": exchange.created_at,
+                }
+                for exchange in recent_exchanges
+            ],
+        },
         "pending_legal_requests": pending_legal_requests,
         "pending_partner_sources": pending_partner_sources,
         "high_priority_cases": high_priority_case_summaries,

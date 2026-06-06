@@ -225,6 +225,14 @@ function AppLayout() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/supervisor/:workspace"
+                    element={
+                        <ProtectedRoute>
+                            <SupervisorQueue />
+                        </ProtectedRoute>
+                    }
+                />
 
                 <Route
                     path="/audit"

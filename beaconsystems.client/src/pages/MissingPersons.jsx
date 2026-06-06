@@ -4,6 +4,7 @@ function MissingPersonsList() {
 
     const [persons, setPersons] = useState([]);
     const [error, setError] = useState("");
+    const [showMorePersons, setShowMorePersons] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -26,7 +27,7 @@ function MissingPersonsList() {
 
             })
             .then((data) => {
-                setPersons(data);
+                setPersons(Array.isArray(data) ? data : []);
             })
             .catch((err) => {
                 console.error(err);
@@ -36,47 +37,57 @@ function MissingPersonsList() {
 
     return (
 
-        <div>
-            <h1>Missing Persons</h1>
+        <div className="missing-persons-page">
+            <div className="missing-persons-header">
+                <h1>Missing Persons</h1>
+            </div>
 
-            {error && <p>{error}</p>}
+            {error && <p className="alert-banner">{error}</p>}
 
             {persons.length === 0 && !error && (
                 <p>No missing persons found.</p>
             )}
 
+            <div className="missing-persons-grid">
+                {[...persons]
+                    .sort((firstPerson, secondPerson) =>
+                        `${firstPerson.last_name || ""} ${firstPerson.first_name || ""}`
+                            .localeCompare(`${secondPerson.last_name || ""} ${secondPerson.first_name || ""}`)
+                    )
+                    .slice(0, showMorePersons ? 6 : 2)
+                    .map((person) => (
+                        <article key={person.person_id} className="missing-person-card">
+                            <h2>
+                                {person.first_name} {person.last_name}
+                            </h2>
 
-            {persons.map((person) => (
-                <div
-                    key={person.person_id}
-                    style={{
-                        border: "1px solid gray",
-                        padding: "15px",
-                        margin: "10px",
-                        borderRadius: "8px",
-                    }}
-                >
+                            <p>Age: {person.age || "Unknown"}</p>
+                            <p>Status: {person.status || "Unknown"}</p>
+                            <p>Risk Level: {person.risk_level || "Unknown"}</p>
+                            <p>Last Seen: {person.last_seen_location || "Not recorded"}</p>
+                            <p>{person.description || "No description recorded."}</p>
 
-                    <h2>
-                        {person.first_name} {person.last_name}
-                    </h2>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    window.location.href = `/persons/${person.person_id}`;
+                                }}
+                            >
+                                View Profile
+                            </button>
+                        </article>
+                    ))}
 
-                    <p>Age: {person.age}</p>
-                    <p>Status: {person.status}</p>
-                    <p>Risk Level: {person.risk_level}</p>
-                    <p>Last Seen: {person.last_seen_location}</p>
-                    <p>Description: {person.description}</p>
-
+                {persons.length > 2 && (
                     <button
-                        onClick={() => {
-                            window.location.href = `/persons/${person.person_id}`;
-                        }}
+                        type="button"
+                        className="list-toggle-button"
+                        onClick={() => setShowMorePersons((current) => !current)}
                     >
-                        View Profile
+                        {showMorePersons ? "Show fewer" : `Show ${Math.min(4, persons.length - 2)} more persons`}
                     </button>
-
-                </div>
-            ))}
+                )}
+            </div>
         </div>
     );
 }

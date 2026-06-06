@@ -946,6 +946,631 @@
     justify-content: center;
 }
 
+/* Beacon sizing system.
+   This final layer normalizes cards and controls after older page-specific rules. */
+:root {
+    --beacon-card-radius: 8px;
+    --beacon-card-padding: 16px;
+    --beacon-panel-padding: 18px;
+    --beacon-card-min: 108px;
+    --beacon-panel-min: 180px;
+    --beacon-metric-min: 96px;
+    --beacon-control-height: 42px;
+    --beacon-compact-control-height: 34px;
+    --beacon-panel-max: 980px;
+}
+
+.dashboard-panel,
+.case-section,
+.case-access-panel,
+.legal-panel,
+.partner-panel,
+.partner-intake-panel,
+.evidence-panel,
+.bolo-panel,
+.audit-panel,
+.supervisor-panel,
+.case-team-panel,
+.supervisor-user-registration,
+.agency-exchange-panel,
+.agencies-panel,
+.agency-search-panel,
+.users-panel,
+.login-recovery-panel,
+.password-change-panel {
+    border-radius: var(--beacon-card-radius);
+    padding: var(--beacon-panel-padding);
+    min-height: var(--beacon-panel-min);
+    box-sizing: border-box;
+}
+
+.case-management-card,
+.case-card,
+.legal-request-card,
+.partner-card,
+.partner-intake-card,
+.evidence-card,
+.external-record-card,
+.bolo-card,
+.alert-card,
+.agency-card,
+.agency-exchange-card,
+.timeline-card,
+.source-card,
+.user-card,
+.queue-item,
+.supervisor-investigator-item,
+.supervisor-workload-item,
+.supervisor-timeline-item,
+.supervisor-mini-item,
+.audit-user-button {
+    border-radius: var(--beacon-card-radius);
+    padding: var(--beacon-card-padding);
+    min-height: var(--beacon-card-min);
+    box-sizing: border-box;
+}
+
+.command-card,
+.supervisor-metric-card,
+.evidence-command-strip article,
+.evidence-kpi-list div,
+.evidence-status-grid div,
+.evidence-alert-item,
+.supervisor-workload-summary div,
+.supervisor-risk-grid span,
+.supervisor-report-grid span,
+.agency-metric-card {
+    border-radius: var(--beacon-card-radius);
+    padding: 14px;
+    min-height: var(--beacon-metric-min);
+    box-sizing: border-box;
+}
+
+.dashboard-feature-grid .dashboard-panel,
+.supervisor-operations-grid > *,
+.supervisor-review-section .supervisor-panel,
+.audit-grid .audit-panel,
+.cases-grid .case-card,
+.case-management-grid .case-management-card,
+.external-record-grid .external-record-card,
+.agency-list .agency-card,
+.bolo-list .bolo-card,
+.evidence-list .evidence-card,
+.partner-list .partner-card,
+.legal-list .legal-request-card,
+.source-grid .source-card {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.dashboard-feature-grid,
+.supervisor-grid,
+.audit-grid,
+.case-management-grid,
+.cases-grid,
+.external-record-grid,
+.source-grid,
+.agencies-grid {
+    gap: 16px;
+    align-items: start;
+}
+
+button,
+.quick-actions a,
+.dashboard-action-list a,
+.case-actions a,
+.legal-actions a,
+.partner-actions a,
+.evidence-actions a,
+.supervisor-actions a,
+.supervisor-action-grid a,
+.external-record-links a,
+.case-access-panel a,
+.dashboard-panel-header a,
+.agency-card a,
+.queue-item a {
+    min-height: var(--beacon-control-height);
+    padding: 9px 14px;
+    border-radius: var(--beacon-card-radius);
+    box-sizing: border-box;
+    line-height: 1.25;
+}
+
+.logout-button,
+.dashboard-panel-header a,
+.supervisor-list-toggle,
+.alerts-panel .archive-toggle {
+    min-height: var(--beacon-compact-control-height);
+    padding: 6px 11px;
+}
+
+.dashboard-action-list {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    gap: 12px;
+    max-width: 560px;
+}
+
+.dashboard-action-list a {
+    min-height: 52px;
+}
+
+.supervisor-admin-card {
+    min-height: 124px;
+    padding: 16px;
+}
+
+.evidence-page .evidence-layout > .evidence-panel:first-child,
+.partner-intake-review-panel {
+    min-height: 360px;
+}
+
+@media (max-width: 900px) {
+    .dashboard-panel,
+    .case-section,
+    .case-access-panel,
+    .legal-panel,
+    .partner-panel,
+    .partner-intake-panel,
+    .evidence-panel,
+    .bolo-panel,
+    .audit-panel,
+    .supervisor-panel,
+    .case-team-panel,
+    .supervisor-user-registration,
+    .agency-exchange-panel {
+        min-height: auto;
+    }
+
+    .dashboard-action-list {
+        grid-template-columns: 1fr;
+        max-width: none;
+    }
+}
+
+/* Final card organization pass: consistent two-column layouts and alphabetical directories. */
+.dashboard-feature-grid,
+.supervisor-operations-grid,
+.supervisor-grid,
+.audit-grid,
+.case-summary-sections,
+.legal-access-layout,
+.bolo-layout,
+.partner-workspace-layout,
+.evidence-layout,
+.external-record-grid,
+.agencies-grid,
+.missing-persons-grid,
+.person-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(360px, 1fr));
+    gap: 24px;
+    align-items: start;
+    justify-content: center;
+    width: min(100%, 1180px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.partner-workspace-layout,
+.evidence-layout {
+    grid-template-columns: minmax(420px, 0.95fr) minmax(520px, 1.05fr);
+}
+
+.dashboard-feature-grid > *,
+.supervisor-operations-grid > *,
+.supervisor-grid > *,
+.audit-grid > *,
+.case-summary-sections > *,
+.legal-access-layout > *,
+.bolo-layout > *,
+.partner-workspace-layout > *,
+.evidence-layout > *,
+.external-record-grid > *,
+.agencies-grid > *,
+.missing-persons-grid > *,
+.person-detail-grid > * {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+}
+
+.missing-persons-page,
+.person-detail-page {
+    width: min(100%, calc(100% - 32px));
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 22px 0;
+    box-sizing: border-box;
+}
+
+.missing-persons-header,
+.person-detail-header {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.missing-person-card,
+.person-profile-card {
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: var(--beacon-card-radius);
+    padding: var(--beacon-panel-padding);
+    min-height: var(--beacon-panel-min);
+    box-sizing: border-box;
+    backdrop-filter: blur(10px);
+}
+
+.missing-person-card h2,
+.person-profile-card h2 {
+    margin-top: 0;
+}
+
+.agencies-grid .list-toggle-button,
+.missing-persons-grid .list-toggle-button {
+    grid-column: 1 / -1;
+    justify-self: start;
+}
+
+.case-summary-sections {
+    grid-template-columns: repeat(2, minmax(420px, 1fr));
+}
+
+.case-summary-panel {
+    max-width: none;
+    margin: 0;
+}
+
+@media (max-width: 900px) {
+    .dashboard-feature-grid,
+    .supervisor-operations-grid,
+    .supervisor-grid,
+    .audit-grid,
+    .case-summary-sections,
+    .legal-access-layout,
+    .bolo-layout,
+    .partner-workspace-layout,
+    .evidence-layout,
+    .external-record-grid,
+    .agencies-grid,
+    .missing-persons-grid,
+    .person-detail-grid {
+        grid-template-columns: 1fr;
+        width: min(100%, calc(100% - 24px));
+    }
+}
+
+/* Partner workspace: keep tools organized around the large investigator review panel. */
+.partner-page .partner-workspace-layout {
+    grid-template-columns: minmax(360px, 420px) minmax(640px, 760px);
+    grid-template-areas:
+        "receive review"
+        "registry review"
+        "source review";
+    gap: 24px;
+    width: min(100%, 1180px);
+    align-items: start;
+}
+
+.partner-page .partner-intake-panel:not(.partner-intake-review-panel) {
+    grid-area: receive;
+}
+
+.partner-page .partner-intake-review-panel {
+    grid-area: review;
+    min-height: 680px;
+    padding: 22px;
+}
+
+.partner-page .partner-panel:has(.partner-list) {
+    grid-area: registry;
+}
+
+.partner-page .partner-panel:has(.partner-form) {
+    grid-area: source;
+}
+
+.partner-page .partner-intake-card {
+    min-height: 0;
+    padding: 20px;
+}
+
+.partner-page .partner-intake-card-topline {
+    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.partner-page .partner-intake-card-topline div {
+    display: grid;
+    gap: 6px;
+}
+
+.partner-page .partner-intake-card-topline strong {
+    color: #e5edff;
+    font-size: 18px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.partner-page .partner-intake-card-topline span.request-status,
+.partner-page .partner-intake-card-topline > span {
+    justify-self: end;
+    white-space: normal;
+    max-width: 190px;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.partner-page .partner-match-suggestion {
+    padding: 16px;
+}
+
+.partner-page .partner-intake-details {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+
+.partner-page .partner-intake-review-form {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.partner-page .partner-intake-review-form textarea {
+    min-height: 110px;
+}
+
+.partner-page .partner-intake-actions {
+    justify-content: center;
+}
+
+.partner-page .partner-form textarea,
+.partner-page .partner-intake-form textarea {
+    min-height: 110px;
+}
+
+.partner-page .partner-source-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.partner-page .partner-source-controls input,
+.partner-page .partner-source-controls select {
+    min-height: 42px;
+    width: 100%;
+}
+
+.partner-page .partner-list {
+    max-height: none;
+    overflow: visible;
+}
+
+@media (max-width: 1100px) {
+    .partner-page .partner-workspace-layout {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "receive"
+            "review"
+            "registry"
+            "source";
+        width: min(100%, calc(100% - 24px));
+    }
+
+    .partner-page .partner-intake-review-panel {
+        min-height: auto;
+    }
+}
+
+/* Three-section page layout.
+   Card overview pages should read in tidy rows of three on desktop. */
+.dashboard-feature-grid,
+.supervisor-admin-links,
+.supervisor-command-strip,
+.supervisor-grid,
+.audit-grid,
+.case-management-grid,
+.external-record-grid,
+.agencies-grid,
+.missing-persons-grid,
+.source-grid,
+.users-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+    width: min(100%, 1180px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.command-grid {
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    width: min(100%, 980px);
+}
+
+.dashboard-action-list {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+    max-width: 760px;
+}
+
+.case-summary-sections,
+.legal-access-layout,
+.bolo-layout,
+.evidence-layout,
+.partner-page .partner-workspace-layout,
+.person-detail-grid,
+.supervisor-operations-grid {
+    width: min(100%, 1180px);
+}
+
+@media (max-width: 1100px) {
+    .dashboard-feature-grid,
+    .supervisor-admin-links,
+    .supervisor-command-strip,
+    .supervisor-grid,
+    .audit-grid,
+    .case-management-grid,
+    .external-record-grid,
+    .agencies-grid,
+    .missing-persons-grid,
+    .source-grid,
+    .users-list,
+    .command-grid,
+    .dashboard-action-list {
+        grid-template-columns: repeat(2, minmax(260px, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .dashboard-feature-grid,
+    .supervisor-admin-links,
+    .supervisor-command-strip,
+    .supervisor-grid,
+    .audit-grid,
+    .case-management-grid,
+    .external-record-grid,
+    .agencies-grid,
+    .missing-persons-grid,
+    .source-grid,
+    .users-list,
+    .command-grid,
+    .dashboard-action-list {
+        grid-template-columns: 1fr;
+        width: min(100%, calc(100% - 24px));
+    }
+}
+
+/* Audit center priority layout: user search first, compliance underneath. */
+.audit-page > .audit-search-layout {
+    grid-template-columns: minmax(520px, 660px) minmax(360px, 460px);
+    width: min(1160px, calc(100% - 44px));
+    gap: 24px;
+}
+
+.audit-page > .audit-search-layout > .audit-panel,
+.audit-page > .audit-search-layout > .audit-user-summary {
+    min-height: 360px;
+}
+
+.audit-readiness-panel {
+    width: min(1160px, calc(100% - 44px));
+}
+
+@media (max-width: 900px) {
+    .audit-page > .audit-search-layout {
+        grid-template-columns: 1fr;
+        width: min(100%, calc(100% - 24px));
+    }
+
+    .audit-page > .audit-search-layout > .audit-panel,
+    .audit-page > .audit-search-layout > .audit-user-summary {
+        min-height: auto;
+    }
+
+    .audit-readiness-panel {
+        width: min(100%, calc(100% - 24px));
+    }
+}
+
+/* Final workflow form and list corrections. */
+.case-access-panel,
+.legal-access-layout > .legal-panel:first-child,
+.bolo-layout > .bolo-panel:first-child,
+.partner-workspace-layout > .partner-panel:last-child,
+.agency-search-panel {
+    width: min(100%, 520px);
+    max-width: 520px;
+}
+
+.case-access-form,
+.legal-form,
+.bolo-form,
+.partner-form {
+    width: 100%;
+    max-width: none;
+    gap: 10px;
+}
+
+.case-access-form textarea,
+.legal-form textarea,
+.bolo-form textarea,
+.partner-form textarea {
+    min-height: 92px;
+    resize: vertical;
+}
+
+.case-access-form input,
+.case-access-form select,
+.case-access-form textarea,
+.legal-form input,
+.legal-form select,
+.legal-form textarea,
+.bolo-form input,
+.bolo-form select,
+.bolo-form textarea,
+.partner-form input,
+.partner-form select,
+.partner-form textarea {
+    min-height: 42px;
+}
+
+.legal-access-layout {
+    grid-template-columns: minmax(420px, 520px) minmax(420px, 620px);
+    gap: 28px;
+    width: min(100%, 1180px);
+}
+
+.legal-access-layout > .legal-panel {
+    align-self: start;
+}
+
+.bolo-layout {
+    grid-template-columns: minmax(420px, 520px) minmax(420px, 620px);
+    gap: 28px;
+    width: min(100%, 1180px);
+}
+
+.partner-workspace-layout {
+    gap: 28px;
+}
+
+.list-toggle-button {
+    justify-self: start;
+    margin-top: 10px;
+    min-height: 36px;
+    padding: 7px 12px;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.external-record-grid .list-toggle-button,
+.partner-list .list-toggle-button,
+.partner-intake-list .list-toggle-button,
+.legal-request-list .list-toggle-button,
+.bolo-list .list-toggle-button,
+.audit-user-list .list-toggle-button {
+    width: fit-content;
+}
+
+@media (max-width: 900px) {
+    .legal-access-layout,
+    .bolo-layout {
+        grid-template-columns: 1fr;
+        width: min(100%, calc(100% - 24px));
+    }
+
+    .case-access-panel,
+    .legal-access-layout > .legal-panel:first-child,
+    .bolo-layout > .bolo-panel:first-child,
+    .partner-workspace-layout > .partner-panel:last-child,
+    .agency-search-panel {
+        width: 100%;
+        max-width: none;
+    }
+}
+
 /* Final supervisor review queue override.
    Keeps oversight items in a compact, readable grid instead of letting older
    shared panel rules scatter the cards across the page. */
@@ -1103,6 +1728,136 @@
     font-size: 26px;
 }
 
+.supervisor-page .supervisor-command-strip {
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    width: min(100%, 1120px);
+    max-width: 1120px;
+}
+
+.supervisor-metric-card small {
+    color: #aeb8ca;
+    line-height: 1.35;
+}
+
+.supervisor-workload-summary,
+.supervisor-risk-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.supervisor-workload-summary div,
+.supervisor-risk-grid span {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.62);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    color: #b8c3d8;
+    font-weight: 800;
+}
+
+.supervisor-workload-summary strong,
+.supervisor-risk-grid strong {
+    color: #e5edff;
+    font-size: 26px;
+    line-height: 1;
+}
+
+.supervisor-workload-item {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.62);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.supervisor-workload-item div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.supervisor-workload-item span {
+    padding: 3px 8px;
+    border-radius: 999px;
+    color: #dbeafe;
+    background: rgba(30, 64, 175, 0.46);
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.supervisor-workload-item.overloaded {
+    border-color: rgba(248, 113, 113, 0.5);
+}
+
+.supervisor-workload-item.capacity {
+    border-color: rgba(74, 222, 128, 0.46);
+}
+
+.supervisor-timeline-list,
+.supervisor-agency-list {
+    display: grid;
+    gap: 10px;
+}
+
+.supervisor-timeline-item,
+.supervisor-mini-item {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.62);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.supervisor-timeline-item span,
+.supervisor-mini-item span {
+    color: #93c5fd;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.supervisor-signal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.supervisor-signal-grid h3 {
+    margin: 0 0 8px;
+    color: #e5edff;
+    font-size: 17px;
+}
+
+.supervisor-agency-list {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    margin-top: 12px;
+}
+
+.supervisor-agency-list span {
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: #dbeafe;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(147, 197, 253, 0.2);
+    font-weight: 800;
+}
+
+.supervisor-list-toggle {
+    justify-self: start;
+    margin-top: 10px;
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 14px;
+    font-weight: 800;
+}
+
 @media (max-width: 760px) {
     .supervisor-page .supervisor-review-section {
         width: min(100%, calc(100% - 24px));
@@ -1124,7 +1879,8 @@
 
     .supervisor-user-filters,
     .supervisor-password-reset,
-    .supervisor-report-grid {
+    .supervisor-report-grid,
+    .supervisor-signal-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -2999,22 +3755,22 @@
 /* Keep the audit user lookup compact, readable, and centered on wide screens. */
 .audit-page > .audit-search-layout {
     display: grid;
-    grid-template-columns: minmax(300px, 440px) minmax(260px, 360px);
+    grid-template-columns: minmax(520px, 660px) minmax(360px, 460px);
     justify-content: center;
     align-items: start;
-    width: min(860px, calc(100% - 44px));
+    width: min(1160px, calc(100% - 44px));
     margin: 0 auto 20px;
-    gap: 12px;
+    gap: 24px;
 }
 
 .audit-page > .audit-search-layout > .audit-panel {
     justify-self: stretch;
-    max-width: 440px;
-    min-height: 170px;
+    max-width: none;
+    min-height: 360px;
 }
 
 .audit-page > .audit-search-layout > .audit-user-summary {
-    max-width: 340px;
+    max-width: none;
     text-align: center;
     align-self: stretch;
     display: flex;
@@ -3024,6 +3780,34 @@
 
 .audit-page > .audit-search-layout h2 {
     text-align: center;
+}
+
+.audit-readiness-panel {
+    width: min(1160px, calc(100% - 44px));
+    margin: 0 auto 24px;
+    box-sizing: border-box;
+}
+
+.audit-panel-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.audit-panel-heading span {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.audit-panel-heading strong {
+    color: #e5edff;
+    font-size: 22px;
 }
 
 .audit-page > .audit-search-layout input {

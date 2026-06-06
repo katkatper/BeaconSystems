@@ -4,6 +4,7 @@ function ExternalRecordList() {
     const [records, setRecords] = useState([]);
     const [partners, setPartners] = useState([]);
     const [sourceFilter, setSourceFilter] = useState("all");
+    const [showMore, setShowMore] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -81,7 +82,7 @@ function ExternalRecordList() {
                 </div>
             ) : (
                 <div className="external-record-grid">
-                    {filteredRecords.map((record) => {
+                    {filteredRecords.slice(0, showMore ? 6 : 2).map((record) => {
                         const partner = partnersById[record.integration_source_id];
 
                         return (
@@ -132,6 +133,15 @@ function ExternalRecordList() {
                             </article>
                         );
                     })}
+                    {filteredRecords.length > 2 && (
+                        <button
+                            type="button"
+                            className="list-toggle-button"
+                            onClick={() => setShowMore((current) => !current)}
+                        >
+                            {showMore ? "Show fewer" : `Show ${Math.min(4, filteredRecords.length - 2)} more records`}
+                        </button>
+                    )}
                 </div>
             )}
         </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 
 function UserManagement() {
     const [users, setUsers] = useState([]);
+    const [showMoreUsers, setShowMoreUsers] = useState(false);
     const [message, setMessage] = useState("");
 
     useEffect(() => {
@@ -77,7 +78,7 @@ function UserManagement() {
                     {users.length === 0 ? (
                         <p>No users found.</p>
                     ) : (
-                        users.map((user) => (
+                        users.slice(0, showMoreUsers ? 6 : 2).map((user) => (
                             <article key={user.user_id} className="user-card">
                                 <div className="user-card-main">
                                     <div>
@@ -115,6 +116,15 @@ function UserManagement() {
                                 </div>
                             </article>
                         ))
+                    )}
+                    {users.length > 2 && (
+                        <button
+                            type="button"
+                            className="list-toggle-button"
+                            onClick={() => setShowMoreUsers((current) => !current)}
+                        >
+                            {showMoreUsers ? "Show fewer" : `Show ${Math.min(4, users.length - 2)} more users`}
+                        </button>
                     )}
                 </div>
             </section>

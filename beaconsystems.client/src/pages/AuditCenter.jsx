@@ -5,12 +5,47 @@ function AuditCenter() {
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [audit, setAudit] = useState(null);
+    const [summary, setSummary] = useState(null);
+    const [showMoreUsers, setShowMoreUsers] = useState(false);
+    const [expandedAuditLists, setExpandedAuditLists] = useState({});
     const [message, setMessage] = useState("");
 
     const token = localStorage.getItem("token");
 
     // Audit search starts with users, then drills into one person's full trail.
     // This keeps supervisors focused and avoids showing every log by default.
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadSummary = async () => {
+            try {
+                const response = await fetch("http://127.0.0.1:8000/audit/summary", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error("Could not load audit summary");
+                }
+
+                const data = await response.json();
+
+                if (isMounted) {
+                    setSummary(data);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        loadSummary();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [token]);
+
     useEffect(() => {
         let isMounted = true;
 
@@ -82,6 +117,22 @@ function AuditCenter() {
     const displayName = (user) => {
         return user?.username || user?.email || `User ${user?.user_id || "Unknown"}`;
     };
+    const visibleAuditItems = (key, items) =>
+        (items || []).slice(0, expandedAuditLists[key] ? 6 : 2);
+    const renderAuditToggle = (key, count, label) => count > 2 ? (
+        <button
+            type="button"
+            className="list-toggle-button"
+            onClick={() =>
+                setExpandedAuditLists((current) => ({
+                    ...current,
+                    [key]: !current[key],
+                }))
+            }
+        >
+            {expandedAuditLists[key] ? "Show fewer" : `Show ${Math.min(4, count - 2)} more ${label}`}
+        </button>
+    ) : null;
 
     return (
         <div className="audit-page">
@@ -105,7 +156,7 @@ function AuditCenter() {
                         {users.length === 0 ? (
                             <p>No users found.</p>
                         ) : (
-                            users.map((user) => (
+                            users.slice(0, showMoreUsers ? 6 : 2).map((user) => (
                                 <button
                                     key={user.user_id}
                                     type="button"
@@ -118,6 +169,15 @@ function AuditCenter() {
                                     <small>{user.email || user.username}</small>
                                 </button>
                             ))
+                        )}
+                        {users.length > 2 && (
+                            <button
+                                type="button"
+                                className="list-toggle-button"
+                                onClick={() => setShowMoreUsers((current) => !current)}
+                            >
+                                {showMoreUsers ? "Show fewer" : `Show ${Math.min(4, users.length - 2)} more users`}
+                            </button>
                         )}
                     </div>
                 </section>
@@ -139,6 +199,37 @@ function AuditCenter() {
                 </section>
             </div>
 
+            <section className="audit-panel audit-readiness-panel">
+                <div className="audit-panel-heading">
+                    <span>Compliance</span>
+                    <strong>Compliance Readiness</strong>
+                </div>
+
+                <div className="compliance-list">
+                    <span className="compliance-ok">
+                        Audit logging {summary?.compliance_readiness?.audit_logging_active ? "active" : "not active"}
+                    </span>
+                    <span className="compliance-ok">
+                        Evidence chain of custody {summary?.compliance_readiness?.evidence_chain_active ? "active" : "not active"}
+                    </span>
+                    <span className="compliance-warning">
+                        Missing legal info: {summary?.compliance_readiness?.missing_info_legal_requests ?? 0}
+                    </span>
+                    <span className="compliance-danger">
+                        Denied legal docs: {summary?.compliance_readiness?.denied_legal_requests ?? 0}
+                    </span>
+                    <span className="compliance-pending">
+                        Legal docs pending review: {summary?.compliance_readiness?.pending_legal_requests ?? 0}
+                    </span>
+                    <span className="compliance-ok">
+                        Approved legal docs: {summary?.compliance_readiness?.approved_legal_requests ?? 0}
+                    </span>
+                    <span className="compliance-pending">
+                        Partner source approvals: {summary?.compliance_readiness?.pending_partner_sources ?? 0}
+                    </span>
+                </div>
+            </section>
+
             {/* User activity panels stay hidden until a supervisor selects a user. */}
             {selectedUser && audit && (
                 <div className="audit-grid">
@@ -148,7 +239,7 @@ function AuditCenter() {
                         {(audit.recent_activity || []).length === 0 ? (
                             <p>No recent activity found for this user.</p>
                         ) : (
-                            (audit.recent_activity || []).map((item) => (
+                            visibleAuditItems("recentActivity", audit.recent_activity).map((item) => (
                                 <article key={item.log_id} className="queue-item">
                                     <div>
                                         <strong>{item.action}</strong>
@@ -158,6 +249,7 @@ function AuditCenter() {
                                 </article>
                             ))
                         )}
+                        {renderAuditToggle("recentActivity", (audit.recent_activity || []).length, "events")}
                     </section>
 
                     <section className="audit-panel">
@@ -166,7 +258,7 @@ function AuditCenter() {
                         {(audit.restricted_case_access || []).length === 0 ? (
                             <p>No restricted case access found for this user.</p>
                         ) : (
-                            (audit.restricted_case_access || []).map((item) => (
+                            visibleAuditItems("restrictedCaseAccess", audit.restricted_case_access).map((item) => (
                                 <article key={item.grant_id} className="queue-item">
                                     <div>
                                         <strong>Case {item.case_id}</strong>
@@ -176,6 +268,7 @@ function AuditCenter() {
                                 </article>
                             ))
                         )}
+                        {renderAuditToggle("restrictedCaseAccess", (audit.restricted_case_access || []).length, "entries")}
                     </section>
 
                     <section className="audit-panel">
@@ -184,7 +277,7 @@ function AuditCenter() {
                         {(audit.evidence_chain_events || []).length === 0 ? (
                             <p>No evidence events found for this user.</p>
                         ) : (
-                            (audit.evidence_chain_events || []).map((item) => (
+                            visibleAuditItems("evidenceChainEvents", audit.evidence_chain_events).map((item) => (
                                 <article key={item.chain_id} className="queue-item">
                                     <div>
                                         <strong>{item.action}</strong>
@@ -195,6 +288,7 @@ function AuditCenter() {
                                 </article>
                             ))
                         )}
+                        {renderAuditToggle("evidenceChainEvents", (audit.evidence_chain_events || []).length, "events")}
                     </section>
                 </div>
             )}

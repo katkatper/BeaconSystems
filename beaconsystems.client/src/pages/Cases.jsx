@@ -73,7 +73,11 @@ function Cases() {
                     <span>Investigator</span>
                 </div>
 
-                {items.map((caseItem) => (
+                {[...items]
+                    .sort((firstCase, secondCase) =>
+                        (firstCase.case_number || "").localeCompare(secondCase.case_number || "")
+                    )
+                    .map((caseItem) => (
                     <div key={caseItem.case_id} className="case-summary-row">
                         <Link to={`/cases/${caseItem.case_id}`}>
                             {caseItem.case_number || `Case ${caseItem.case_id}`}

@@ -16,6 +16,7 @@ const fetchBolos = async (token) => {
 
 function BoloBoard() {
     const [bolos, setBolos] = useState([]);
+    const [showMoreBolos, setShowMoreBolos] = useState(false);
     const [form, setForm] = useState({
         case_id: "",
         title: "",
@@ -197,7 +198,7 @@ function BoloBoard() {
                         {bolos.length === 0 ? (
                             <p>No active BOLO alerts.</p>
                         ) : (
-                            bolos.map((bolo) => (
+                            bolos.slice(0, showMoreBolos ? 6 : 2).map((bolo) => (
                                 <article key={bolo.bolo_id} className="bolo-card">
                                     <div className="bolo-card-topline">
                                         <strong>{bolo.title}</strong>
@@ -218,6 +219,15 @@ function BoloBoard() {
                                     </small>
                                 </article>
                             ))
+                        )}
+                        {bolos.length > 2 && (
+                            <button
+                                type="button"
+                                className="list-toggle-button"
+                                onClick={() => setShowMoreBolos((current) => !current)}
+                            >
+                                {showMoreBolos ? "Show fewer" : `Show ${Math.min(4, bolos.length - 2)} more BOLOs`}
+                            </button>
                         )}
                     </div>
                 </section>

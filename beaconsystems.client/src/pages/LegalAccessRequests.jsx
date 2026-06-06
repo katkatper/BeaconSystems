@@ -45,6 +45,7 @@ const fetchLegalAccessRequests = async () => {
 
 function LegalAccessRequests() {
     const [requests, setRequests] = useState([]);
+    const [showMoreRequests, setShowMoreRequests] = useState(false);
     const [message, setMessage] = useState("");
     const [reviewNotes, setReviewNotes] = useState({});
     const [form, setForm] = useState({
@@ -302,7 +303,7 @@ function LegalAccessRequests() {
                         <p>No legal access requests submitted.</p>
                     ) : (
                         <div className="legal-request-list">
-                            {requests.map((request) => (
+                            {requests.slice(0, showMoreRequests ? 6 : 2).map((request) => (
                                 <article
                                     key={request.request_id}
                                     className="legal-request-card"
@@ -376,6 +377,15 @@ function LegalAccessRequests() {
                                     </div>
                                 </article>
                             ))}
+                            {requests.length > 2 && (
+                                <button
+                                    type="button"
+                                    className="list-toggle-button"
+                                    onClick={() => setShowMoreRequests((current) => !current)}
+                                >
+                                    {showMoreRequests ? "Show fewer" : `Show ${Math.min(4, requests.length - 2)} more requests`}
+                                </button>
+                            )}
                         </div>
                     )}
                 </section>
