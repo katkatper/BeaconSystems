@@ -20,6 +20,10 @@ class EvidenceChain(Base):
 
 
     action = Column(String(100), nullable=False)
+    from_holder = Column(String(200), nullable=True)
+    to_holder = Column(String(200), nullable=True)
+    location = Column(String(200), nullable=True)
+    available_at = Column(DateTime, nullable=True)
 
     details = Column(Text, nullable=True)
 

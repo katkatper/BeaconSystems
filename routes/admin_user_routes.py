@@ -11,6 +11,19 @@ from services.activity_service import create_activity_log
 router = APIRouter(prefix="/admin/users", tags=["Admin Users"])
 
 
+def serialize_user(user: User):
+    return {
+        "user_id": user.user_id,
+        "username": user.username,
+        "email": user.email,
+        "role": user.role,
+        "agency_id": user.agency_id,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+        "must_change_password": user.must_change_password,
+    }
+
+
 @router.post("/")
 def create_user(
     data: AdminUserCreate,
@@ -63,10 +76,7 @@ def create_user(
 
     return {
         "message": "User created",
-        "user_id": new_user.user_id,
-        "username": new_user.username,
-        "role": new_user.role,
-        "agency_id": new_user.agency_id,
+        **serialize_user(new_user),
     }
 
 
@@ -80,7 +90,7 @@ def get_users(
     if current_user.role != "admin":
         query = query.filter(User.agency_id == current_user.agency_id)
 
-    return query.order_by(User.username.asc()).all()
+    return [serialize_user(user) for user in query.order_by(User.username.asc()).all()]
 
 
 @router.put("/{user_id}/role")
@@ -150,6 +160,12 @@ def update_user_status(
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if current_user.role == "supervisor" and user.role in {"admin", "agency_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Supervisors cannot update admin account status",
+        )
 
     user.is_active = is_active
     db.commit()

@@ -6,6 +6,7 @@ function CreateCase() {
 
     const [formData, setFormData] = useState({
         case_number: "",
+        title: "",
         person_id: "",
         last_seen_location: "",
         priority_level: "high",
@@ -84,6 +85,14 @@ function CreateCase() {
                     placeholder="Case Number"
                     value={formData.case_number}
                     onChange={handleChange}
+                />
+
+                <input
+                    name="title"
+                    placeholder="Case Title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    required
                 />
 
                 <select

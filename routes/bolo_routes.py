@@ -56,7 +56,7 @@ def list_bolos(
 def create_bolo(
     data: BoloCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
     case = assert_case_write_access(db, data.case_id, current_user)
 
@@ -95,7 +95,7 @@ def update_bolo(
     bolo_id: int,
     data: BoloUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
     bolo = db.query(BoloAlert).filter(BoloAlert.bolo_id == bolo_id).first()
 

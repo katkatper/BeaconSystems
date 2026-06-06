@@ -23,6 +23,10 @@ class Evidence(Base):
 
     collected_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     evidence_location = Column(String(200), nullable=True)
+    custody_status = Column(String(100), default="collected")
+    current_holder = Column(String(200), nullable=True)
+    lab_reference = Column(String(200), nullable=True)
+    available_at = Column(DateTime, nullable=True)
 
     is_sensitive = Column(Boolean, default=False)
 

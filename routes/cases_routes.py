@@ -195,7 +195,7 @@ def create_case(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
     new_case = Cases(**case.model_dump())
 
@@ -269,7 +269,7 @@ def update_case(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
 
 
@@ -502,7 +502,7 @@ def request_case_access(
 def archive_case(
     case_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     query = db.query(Cases).filter(Cases.case_id == case_id)
     query = apply_case_access_filter(query, current_user, include_grants=False)

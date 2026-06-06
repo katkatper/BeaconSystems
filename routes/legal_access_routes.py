@@ -144,7 +144,7 @@ def review_legal_access_request(
     request_id: int,
     data: LegalAccessReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     allowed_statuses = {"pending", "approved", "denied", "missing_info", "expired", "revoked"}
 

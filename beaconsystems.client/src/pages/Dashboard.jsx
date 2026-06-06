@@ -23,7 +23,7 @@ function Dashboard() {
                 ["Upload Evidence", "/evidence-upload"],
                 ["Request Legal Access", "/legal-access"],
                 ["Request Legal Order", "/legal-orders"],
-                ["Create BOLO", "/bolos"],
+                ["Create BOLO", "/alerts"],
                 ["Review Partner Data", "/partner-sources"],
                 ["Manage Users", "/admin/users"],
                 ["Audit Center", "/audit"],
@@ -42,7 +42,7 @@ function Dashboard() {
                 ["Assign Case Teams", "/supervisor"],
                 ["Request Legal Access", "/legal-access"],
                 ["Request Legal Order", "/legal-orders"],
-                ["Create BOLO", "/bolos"],
+                ["Create BOLO", "/alerts"],
                 ["Review Partner Data", "/partner-sources"],
                 ["Shared Agency Information", "/cases"],
                 ["Open Intelligence", "/intelligence"],
@@ -59,7 +59,7 @@ function Dashboard() {
                 ["Review Case Access", "/supervisor"],
                 ["Request Legal Access", "/legal-access"],
                 ["Request Legal Order", "/legal-orders"],
-                ["Create BOLO", "/bolos"],
+                ["Create BOLO", "/alerts"],
                 ["Review Partner Data", "/partner-sources"],
                 ["Open Intelligence", "/intelligence"],
             ],
@@ -77,7 +77,7 @@ function Dashboard() {
                 ["Request Legal Access", "/legal-access"],
                 ["Review Partner Data", "/partner-sources"],
                 ["Open Intelligence", "/intelligence"],
-                ["Create BOLO", "/bolos"],
+                ["Create BOLO", "/alerts"],
             ],
         },
         analyst: {
@@ -91,7 +91,7 @@ function Dashboard() {
                 ["Review Evidence", "/evidence-upload"],
                 ["Review Partner Data", "/partner-sources"],
                 ["Open Intelligence", "/intelligence"],
-                ["BOLO Board", "/bolos"],
+                ["BOLO Board", "/alerts"],
             ],
         },
         viewer: {
@@ -225,7 +225,7 @@ function Dashboard() {
                             <section className="dashboard-panel">
                                 <div className="dashboard-panel-header">
                                     <span>Field Awareness</span>
-                                    <Link to="/bolos">Open</Link>
+                                    <Link to="/alerts">Open</Link>
                                 </div>
                                 <h2>Active BOLOs</h2>
 
@@ -241,7 +241,7 @@ function Dashboard() {
 
                                         <p>{bolo.description}</p>
 
-                                        <Link to="/bolos">Open BOLO Board</Link>
+                                        <Link to="/alerts">Open Operational Alerts</Link>
                                     </article>
                                 ))
                             )}

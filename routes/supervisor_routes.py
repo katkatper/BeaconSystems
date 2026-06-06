@@ -125,6 +125,56 @@ def get_supervisor_queue(
         .all()
     )
 
+    pending_case_access = (
+        access_query
+        .filter(CaseAccessGrant.status == "pending")
+        .order_by(CaseAccessGrant.granted_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    access_items = pending_case_access + recent_case_access
+    access_case_ids = {item.case_id for item in access_items}
+    access_user_ids = {item.user_id for item in access_items}
+    access_cases = (
+        {
+            case.case_id: case
+            for case in db.query(Cases).filter(Cases.case_id.in_(access_case_ids)).all()
+        }
+        if access_case_ids
+        else {}
+    )
+    access_users = (
+        {
+            user.user_id: user.username
+            for user in db.query(User).filter(User.user_id.in_(access_user_ids)).all()
+        }
+        if access_user_ids
+        else {}
+    )
+
+    def serialize_case_access(item: CaseAccessGrant):
+        case = access_cases.get(item.case_id)
+
+        return {
+            "grant_id": item.grant_id,
+            "case_id": item.case_id,
+            "case_number": case.case_number if case else None,
+            "case_title": case.title if case else None,
+            "user_id": item.user_id,
+            "username": access_users.get(item.user_id),
+            "agency_id": item.agency_id,
+            "reason": item.reason,
+            "reason_category": item.reason_category,
+            "approval_type": item.approval_type,
+            "status": item.status,
+            "reviewed_by": item.reviewed_by,
+            "review_notes": item.review_notes,
+            "granted_at": item.granted_at,
+            "expires_at": item.expires_at,
+            "revoked_at": item.revoked_at,
+        }
+
 # Active BOLO alerts are included so supervisors can monitor urgent public safety
 # notices and make sure stale notices are closed or updated.
 
@@ -140,14 +190,8 @@ def get_supervisor_queue(
         "pending_legal_requests": pending_legal_requests,
         "pending_partner_sources": pending_partner_sources,
         "high_priority_cases": high_priority_case_summaries,
-        "pending_case_access": (
-            access_query
-            .filter(CaseAccessGrant.status == "pending")
-            .order_by(CaseAccessGrant.granted_at.desc())
-            .limit(10)
-            .all()
-        ),
-        "recent_case_access": recent_case_access,
+        "pending_case_access": [serialize_case_access(item) for item in pending_case_access],
+        "recent_case_access": [serialize_case_access(item) for item in recent_case_access],
         "active_bolos": active_bolos,
     }
 

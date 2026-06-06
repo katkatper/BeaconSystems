@@ -10,8 +10,11 @@ function SupervisorQueue() {
     const [queue, setQueue] = useState(null);
     const [message, setMessage] = useState("");
     const [reviewNotes, setReviewNotes] = useState({});
-    const [activeWorkspace, setActiveWorkspace] = useState("access");
+    const [activeWorkspace, setActiveWorkspace] = useState("investigations");
     const [users, setUsers] = useState([]);
+    const [userSearch, setUserSearch] = useState("");
+    const [userRoleFilter, setUserRoleFilter] = useState("all");
+    const [userStatusFilter, setUserStatusFilter] = useState("active");
     const [resetPasswords, setResetPasswords] = useState({});
     const [newUser, setNewUser] = useState({
         username: "",
@@ -38,6 +41,7 @@ function SupervisorQueue() {
     });
 
     const token = localStorage.getItem("token");
+    const currentRole = localStorage.getItem("role") || "viewer";
 
     const getApiErrorMessage = (errorData, fallback) => {
         if (Array.isArray(errorData.detail)) {
@@ -48,18 +52,65 @@ function SupervisorQueue() {
 
         return errorData.detail || fallback;
     };
+    const formatDateTime = (value) => {
+        if (!value) {
+            return "Not recorded";
+        }
 
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return "Not recorded";
+        }
+
+        return date.toLocaleString();
+    };
+
+    const roleOptions = currentRole === "admin"
+        ? [
+            ["investigator", "Investigator"],
+            ["supervisor", "Supervisor"],
+            ["analyst", "Analyst"],
+            ["viewer", "Viewer"],
+            ["agency_admin", "Agency Admin"],
+            ["admin", "Admin"],
+        ]
+        : [
+            ["investigator", "Investigator"],
+            ["supervisor", "Supervisor"],
+            ["analyst", "Analyst"],
+            ["viewer", "Viewer"],
+        ];
+    const activeUsers = users.filter((user) => user.is_active);
+    const activeInvestigators = activeUsers.filter((user) => user.role === "investigator");
+    const filteredUsers = users.filter((user) => {
+        const searchText = `${user.username || ""} ${user.email || ""} ${user.role || ""}`.toLowerCase();
+        const matchesSearch = searchText.includes(userSearch.trim().toLowerCase());
+        const matchesRole = userRoleFilter === "all" || user.role === userRoleFilter;
+        const matchesStatus =
+            userStatusFilter === "all" ||
+            (userStatusFilter === "active" && user.is_active) ||
+            (userStatusFilter === "disabled" && !user.is_active);
+
+        return matchesSearch && matchesRole && matchesStatus;
+    });
+    const canManageUser = (user) => currentRole !== "supervisor" ||
+        !["admin", "agency_admin"].includes(user.role);
+    const oversightCount = (queue?.pending_legal_requests?.length || 0) +
+        (queue?.pending_case_access?.length || 0) +
+        (queue?.recent_case_access?.length || 0);
     const workspaceCards = [
-        ["access", "Access", "Review pending legal/case access and restricted access activity."],
-        ["users", "Users", "Register users, disable accounts, and manage team access."],
-        ["case-teams", "Case Teams", "Assign the lead investigator and assemble the investigative team."],
-        ["court-docs", "Court Documents", "Track warrants, subpoenas, court orders, and legal authority."],
-        ["bolos", "BOLO", "Create and monitor BOLO alerts for field awareness."],
+        ["personnel", "Personnel", "Keep investigators staffed, active, and able to work.", users.length],
+        ["investigations", "Investigations", "Move missing person cases forward faster.", queue?.high_priority_cases?.length || 0],
+        ["operations", "Operations", "Coordinate alerts, BOLOs, and urgent field activity.", queue?.active_bolos?.length || 0],
+        ["compliance", "Compliance", "Keep legal, access, audit, and evidence reviews clean.", oversightCount],
+        ["community", "Agency Coordination", "Reduce handoffs across partner agencies and public leads.", exchanges.length],
+        ["reports", "Reports", "Give command staff a clear operating picture.", users.length + oversightCount],
     ];
 
 
  // Load the review queue once when the page opens. The backend enforces that
-// only admins and agency admins can access this endpoint.
+// only admins, agency admins, and supervisors can access this endpoint.
 
     useEffect(() => {
 
@@ -439,21 +490,48 @@ function SupervisorQueue() {
             </div>
 
             <section className="supervisor-admin-links" aria-label="Supervisor administration links">
-                {workspaceCards.map(([key, title, description]) => (
+                {workspaceCards.map(([key, title, description, count]) => (
                     <button
                         key={key}
                         type="button"
                         className={`supervisor-admin-card ${activeWorkspace === key ? "active" : ""}`}
                         onClick={() => setActiveWorkspace(key)}
                     >
+                        <span className="supervisor-workspace-count">{count}</span>
                         <strong>{title}</strong>
                         <small>{description}</small>
                     </button>
                 ))}
             </section>
 
-            {activeWorkspace === "users" && (
+            {activeWorkspace === "personnel" && (
             <div className="supervisor-operations-grid">
+                <section className="supervisor-user-registration supervisor-capacity-card">
+                    <div className="supervisor-panel-header">
+                        <span>Personnel</span>
+                        <strong>Investigator Capacity</strong>
+                    </div>
+
+                    <div className="supervisor-capacity-summary">
+                        <span>Active investigators</span>
+                        <strong>{activeInvestigators.length}</strong>
+                        <small>Available staff for case assignment and support</small>
+                    </div>
+
+                    <div className="supervisor-investigator-list">
+                        {activeInvestigators.length === 0 ? (
+                            <p>No active investigators found for your agency.</p>
+                        ) : (
+                            activeInvestigators.map((user) => (
+                                <article key={user.user_id} className="supervisor-investigator-item">
+                                    <strong>{user.username}</strong>
+                                    <small>{user.email}</small>
+                                </article>
+                            ))
+                        )}
+                    </div>
+                </section>
+
                 <section className="supervisor-user-registration">
                     <div className="supervisor-panel-header">
                         <span>User Access</span>
@@ -497,23 +575,22 @@ function SupervisorQueue() {
                                 setNewUser((current) => ({ ...current, role: event.target.value }))
                             }
                         >
-                            <option value="investigator">Investigator</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="analyst">Analyst</option>
-                            <option value="viewer">Viewer</option>
-                            <option value="agency_admin">Agency Admin</option>
-                            <option value="admin">Admin</option>
+                            {roleOptions.map(([value, label]) => (
+                                <option key={value} value={value}>{label}</option>
+                            ))}
                         </select>
 
-                        <input
-                            type="number"
-                            min="1"
-                            placeholder="Agency ID"
-                            value={newUser.agency_id}
-                            onChange={(event) =>
-                                setNewUser((current) => ({ ...current, agency_id: event.target.value }))
-                            }
-                        />
+                        {currentRole === "admin" && (
+                            <input
+                                type="number"
+                                min="1"
+                                placeholder="Agency ID"
+                                value={newUser.agency_id}
+                                onChange={(event) =>
+                                    setNewUser((current) => ({ ...current, agency_id: event.target.value }))
+                                }
+                            />
+                        )}
 
                         <button type="submit">Register User</button>
                     </form>
@@ -525,11 +602,39 @@ function SupervisorQueue() {
                         <strong>Disable or Restore Users</strong>
                     </div>
 
+                    <div className="supervisor-user-filters">
+                        <input
+                            type="search"
+                            placeholder="Search users"
+                            value={userSearch}
+                            onChange={(event) => setUserSearch(event.target.value)}
+                        />
+
+                        <select
+                            value={userRoleFilter}
+                            onChange={(event) => setUserRoleFilter(event.target.value)}
+                        >
+                            <option value="all">All roles</option>
+                            {roleOptions.map(([value, label]) => (
+                                <option key={value} value={value}>{label}</option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={userStatusFilter}
+                            onChange={(event) => setUserStatusFilter(event.target.value)}
+                        >
+                            <option value="active">Active</option>
+                            <option value="disabled">Disabled</option>
+                            <option value="all">All statuses</option>
+                        </select>
+                    </div>
+
                     <div className="supervisor-user-list">
-                        {users.length === 0 ? (
+                        {filteredUsers.length === 0 ? (
                             <p>No users found for your agency.</p>
                         ) : (
-                            users.map((user) => (
+                            filteredUsers.map((user) => (
                                 <article key={user.user_id} className="queue-item">
                                     <div>
                                         <strong>{user.username}</strong>
@@ -539,6 +644,7 @@ function SupervisorQueue() {
                                     <p>{user.role} | Agency {user.agency_id || "Unassigned"}</p>
                                     <button
                                         type="button"
+                                        disabled={!canManageUser(user)}
                                         onClick={() => updateUserStatus(user.user_id, !user.is_active)}
                                     >
                                         {user.is_active ? "Disable / Archive" : "Restore User"}
@@ -546,7 +652,7 @@ function SupervisorQueue() {
                                     <div className="supervisor-password-reset">
                                         <input
                                             type="password"
-                                            placeholder="New temporary password"
+                                            placeholder="Temporary password (12+ chars)"
                                             value={resetPasswords[user.user_id] || ""}
                                             onChange={(event) =>
                                                 setResetPasswords((currentPasswords) => ({
@@ -557,6 +663,7 @@ function SupervisorQueue() {
                                         />
                                         <button
                                             type="button"
+                                            disabled={!canManageUser(user)}
                                             onClick={() => resetUserPassword(user.user_id)}
                                         >
                                             Reset Password
@@ -570,11 +677,125 @@ function SupervisorQueue() {
             </div>
             )}
 
-            {activeWorkspace === "case-teams" && (
+            {activeWorkspace === "investigations" && (
+            <div className="supervisor-operations-grid">
+                <section className="case-team-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Case Command</span>
+                        <strong>Investigations Oversight</strong>
+                    </div>
+
+                    <p className="supervisor-panel-note">
+                        Create cases, review agency-wide case progress, approve closure work,
+                        and reassign investigative resources when a case needs support.
+                    </p>
+
+                    <div className="supervisor-action-grid">
+                        <Link to="/create-case">Create Case</Link>
+                        <Link to="/cases">Review Case Status</Link>
+                        <Link to="/intelligence">Review Leads & Sightings</Link>
+                        <Link to="/evidence-upload">Review Evidence Handling</Link>
+                    </div>
+                </section>
+
+                <section className="case-team-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Case Team</span>
+                        <strong>Assemble Case Team</strong>
+                    </div>
+
+                    <p className="supervisor-panel-note">
+                        Assign the lead investigator on the case record first, then add support
+                        investigators, analysts, or supervisor observers as needed.
+                    </p>
+
+                    <form className="case-team-form" onSubmit={assignCaseTeamMember}>
+                        <input
+                            type="number"
+                            name="case_id"
+                            min="1"
+                            placeholder="Case ID"
+                            value={teamForm.case_id}
+                            onChange={handleTeamChange}
+                            required
+                        />
+
+                        <select
+                            name="user_id"
+                            value={teamForm.user_id}
+                            onChange={handleTeamChange}
+                            required
+                        >
+                            <option value="">Select team member</option>
+                            {activeUsers.map((user) => (
+                                <option
+                                    key={user.user_id}
+                                    value={user.user_id}
+                                >
+                                    {user.username} ({user.role})
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            name="role"
+                            value={teamForm.role}
+                            onChange={handleTeamChange}
+                        >
+                            <option value="support_investigator">Support Investigator</option>
+                            <option value="analyst_support">Analyst Support</option>
+                            <option value="supervisor_observer">Supervisor Observer</option>
+                        </select>
+
+                        <textarea
+                            name="reason"
+                            placeholder="Why this user is being added to the case team"
+                            value={teamForm.reason}
+                            onChange={handleTeamChange}
+                        />
+
+                        <button type="submit">Assign to Case Team</button>
+                    </form>
+                </section>
+
+                <section className="case-team-panel">
+                    <div className="supervisor-panel-header">
+                        <span>Case Progress</span>
+                        <strong>Cases Needing Command Attention</strong>
+                    </div>
+
+                    {(queue?.high_priority_cases || []).length === 0 ? (
+                        <p>No command attention items surfaced.</p>
+                    ) : (
+                        <div className="supervisor-user-list">
+                            {queue.high_priority_cases.map((item) => (
+                                <article key={item.case_id} className="queue-item">
+                                    <div>
+                                        <strong>{item.case_number}</strong>
+                                        <span>{item.case_status}</span>
+                                    </div>
+                                    <p>{item.title}</p>
+                                    <p className="queue-item-meta">
+                                        Assigned to: {item.investigator_name || (
+                                            item.investigator_id
+                                                ? `Investigator ${item.investigator_id}`
+                                                : "Unassigned"
+                                        )}
+                                    </p>
+                                    <Link to={`/cases/${item.case_id}`}>Open Case</Link>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            </div>
+            )}
+
+            {activeWorkspace === "community" && (
             <div className="supervisor-operations-grid">
                 <section className="agency-exchange-panel supervisor-exchange-panel">
                     <div className="agency-exchange-header">
-                        <span>Information Sharing</span>
+                        <span>Agency Coordination</span>
                         <strong>Agency Exchange Log</strong>
                     </div>
 
@@ -662,60 +883,24 @@ function SupervisorQueue() {
 
                 <section className="case-team-panel">
                     <div className="supervisor-panel-header">
-                        <span>Case Team</span>
-                        <strong>Assemble Case Team</strong>
+                        <span>Public & Partner Liaison</span>
+                        <strong>Community Relations</strong>
                     </div>
-
                     <p className="supervisor-panel-note">
-                        Assign the lead investigator on the case record first, then add support
-                        investigators, analysts, or supervisor observers as needed.
+                        Track approved information sharing, partner leads, public-facing alerts,
+                        and agency-to-agency coordination tied to missing person investigations.
                     </p>
-
-                    <form className="case-team-form" onSubmit={assignCaseTeamMember}>
-                        <input
-                            type="number"
-                            name="case_id"
-                            min="1"
-                            placeholder="Case ID"
-                            value={teamForm.case_id}
-                            onChange={handleTeamChange}
-                            required
-                        />
-
-                        <input
-                            type="number"
-                            name="user_id"
-                            min="1"
-                            placeholder="Team Member User ID"
-                            value={teamForm.user_id}
-                            onChange={handleTeamChange}
-                            required
-                        />
-
-                        <select
-                            name="role"
-                            value={teamForm.role}
-                            onChange={handleTeamChange}
-                        >
-                            <option value="support_investigator">Support Investigator</option>
-                            <option value="analyst_support">Analyst Support</option>
-                            <option value="supervisor_observer">Supervisor Observer</option>
-                        </select>
-
-                        <textarea
-                            name="reason"
-                            placeholder="Why this user is being added to the case team"
-                            value={teamForm.reason}
-                            onChange={handleTeamChange}
-                        />
-
-                        <button type="submit">Assign to Case Team</button>
-                    </form>
+                    <div className="supervisor-action-grid">
+                        <Link to="/partner-sources">Review Partner Leads</Link>
+                        <Link to="/alerts">Open Public Alerts</Link>
+                        <Link to="/alerts">Review BOLO Sharing</Link>
+                        <Link to="/agencies">Agency Directory</Link>
+                    </div>
                 </section>
             </div>
             )}
 
-            {activeWorkspace === "court-docs" && (
+            {activeWorkspace === "compliance" && (
                 <section className="supervisor-review-section">
                     <div className="supervisor-panel-header">
                         <span>Legal Compliance</span>
@@ -743,11 +928,11 @@ function SupervisorQueue() {
                 </section>
             )}
 
-            {activeWorkspace === "bolos" && (
+            {activeWorkspace === "operations" && (
                 <section className="supervisor-review-section">
                     <div className="supervisor-panel-header">
-                        <span>Field Awareness</span>
-                        <strong>BOLO Alerts</strong>
+                        <span>Operational Management</span>
+                        <strong>Field Alerts & BOLOs</strong>
                     </div>
                     <div className="supervisor-grid">
                         <section className="supervisor-panel">
@@ -767,7 +952,60 @@ function SupervisorQueue() {
                                 ))
                             )}
 
-                            <Link to="/bolos">Open BOLO Board</Link>
+                            <Link to="/alerts">Open Operational Alerts</Link>
+                        </section>
+
+                        <section className="supervisor-panel">
+                            <h2>Daily Operations</h2>
+                            <p>
+                                Monitor field alerts, staffing-sensitive incidents, and active
+                                operational notifications for missing person cases.
+                            </p>
+                            <div className="supervisor-action-grid">
+                                <Link to="/alerts">Open Alerts</Link>
+                                <Link to="/cases">Review Staffing Levels</Link>
+                                <Link to="/create-case">Start New Case</Link>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+            )}
+
+            {activeWorkspace === "reports" && (
+                <section className="supervisor-review-section">
+                    <div className="supervisor-panel-header">
+                        <span>Command Reporting</span>
+                        <strong>Supervisor Snapshot</strong>
+                    </div>
+                    <div className="supervisor-grid">
+                        <section className="supervisor-panel">
+                            <h2>Investigator Productivity</h2>
+                            <div className="supervisor-report-grid">
+                                <span>Available staff<strong>{activeUsers.length}</strong></span>
+                                <span>Total personnel<strong>{users.length}</strong></span>
+                                <span>Cases needing attention<strong>{queue?.high_priority_cases?.length || 0}</strong></span>
+                                <span>Active BOLOs<strong>{queue?.active_bolos?.length || 0}</strong></span>
+                            </div>
+                        </section>
+
+                        <section className="supervisor-panel">
+                            <h2>Compliance & Audit Readiness</h2>
+                            <div className="supervisor-report-grid">
+                                <span>Legal reviews<strong>{queue?.pending_legal_requests?.length || 0}</strong></span>
+                                <span>Access approvals<strong>{queue?.pending_case_access?.length || 0}</strong></span>
+                                <span>Access log entries<strong>{queue?.recent_case_access?.length || 0}</strong></span>
+                                <span>Agency exchanges<strong>{exchanges.length}</strong></span>
+                            </div>
+                        </section>
+
+                        <section className="supervisor-panel">
+                            <h2>Fewer Systems to Check</h2>
+                            <div className="supervisor-action-grid">
+                                <Link to="/">Agency Dashboard</Link>
+                                <Link to="/audit">Audit Center</Link>
+                                <Link to="/cases">Case Statistics</Link>
+                                <Link to="/intelligence">Intelligence View</Link>
+                            </div>
                         </section>
                     </div>
                 </section>
@@ -775,7 +1013,7 @@ function SupervisorQueue() {
 
             {message && <p className="alert-banner">{message}</p>}
 
-            {queue && activeWorkspace === "access" && (
+            {queue && activeWorkspace === "compliance" && (
 
                 // Each panel represents a supervisor review category. Keeping them separate
                 // makes the page scannable during active investigations
@@ -814,10 +1052,11 @@ function SupervisorQueue() {
                             queue.pending_case_access.map((item) => (
                                 <article key={item.grant_id} className="queue-item">
                                     <div>
-                                        <strong>Case {item.case_id}</strong>
-                                        <span>User {item.user_id}</span>
+                                        <strong>{item.case_number || `Case ${item.case_id}`}</strong>
+                                        <span>{item.username || `User ${item.user_id}`}</span>
                                     </div>
-                                    <p>{item.reason_category || "Manual review"}</p>
+                                    <p>{item.case_title}</p>
+                                    <p>{item.reason_category || "Manual review"} | Requested {formatDateTime(item.granted_at)}</p>
                                     <p>{item.reason}</p>
 
                                     <textarea
@@ -860,10 +1099,17 @@ function SupervisorQueue() {
                             queue.recent_case_access.map((item) => (
                                 <article key={item.grant_id} className="queue-item">
                                     <div>
-                                        <strong>Case {item.case_id}</strong>
-                                        <span>User {item.user_id}</span>
+                                        <strong>{item.username || `User ${item.user_id}`}</strong>
+                                        <span>{item.status}</span>
                                     </div>
+                                    <p className="queue-item-meta">
+                                        {item.case_number || `Case ${item.case_id}`} | {formatDateTime(item.granted_at)}
+                                    </p>
+                                    {item.case_title && <p>{item.case_title}</p>}
                                     <p>{item.reason}</p>
+                                    {item.expires_at && (
+                                        <p className="queue-item-meta">Expires {formatDateTime(item.expires_at)}</p>
+                                    )}
                                 </article>
                             ))
                         )}

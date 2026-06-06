@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from pathlib import Path
 import shutil
 from uuid import uuid4
+from datetime import datetime
 
 from database.connection import get_db
+from models.case import Cases
 from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
 from models.user import User
@@ -23,6 +26,32 @@ router = APIRouter(
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+class EvidenceCustodyEvent(BaseModel):
+    action: str
+    from_holder: str | None = None
+    to_holder: str | None = None
+    location: str | None = None
+    details: str | None = None
+    lab_reference: str | None = None
+    available_at: datetime | None = None
+
+
+CUSTODY_STATUS_BY_ACTION = {
+    "COLLECTED": "collected",
+    "TRANSFERRED": "transferred",
+    "SUBMITTED_TO_LAB": "at_lab",
+    "LAB_RECEIVED": "at_lab",
+    "LAB_ANALYSIS_STARTED": "in_analysis",
+    "LAB_RESULTS_RETURNED": "results_returned",
+    "RETURNED_TO_AGENCY": "returned_to_agency",
+    "STORED": "stored",
+    "RELEASED": "released",
+    "MISSING": "missing",
+    "OVERDUE_REVIEW": "overdue_review",
+    "AUDIT_REVIEWED": "audit_reviewed",
+}
 
 
 def apply_evidence_case_access(query, current_user: User, include_grants: bool = True):
@@ -53,6 +82,55 @@ def assert_case_write_access(db: Session, case_id: int, current_user: User):
     return assert_authorized_case_write_access(db, case_id, current_user)
 
 
+def serialize_evidence_items(items: list[Evidence], db: Session):
+    case_ids = {item.case_id for item in items if item.case_id}
+    user_ids = {item.collected_by for item in items if item.collected_by}
+    cases = (
+        {
+            case.case_id: case
+            for case in db.query(Cases).filter(Cases.case_id.in_(case_ids)).all()
+        }
+        if case_ids
+        else {}
+    )
+    investigator_ids = {
+        case.investigator_id for case in cases.values() if case.investigator_id
+    }
+    user_ids.update(investigator_ids)
+    users = (
+        {
+            user.user_id: user.username
+            for user in db.query(User).filter(User.user_id.in_(user_ids)).all()
+        }
+        if user_ids
+        else {}
+    )
+
+    return [
+        {
+            "evidence_id": item.evidence_id,
+            "case_id": item.case_id,
+            "case_number": cases.get(item.case_id).case_number if cases.get(item.case_id) else None,
+            "case_title": cases.get(item.case_id).title if cases.get(item.case_id) else None,
+            "assigned_investigator": users.get(cases.get(item.case_id).investigator_id) if cases.get(item.case_id) else None,
+            "description": item.description,
+            "evidence_type": item.evidence_type,
+            "collected_by": item.collected_by,
+            "collected_by_name": users.get(item.collected_by),
+            "evidence_location": item.evidence_location,
+            "custody_status": item.custody_status,
+            "current_holder": item.current_holder,
+            "lab_reference": item.lab_reference,
+            "available_at": item.available_at,
+            "is_sensitive": item.is_sensitive,
+            "file_name": item.file_name,
+            "collected_at": item.collected_at,
+            "created_at": item.created_at,
+        }
+        for item in items
+    ]
+
+
 @router.get("/")
 def get_all_evidence(
     case_id: int | None = None,
@@ -76,7 +154,9 @@ def get_all_evidence(
         ip_address=request.client.host if request and request.client else None,
     )
 
-    return query.order_by(Evidence.created_at.desc()).all()
+    items = query.order_by(Evidence.created_at.desc()).all()
+
+    return serialize_evidence_items(items, db)
 
 
 @router.post("/upload")
@@ -103,6 +183,8 @@ def upload_evidence(
         description=description,
         evidence_type=evidence_type,
         collected_by=current_user.user_id,
+        current_holder=current_user.username,
+        custody_status="collected",
         file_name=original_file_name,
         file_path=str(file_path),
     )
@@ -116,6 +198,7 @@ def upload_evidence(
         case_id=evidence.case_id,
         user_id=current_user.user_id,
         action="UPLOAD_EVIDENCE",
+        to_holder=current_user.username,
         details=f"Evidence uploaded: {evidence.file_name}",
     )
 
@@ -160,7 +243,7 @@ def get_case_evidence(
         ip_address=request.client.host if request and request.client else None,
     )
 
-    return query.all()
+    return serialize_evidence_items(query.all(), db)
 
 
 @router.get("/chain/{evidence_id}")
@@ -177,6 +260,72 @@ def get_evidence_chain(
         .order_by(EvidenceChain.created_at.desc())
         .all()
     )
+
+
+@router.post("/{evidence_id}/custody")
+def add_evidence_custody_event(
+    evidence_id: int,
+    data: EvidenceCustodyEvent,
+    request: Request = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    evidence = get_authorized_evidence(
+        db,
+        evidence_id,
+        current_user,
+        include_grants=False,
+    )
+    assert_case_write_access(db, evidence.case_id, current_user)
+
+    action = data.action.strip().upper()
+
+    if action not in CUSTODY_STATUS_BY_ACTION:
+        raise HTTPException(status_code=400, detail="Unsupported custody action")
+
+    from_holder = data.from_holder or evidence.current_holder or current_user.username
+    to_holder = data.to_holder or evidence.current_holder or current_user.username
+
+    chain_event = EvidenceChain(
+        evidence_id=evidence.evidence_id,
+        case_id=evidence.case_id,
+        user_id=current_user.user_id,
+        action=action,
+        from_holder=from_holder,
+        to_holder=to_holder,
+        location=data.location,
+        available_at=data.available_at,
+        details=data.details,
+    )
+
+    evidence.custody_status = CUSTODY_STATUS_BY_ACTION[action]
+    evidence.current_holder = to_holder
+    evidence.evidence_location = data.location or evidence.evidence_location
+    evidence.lab_reference = data.lab_reference or evidence.lab_reference
+    evidence.available_at = data.available_at or evidence.available_at
+
+    db.add(chain_event)
+    db.commit()
+    db.refresh(evidence)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="UPDATE_EVIDENCE_CUSTODY",
+        entity="evidence",
+        entity_id=evidence.evidence_id,
+        details=f"{current_user.username} recorded {action} for evidence {evidence.evidence_id}",
+        ip_address=request.client.host if request and request.client else None,
+    )
+
+    return {
+        "message": "Evidence custody updated",
+        "evidence_id": evidence.evidence_id,
+        "custody_status": evidence.custody_status,
+        "current_holder": evidence.current_holder,
+        "available_at": evidence.available_at,
+    }
 
 
 @router.get("/view/{evidence_id}")

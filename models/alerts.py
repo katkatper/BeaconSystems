@@ -21,6 +21,14 @@ class Alerts(Base):
 
     alert_type= Column(String(100))
 
+    alert_source = Column(String(100), nullable=True)
+
+
+    source_detail = Column(String(255), nullable=True)
+
+
+    confidence_score = Column(Float, nullable=True)
+
 
     severity= Column(String(50), default="medium")
 

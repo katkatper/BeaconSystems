@@ -17,7 +17,7 @@ def apply_case_access_filter(query, current_user: User, include_grants: bool = T
     if current_user.role == "admin":
         return query
 
-    if current_user.role == "agency_admin":
+    if current_user.role in {"agency_admin", "supervisor"}:
         return query.filter(Cases.agency_id == current_user.agency_id)
 
     if current_user.role == "investigator":

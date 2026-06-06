@@ -28,14 +28,14 @@ class AgencyExchangeCreate(BaseModel):
 def list_agency_exchanges(
     case_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
     query = db.query(AgencyExchange)
 
     if case_id is not None:
         query = query.filter(AgencyExchange.case_id == case_id)
 
-    if current_user.role == "agency_admin":
+    if current_user.role in {"agency_admin", "supervisor"}:
         query = (
             query
             .join(Cases, AgencyExchange.case_id == Cases.case_id)
@@ -60,7 +60,7 @@ def list_agency_exchanges(
 def create_agency_exchange(
     data: AgencyExchangeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     case = db.query(Cases).filter(Cases.case_id == data.case_id).first()
 

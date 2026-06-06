@@ -35,8 +35,14 @@ def create_alerts(
 
     severity: str = "medium",
 
+    alert_source: str = "investigator",
+
+    source_detail: str | None = None,
+
+    confidence_score: float | None = None,
+
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
     assert_case_write_access(db, case_id, current_user)
 
@@ -48,6 +54,12 @@ def create_alerts(
         person_id=person_id, 
 
         alert_type=alert_type,
+
+        alert_source=alert_source,
+
+        source_detail=source_detail,
+
+        confidence_score=confidence_score,
 
         title=title,
 
