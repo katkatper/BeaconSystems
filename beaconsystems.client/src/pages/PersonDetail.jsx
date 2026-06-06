@@ -51,17 +51,30 @@ function PersonDetail() {
             </header>
 
             <div className="person-detail-grid">
-                <section className="person-profile-card">
-                    <h2>Profile</h2>
-                    <p>Age: {person.age || "Unknown"}</p>
-                    <p>Eye Color: {person.eye_color || "Not recorded"}</p>
-                    <p>Hair Color: {person.hair_color || "Not recorded"}</p>
-                    <p>Height: {person.height || "Not recorded"}</p>
-                    <p>Weight: {person.weight || "Not recorded"}</p>
-                    <p>Risk Level: {person.risk_level || "Unknown"}</p>
-                    <p>Status: {person.status || "Unknown"}</p>
-                    <p>Last Seen: {person.last_seen_location || "Not recorded"}</p>
-                    <p>{person.description || "No description recorded."}</p>
+                <section className="person-profile-card person-profile-overview">
+                    <div className="person-profile-photo">
+                        {person.photo_url ? (
+                            <img
+                                src={person.photo_url}
+                                alt={`${person.first_name} ${person.last_name}`}
+                            />
+                        ) : (
+                            <span>No Photo</span>
+                        )}
+                    </div>
+
+                    <div className="person-profile-details">
+                        <h2>Profile</h2>
+                        <p>Age: {person.age || "Unknown"}</p>
+                        <p>Eye Color: {person.eye_color || "Not recorded"}</p>
+                        <p>Hair Color: {person.hair_color || "Not recorded"}</p>
+                        <p>Height: {person.height || "Not recorded"}</p>
+                        <p>Weight: {person.weight || "Not recorded"}</p>
+                        <p>Risk Level: {person.risk_level || "Unknown"}</p>
+                        <p>Status: {person.status || "Unknown"}</p>
+                        <p>Last Seen: {person.last_seen_location || "Not recorded"}</p>
+                        <p>{person.description || "No description recorded."}</p>
+                    </div>
                 </section>
 
                 <section className="person-profile-card">

@@ -155,7 +155,7 @@ function AgencyManagement() {
     const [message, setMessage] = useState("");
     const [expandedAgencyId, setExpandedAgencyId] = useState(null);
     const [agencySearch, setAgencySearch] = useState("");
-    const [showMoreAgencies, setShowMoreAgencies] = useState(false);
+    const [visibleAgencyCount, setVisibleAgencyCount] = useState(2);
 
     const token = localStorage.getItem("token");
 
@@ -245,7 +245,7 @@ function AgencyManagement() {
                 </section>
             ) : (
                 <div className="agencies-grid">
-                    {filteredAgencies.slice(0, showMoreAgencies ? 6 : 2).map((agency) => (
+                    {filteredAgencies.slice(0, visibleAgencyCount).map((agency) => (
                         <article key={agency.agency_id} className="agency-card">
                             <div className="agency-card-topline">
                                 <button
@@ -280,13 +280,39 @@ function AgencyManagement() {
                         </article>
                     ))}
                     {filteredAgencies.length > 2 && (
-                        <button
-                            type="button"
-                            className="list-toggle-button"
-                            onClick={() => setShowMoreAgencies((current) => !current)}
-                        >
-                            {showMoreAgencies ? "Show fewer" : `Show ${Math.min(4, filteredAgencies.length - 2)} more agencies`}
-                        </button>
+                        <div className="list-toggle-row">
+                            {visibleAgencyCount > 2 && (
+                                <button
+                                    type="button"
+                                    className="list-toggle-button"
+                                    onClick={() => setVisibleAgencyCount(2)}
+                                >
+                                    Show fewer
+                                </button>
+                            )}
+                            {visibleAgencyCount < filteredAgencies.length && (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="list-toggle-button"
+                                        onClick={() =>
+                                            setVisibleAgencyCount((current) =>
+                                                Math.min(current + 4, filteredAgencies.length)
+                                            )
+                                        }
+                                    >
+                                        Show {Math.min(4, filteredAgencies.length - visibleAgencyCount)} more agencies
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="list-toggle-button"
+                                        onClick={() => setVisibleAgencyCount(filteredAgencies.length)}
+                                    >
+                                        Show all
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     )}
                 </div>
             )}

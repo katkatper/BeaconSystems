@@ -22,6 +22,10 @@ import LegalAccessRequests from "./pages/LegalAccessRequests.jsx";
 import LegalOrders from "./pages/LegalOrders.jsx";
 import PartnerSources from "./pages/PartnerSources.jsx";
 import CaseAccess from "./pages/CaseAccess.jsx";
+import Sightings from "./pages/Sightings.jsx";
+import Analytics from "./pages/Analytics.jsx";
+import Administration from "./pages/Administration.jsx";
+import CommandTools from "./pages/CommandTools.jsx";
 import "./App.css";
 import BoloBoard from "./pages/BoloBoard.jsx";
 import SupervisorQueue from "./pages/SupervisorQueue";
@@ -51,7 +55,8 @@ function AppLayout() {
         <>
             {!hideNavbar && <Navbar />}
 
-            <Routes>
+            <main className={hideNavbar ? "app-content" : "app-content with-sidebar"}>
+                <Routes>
 
                 <Route path="/login" element={<Login />} />
 
@@ -153,6 +158,14 @@ function AppLayout() {
                     }
                 />
                 <Route
+                    path="/users"
+                    element={
+                        <ProtectedRoute>
+                            <UserManagement />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
                     path="/cases"
                     element={
                         <ProtectedRoute>
@@ -165,6 +178,38 @@ function AppLayout() {
                     element={
                         <ProtectedRoute>
                             <IntelligenceCenter />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/sightings"
+                    element={
+                        <ProtectedRoute>
+                            <Sightings />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/analytics"
+                    element={
+                        <ProtectedRoute>
+                            <Analytics />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/administration"
+                    element={
+                        <ProtectedRoute>
+                            <Administration />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/command/:tool"
+                    element={
+                        <ProtectedRoute>
+                            <CommandTools />
                         </ProtectedRoute>
                     }
                 />
@@ -242,7 +287,8 @@ function AppLayout() {
                         </ProtectedRoute>
                     }
                 />
-            </Routes>
+                </Routes>
+            </main>
         </>
     );
 }

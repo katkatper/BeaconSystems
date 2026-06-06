@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 from database.connection import Base, engine
+from database.schema_maintenance import ensure_local_schema
 from  contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from routes import person_routes
@@ -116,6 +117,7 @@ app.add_middleware(
 # migrations instead so schema changes are reviewed, repeatable, and auditable.
 
 Base.metadata.create_all(bind=engine)
+ensure_local_schema(engine)
 app.include_router(users_router)
 app.include_router(sightings_router)
 app.include_router(cases_router)
@@ -152,4 +154,5 @@ def read_root():
     return {"message": "Beacon backend is working"}
 
 
-Base.metadata.create_all(bind=engine) 
+Base.metadata.create_all(bind=engine)
+ensure_local_schema(engine)

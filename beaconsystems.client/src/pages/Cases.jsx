@@ -101,15 +101,6 @@ function Cases() {
                 <div>
                     <h1>Cases</h1>
                 </div>
-
-                <label className="archive-toggle">
-                    <input
-                        type="checkbox"
-                        checked={includeArchived}
-                        onChange={(e) => setIncludeArchived(e.target.checked)}
-                    />
-                    Show archived
-                </label>
             </div>
 
             {message && <p className="alert-banner">{message}</p>}
@@ -126,7 +117,17 @@ function Cases() {
                 <section className="case-summary-panel">
                     <div className="case-summary-title">
                         <h2>Closed Cases</h2>
-                        <span>{closedCases.length}</span>
+                        <div className="closed-case-controls">
+                            <label className="archive-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={includeArchived}
+                                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                                />
+                                Show archived
+                            </label>
+                            <span>{closedCases.length}</span>
+                        </div>
                     </div>
                     {renderCaseRows(closedCases, "No closed cases available.")}
                 </section>

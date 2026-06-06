@@ -20,6 +20,23 @@ const fetchEvidence = async (caseFilter = "") => {
 };
 
 const normalizeStatus = (status) => status || "collected";
+const getEvidenceIndicator = (status) => {
+    const normalized = normalizeStatus(status);
+
+    if (["stored", "archived", "results_returned"].includes(normalized)) {
+        return ["In Storage", "storage"];
+    }
+
+    if (["submitted", "at_lab", "in_analysis"].includes(normalized)) {
+        return ["At Lab", "lab"];
+    }
+
+    if (["missing", "overdue_review"].includes(normalized)) {
+        return ["Action Required", "action"];
+    }
+
+    return ["Collected", "collected"];
+};
 
 const evidenceDate = (item) =>
     item.uploaded_at || item.created_at || item.collected_at || item.available_at || null;
@@ -515,11 +532,10 @@ function EvidenceUpload() {
                                 <article key={item.evidence_id} className="evidence-card">
                                     <div className="evidence-card-topline">
                                         <strong>{item.file_name || "Unnamed file"}</strong>
-                                        {item.is_sensitive && (
-                                            <span className="sensitive-badge">
-                                                Sensitive
-                                            </span>
-                                        )}
+                                        <span className={`evidence-status-indicator ${getEvidenceIndicator(item.custody_status)[1]}`}>
+                                            {getEvidenceIndicator(item.custody_status)[0]}
+                                        </span>
+                                        {item.is_sensitive && <span className="sensitive-badge">Sensitive</span>}
                                     </div>
 
                                     <p>Case: {item.case_number || item.case_id}</p>

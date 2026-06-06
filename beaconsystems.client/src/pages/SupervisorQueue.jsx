@@ -11,18 +11,7 @@ function SupervisorQueue() {
     const [message, setMessage] = useState("");
     const [reviewNotes, setReviewNotes] = useState({});
     const [users, setUsers] = useState([]);
-    const [userSearch, setUserSearch] = useState("");
-    const [userRoleFilter, setUserRoleFilter] = useState("all");
-    const [userStatusFilter, setUserStatusFilter] = useState("active");
-    const [resetPasswords, setResetPasswords] = useState({});
     const [expandedSections, setExpandedSections] = useState({});
-    const [newUser, setNewUser] = useState({
-        username: "",
-        email: "",
-        password: "",
-        role: "investigator",
-        agency_id: "",
-    });
     const [teamForm, setTeamForm] = useState({
         case_id: "",
         user_id: "",
@@ -41,20 +30,10 @@ function SupervisorQueue() {
     });
 
     const token = localStorage.getItem("token");
-    const currentRole = localStorage.getItem("role") || "viewer";
     const location = useLocation();
     const workspaceFromPath = location.pathname.split("/")[2] || "";
     const activeWorkspace = workspaceFromPath || null;
 
-    const getApiErrorMessage = (errorData, fallback) => {
-        if (Array.isArray(errorData.detail)) {
-            return errorData.detail
-                .map((item) => `${item.loc?.slice(1).join(".") || "field"}: ${item.msg}`)
-                .join("; ");
-        }
-
-        return errorData.detail || fallback;
-    };
     const formatDateTime = (value) => {
         if (!value) {
             return "Not recorded";
@@ -69,36 +48,8 @@ function SupervisorQueue() {
         return date.toLocaleString();
     };
 
-    const roleOptions = currentRole === "admin"
-        ? [
-            ["investigator", "Investigator"],
-            ["supervisor", "Supervisor"],
-            ["analyst", "Analyst"],
-            ["viewer", "Viewer"],
-            ["agency_admin", "Agency Admin"],
-            ["admin", "Admin"],
-        ]
-        : [
-            ["investigator", "Investigator"],
-            ["supervisor", "Supervisor"],
-            ["analyst", "Analyst"],
-            ["viewer", "Viewer"],
-        ];
     const activeUsers = users.filter((user) => user.is_active);
     const activeInvestigators = activeUsers.filter((user) => user.role === "investigator");
-    const filteredUsers = users.filter((user) => {
-        const searchText = `${user.username || ""} ${user.email || ""} ${user.role || ""}`.toLowerCase();
-        const matchesSearch = searchText.includes(userSearch.trim().toLowerCase());
-        const matchesRole = userRoleFilter === "all" || user.role === userRoleFilter;
-        const matchesStatus =
-            userStatusFilter === "all" ||
-            (userStatusFilter === "active" && user.is_active) ||
-            (userStatusFilter === "disabled" && !user.is_active);
-
-        return matchesSearch && matchesRole && matchesStatus;
-    });
-    const canManageUser = (user) => currentRole !== "supervisor" ||
-        !["admin", "agency_admin"].includes(user.role);
     const oversightCount = (queue?.pending_legal_requests?.length || 0) +
         (queue?.pending_case_access?.length || 0) +
         (queue?.recent_case_access?.length || 0);
@@ -308,118 +259,6 @@ function SupervisorQueue() {
         } catch (err) {
             console.error(err);
             setMessage(err.message || "Could not review case access request.");
-        }
-    };
-
-    const registerUser = async (event) => {
-        event.preventDefault();
-
-        try {
-            const payload = {
-                username: newUser.username.trim(),
-                email: newUser.email.trim(),
-                password: newUser.password,
-                role: newUser.role,
-                agency_id: newUser.agency_id ? Number(newUser.agency_id) : null,
-            };
-
-            const response = await fetch("http://127.0.0.1:8000/admin/users/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(
-                    getApiErrorMessage(errorData, "Could not register user")
-                );
-            }
-
-            const data = await response.json();
-            setMessage(`${data.username} was registered as ${data.role}.`);
-            setUsers((currentUsers) => [...currentUsers, data].sort((a, b) =>
-                (a.username || "").localeCompare(b.username || "")
-            ));
-            setNewUser({
-                username: "",
-                email: "",
-                password: "",
-                role: "investigator",
-                agency_id: "",
-            });
-        } catch (err) {
-            console.error(err);
-            setMessage(err.message || "Could not register user.");
-        }
-    };
-
-    const updateUserStatus = async (userId, isActive) => {
-        try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/admin/users/${userId}/status?is_active=${isActive}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not update user status");
-            }
-
-            setUsers((currentUsers) =>
-                currentUsers.map((user) =>
-                    user.user_id === userId ? { ...user, is_active: isActive } : user
-                )
-            );
-            setMessage(isActive ? "User reactivated." : "User disabled and archived from active work.");
-        } catch (err) {
-            console.error(err);
-            setMessage(err.message || "Could not update user status.");
-        }
-    };
-
-    const resetUserPassword = async (userId) => {
-        const temporaryPassword = resetPasswords[userId] || "";
-
-        try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/admin/users/${userId}/reset-password`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        temporary_password: temporaryPassword,
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(
-                    getApiErrorMessage(errorData, "Could not reset user password")
-                );
-            }
-
-            const data = await response.json();
-            setResetPasswords((currentPasswords) => ({
-                ...currentPasswords,
-                [userId]: "",
-            }));
-            setMessage(`${data.message}. They must change it on next login.`);
-        } catch (err) {
-            console.error(err);
-            setMessage(err.message || "Could not reset user password.");
         }
     };
 
@@ -697,149 +536,6 @@ function SupervisorQueue() {
                     </form>
                 </section>
 
-                <section className="supervisor-user-registration">
-                    <div className="supervisor-panel-header">
-                        <span>User Access</span>
-                        <strong>Register New User</strong>
-                    </div>
-
-                    <form className="supervisor-user-form" onSubmit={registerUser}>
-                        <input
-                            type="text"
-                            placeholder="Username"
-                            value={newUser.username}
-                            onChange={(event) =>
-                                setNewUser((current) => ({ ...current, username: event.target.value }))
-                            }
-                            required
-                        />
-
-                        <input
-                            type="email"
-                            placeholder="Email"
-                            value={newUser.email}
-                            onChange={(event) =>
-                                setNewUser((current) => ({ ...current, email: event.target.value }))
-                            }
-                            required
-                        />
-
-                        <input
-                            type="password"
-                            placeholder="Temporary password"
-                            value={newUser.password}
-                            onChange={(event) =>
-                                setNewUser((current) => ({ ...current, password: event.target.value }))
-                            }
-                            required
-                        />
-
-                        <select
-                            value={newUser.role}
-                            onChange={(event) =>
-                                setNewUser((current) => ({ ...current, role: event.target.value }))
-                            }
-                        >
-                            {roleOptions.map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
-                            ))}
-                        </select>
-
-                        {currentRole === "admin" && (
-                            <input
-                                type="number"
-                                min="1"
-                                placeholder="Agency ID"
-                                value={newUser.agency_id}
-                                onChange={(event) =>
-                                    setNewUser((current) => ({ ...current, agency_id: event.target.value }))
-                                }
-                            />
-                        )}
-
-                        <button type="submit">Register User</button>
-                    </form>
-                </section>
-
-                <section className="supervisor-user-registration">
-                    <div className="supervisor-panel-header">
-                        <span>User Access</span>
-                        <strong>Disable or Restore Users</strong>
-                    </div>
-
-                    <div className="supervisor-user-filters">
-                        <input
-                            type="search"
-                            placeholder="Search users"
-                            value={userSearch}
-                            onChange={(event) => setUserSearch(event.target.value)}
-                        />
-
-                        <select
-                            value={userRoleFilter}
-                            onChange={(event) => setUserRoleFilter(event.target.value)}
-                        >
-                            <option value="all">All roles</option>
-                            {roleOptions.map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
-                            ))}
-                        </select>
-
-                        <select
-                            value={userStatusFilter}
-                            onChange={(event) => setUserStatusFilter(event.target.value)}
-                        >
-                            <option value="active">Active</option>
-                            <option value="disabled">Disabled</option>
-                            <option value="all">All statuses</option>
-                        </select>
-                    </div>
-
-                    <div className="supervisor-user-list">
-                        {filteredUsers.length === 0 ? (
-                            <p>No users found for your agency.</p>
-                        ) : (
-                            visibleItems("filteredUsers", filteredUsers).map((user) => (
-                                <article key={user.user_id} className="queue-item">
-                                    <div>
-                                        <strong>{user.username}</strong>
-                                        <span>{user.is_active ? "active" : "disabled"}</span>
-                                    </div>
-                                    <p>{user.email}</p>
-                                    <p>{user.role} | Agency {user.agency_id || "Unassigned"}</p>
-                                    <button
-                                        type="button"
-                                        disabled={!canManageUser(user)}
-                                        onClick={() => updateUserStatus(user.user_id, !user.is_active)}
-                                    >
-                                        {user.is_active ? "Disable / Archive" : "Restore User"}
-                                    </button>
-                                    <div className="supervisor-password-reset">
-                                        <input
-                                            type="password"
-                                            placeholder="Temporary password (12+ chars)"
-                                            value={resetPasswords[user.user_id] || ""}
-                                            onChange={(event) =>
-                                                setResetPasswords((currentPasswords) => ({
-                                                    ...currentPasswords,
-                                                    [user.user_id]: event.target.value,
-                                                }))
-                                            }
-                                        />
-                                        <button
-                                            type="button"
-                                            disabled={!canManageUser(user)}
-                                            onClick={() => resetUserPassword(user.user_id)}
-                                        >
-                                            Reset Password
-                                        </button>
-                                    </div>
-                                </article>
-                            ))
-                        )}
-                        {renderListToggle("filteredUsers", filteredUsers.length, "users")}
-                    </div>
-                </section>
             </div>
             )}
 

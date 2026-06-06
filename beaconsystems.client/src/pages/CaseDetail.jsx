@@ -17,6 +17,7 @@ function CaseDetail() {
     const [selectedExternalRecord, setSelectedExternalRecord] = useState(null);
     const [showSightingForm, setShowSightingForm] = useState(false);
     const [agencyExchanges, setAgencyExchanges] = useState([]);
+    const [activeTab, setActiveTab] = useState("overview");
 
     const [sightingForm, setSightingForm] = useState({
         location: "",
@@ -277,6 +278,19 @@ function CaseDetail() {
             .replace(/_/g, " ")
             .replace(/\b\w/g, (letter) => letter.toUpperCase());
     };
+    const personName = person
+        ? `${person.first_name || ""} ${person.last_name || ""}`.trim()
+        : "Missing Person";
+    const caseTabs = [
+        ["overview", "Overview"],
+        ["timeline", "Timeline"],
+        ["sightings", "Sightings"],
+        ["evidence", "Evidence"],
+        ["leads", "Leads"],
+        ["intelligence", "Intelligence"],
+        ["documents", "Documents"],
+        ["audit", "Audit Log"],
+    ];
 
     return (
         <div className="case-detail-page">
@@ -285,8 +299,8 @@ function CaseDetail() {
             <div className="case-section">
                 <div className="case-card-header">
                     <div>
-                        <h1 className="case-title">Case {caseItem.case_number}</h1>
-                        <p>Investigative case workspace</p>
+                        <h1 className="case-title">Case #{caseItem.case_number}</h1>
+                        <p>{personName}</p>
                     </div>
 
                     <button
@@ -352,22 +366,21 @@ function CaseDetail() {
                 {sightingMessage && <p>{sightingMessage}</p>}
             </div>
 
-            {person && (
-                <div className="case-section missing-person-profile">
-                    <div className="missing-person-details">
-                        <h2>Missing Person Profile</h2>
-                        <p>Name: {person.first_name} {person.last_name}</p>
-                        <p>Age: {person.age}</p>
-                        <p>Eye Color: {person.eye_color}</p>
-                        <p>Hair Color: {person.hair_color}</p>
-                        <p>Height: {person.height}</p>
-                        <p>Weight: {person.weight}</p>
-                        <p>Risk Level: {person.risk_level}</p>
-                        <p>Status: {person.status}</p>
-                        <p>Last Seen: {person.last_seen_location}</p>
-                        <p>Description: {person.description}</p>
-                    </div>
+            <div className="case-tabs" role="tablist" aria-label="Case information tabs">
+                {caseTabs.map(([tabId, label]) => (
+                    <button
+                        key={tabId}
+                        type="button"
+                        className={activeTab === tabId ? "active" : ""}
+                        onClick={() => setActiveTab(tabId)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
 
+            {activeTab === "overview" && person && (
+                <div className="case-section missing-person-profile case-tab-panel">
                     <div className="missing-person-photo">
                         {person.photo_url ? (
                             <img
@@ -380,170 +393,188 @@ function CaseDetail() {
                             </div>
                         )}
                     </div>
-                </div>
-            )}
 
-            <hr />
-
-            <h2>Linked External Records</h2>
-            {externalRecords.length === 0 ? (
-                <p>No external records found for this person.</p>
-            ) : (
-                <div className="external-record-links">
-                    {externalRecords.map((record) => (
-                        <button
-                            key={record.id}
-                            type="button"
-                            onClick={() => setSelectedExternalRecord(record)}
-                        >
-                            {getExternalRecordName(record)}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {selectedExternalRecord && (
-                <div className="case-section external-record-detail">
-                    <div className="case-card-header">
-                        <h3>{getExternalRecordName(selectedExternalRecord)}</h3>
-                        <button
-                            type="button"
-                            onClick={() => setSelectedExternalRecord(null)}
-                        >
-                            Close
-                        </button>
+                    <div className="missing-person-details case-overview-grid">
+                        <h2>Overview</h2>
+                        <p>Name: {personName}</p>
+                        <p>Age: {person.age}</p>
+                        <p>Eye Color: {person.eye_color}</p>
+                        <p>Hair Color: {person.hair_color}</p>
+                        <p>Height: {person.height}</p>
+                        <p>Weight: {person.weight}</p>
+                        <p>Risk Level: {person.risk_level}</p>
+                        <p>Assigned Investigator: {caseItem.investigator_id}</p>
+                        <p>Reporting Agency: {caseItem.agency_id}</p>
+                        <p>Last Seen: {person.last_seen_location}</p>
+                        <p>Description: {person.description}</p>
                     </div>
-                    <p>
-                        Name: {selectedExternalRecord.first_name}{" "}
-                        {selectedExternalRecord.last_name}
-                    </p>
-                    <p>Age: {selectedExternalRecord.age || "Not provided"}</p>
-                    <p>Location: {selectedExternalRecord.location || "Not provided"}</p>
-                    <p>Notes: {selectedExternalRecord.notes || "Not provided"}</p>
                 </div>
             )}
 
-            <hr />
+            {activeTab === "timeline" && (
+                <div className="case-section case-tab-panel">
+                    <h2>Timeline</h2>
+                    <div className="case-timeline-list">
+                        {timelineEvents.map((event) => (
+                            <article key={event.event_id} className="timeline-card">
+                                <strong>{event.timestamp || "Timeline event"}</strong>
+                                <p>{event.event_type}: {event.description}</p>
+                                <small>{event.location}</small>
+                            </article>
+                        ))}
 
-            <h2>Agency Information Exchanges</h2>
-            {agencyExchanges.length === 0 ? (
-                <p>No agency exchanges recorded for this case.</p>
-            ) : (
-                <div className="case-agency-exchanges">
-                    {agencyExchanges.map((exchange) => (
-                        <article key={exchange.exchange_id} className="agency-exchange-card">
-                            <div>
-                                <strong>{exchange.from_agency} to {exchange.to_agency}</strong>
-                                <span>{exchange.information_type}</span>
-                            </div>
-                            <p>{exchange.summary}</p>
-                            <small>
-                                Approved by user {exchange.approved_by} | {exchange.status}
-                            </small>
-                        </article>
-                    ))}
-                </div>
-            )}
-
-            <hr />
-
-            <h2>Evidence</h2>
-            {evidence.length === 0 ? (
-                <p>No evidence uploaded.</p>
-            ) : (
-                evidence.map((item) => (
-                    <div key={item.evidence_id} className="case-section">
-                        <p><strong>Type:</strong> {item.evidence_type}</p>
-                        {item.is_sensitive && <p><strong>SENSITIVE EVIDENCE</strong></p>}
-                        <p><strong>Description:</strong> {item.description}</p>
-                        <p><strong>File:</strong> {item.file_name}</p>
-
-                        <button onClick={() => viewEvidence(item.evidence_id)}>
-                            Open Evidence
-                        </button>
-
-                        <button onClick={() => loadEvidenceChain(item.evidence_id)}>
-                            View Chain of Custody
-                        </button>
-
-                        <button
-                            onClick={() =>
-                                markEvidenceSensitive(item.evidence_id, !item.is_sensitive)
-                            }
-                        >
-                            {item.is_sensitive ? "Unmark Sensitive" : "Mark Sensitive"}
-
-                        </button>
-
-                        {evidenceChains[item.evidence_id]?.map((event) => (
-                            <div key={event.chain_id} style={styles.chainCard}>
-                                <p><strong>Action:</strong> {event.action}</p>
-                                <p><strong>Details:</strong> {event.details}</p>
-                                <p><strong>Date:</strong> {event.created_at}</p>
-                            </div>
+                        {sortedSightings.map((sighting, index) => (
+                            <article key={sighting.sighting_id} className="timeline-card">
+                                <strong>{sighting.sighting_time || sighting.created_at || `Sighting ${index + 1}`}</strong>
+                                <p>Sighting reported at {sighting.location}</p>
+                                <small>{sighting.description}</small>
+                            </article>
                         ))}
                     </div>
-                ))
+                </div>
             )}
 
-            <hr />
+            {activeTab === "sightings" && (
+                <div className="case-section case-tab-panel">
+                    <h2>Sightings</h2>
+                    <SightingMap sightings={sortedSightings} />
+                </div>
+            )}
 
-            <h2>Case Timeline</h2>
-            <div className="case-section">
-                {timelineEvents.map((event) => (
-                    <div key={event.event_id} style={styles.card}>
-                        <strong>{event.event_type}</strong>
-                        <p>{event.description}</p>
-                        <p>Location: {event.location}</p>
-                        <p>{event.timestamp}</p>
+            {activeTab === "evidence" && (
+                <div className="case-section case-tab-panel">
+                    <h2>Evidence</h2>
+                    {evidence.length === 0 ? (
+                        <p>No evidence uploaded.</p>
+                    ) : (
+                        evidence.map((item) => (
+                            <article key={item.evidence_id} className="queue-item">
+                                <div>
+                                    <strong>{item.evidence_type}</strong>
+                                    <span>{item.is_sensitive ? "Sensitive" : "Standard"}</span>
+                                </div>
+                                <p>{item.description}</p>
+                                <p>File: {item.file_name}</p>
+                                <div className="case-action-row">
+                                    <button onClick={() => viewEvidence(item.evidence_id)}>
+                                        Open Evidence
+                                    </button>
+                                    <button onClick={() => loadEvidenceChain(item.evidence_id)}>
+                                        View Chain of Custody
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            markEvidenceSensitive(item.evidence_id, !item.is_sensitive)
+                                        }
+                                    >
+                                        {item.is_sensitive ? "Unmark Sensitive" : "Mark Sensitive"}
+                                    </button>
+                                </div>
+
+                                {evidenceChains[item.evidence_id]?.map((event) => (
+                                    <div key={event.chain_id} className="custody-event-card">
+                                        <p><strong>Action:</strong> {event.action}</p>
+                                        <p><strong>Details:</strong> {event.details}</p>
+                                        <p><strong>Date:</strong> {event.created_at}</p>
+                                    </div>
+                                ))}
+                            </article>
+                        ))
+                    )}
+                </div>
+            )}
+
+            {activeTab === "leads" && (
+                <div className="case-section case-tab-panel">
+                    <h2>Leads</h2>
+                    <div className="beacon-status-list">
+                        <span>New leads: {externalRecords.length}</span>
+                        <span>Assigned leads: {agencyExchanges.length}</span>
+                        <span>Pending follow-ups: {sortedSightings.length}</span>
+                        <span>Closed leads: 0</span>
                     </div>
-                ))}
+                </div>
+            )}
 
-                {sortedSightings.map((sighting, index) => (
-                    <div key={sighting.sighting_id} className="timeline-card">
-                        <strong>Sighting #{index + 1} Reported</strong>
-                        <p>Location: {sighting.location}</p>
-                        <p>Description: {sighting.description}</p>
-                        <p>Confidence: {sighting.confidence_score ?? "Unknown"}</p>
-                        <p>Coordinates: {sighting.latitude}, {sighting.longitude}</p>
-                        <p>
-                            Time: {sighting.sighting_time || sighting.created_at || "Unknown"}
-                        </p>
+            {activeTab === "intelligence" && (
+                <div className="case-section case-tab-panel">
+                    <h2>Intelligence</h2>
+                    {externalRecords.length === 0 ? (
+                        <p>No external records found for this person.</p>
+                    ) : (
+                        <div className="external-record-links">
+                            {externalRecords.map((record) => (
+                                <button
+                                    key={record.id}
+                                    type="button"
+                                    onClick={() => setSelectedExternalRecord(record)}
+                                >
+                                    {getExternalRecordName(record)}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {selectedExternalRecord && (
+                        <div className="external-record-detail">
+                            <div className="case-card-header">
+                                <h3>{getExternalRecordName(selectedExternalRecord)}</h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedExternalRecord(null)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                            <p>
+                                Name: {selectedExternalRecord.first_name}{" "}
+                                {selectedExternalRecord.last_name}
+                            </p>
+                            <p>Age: {selectedExternalRecord.age || "Not provided"}</p>
+                            <p>Location: {selectedExternalRecord.location || "Not provided"}</p>
+                            <p>Notes: {selectedExternalRecord.notes || "Not provided"}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === "documents" && (
+                <div className="case-section case-tab-panel">
+                    <h2>Documents</h2>
+                    <div className="beacon-status-list">
+                        <span>Reports pending: 0</span>
+                        <span>Legal documents: 0</span>
+                        <span>Evidence files: {evidence.length}</span>
                     </div>
-                ))}
-            </div>
+                </div>
+            )}
 
-            <hr />
-
-            <h2>Sighting Map</h2>
-            <SightingMap sightings={sortedSightings} />
+            {activeTab === "audit" && (
+                <div className="case-section case-tab-panel">
+                    <h2>Audit Log</h2>
+                    {agencyExchanges.length === 0 ? (
+                        <p>No agency exchanges recorded for this case.</p>
+                    ) : (
+                        <div className="case-agency-exchanges">
+                            {agencyExchanges.map((exchange) => (
+                                <article key={exchange.exchange_id} className="agency-exchange-card">
+                                    <div>
+                                        <strong>{exchange.from_agency} to {exchange.to_agency}</strong>
+                                        <span>{exchange.information_type}</span>
+                                    </div>
+                                    <p>{exchange.summary}</p>
+                                    <small>
+                                        Approved by user {exchange.approved_by} | {exchange.status}
+                                    </small>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
         </div>
     );
 }
-const styles = {
-    card: {
-        border: "1px solid gray",
-        padding: "12px",
-        margin: "10px 0",
-        borderRadius: "8px",
-    },
-
-    chainCard: {
-        border: "1px solid lightgray",
-        padding: "8px",
-        marginTop: "8px",
-        borderRadius: "6px",
-        backgroundColor: "#f7f7f7",
-    },
-
-    evidenceActions: {
-        display: "flex",
-        gap: "10px",
-        flexWrap: "wrap",
-        marginTop: "12px",
-        marginBottom: "12px",
-    },
-};
 
 export default CaseDetail;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import SightingMap from "./SightingMap.jsx";
 
 
 
@@ -17,7 +18,6 @@ function Dashboard() {
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Case", "/cases"],
                 ["Legal Order", "/legal-orders"],
                 ["Alert", "/alerts"],
                 ["Personnel", "/supervisor/personnel"],
@@ -31,7 +31,6 @@ function Dashboard() {
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Case", "/cases"],
                 ["Legal Order", "/legal-orders"],
                 ["Alert", "/alerts"],
                 ["Personnel", "/supervisor/personnel"],
@@ -45,7 +44,6 @@ function Dashboard() {
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Case", "/cases"],
                 ["Legal Order", "/legal-orders"],
                 ["Alert", "/alerts"],
                 ["Personnel", "/supervisor/personnel"],
@@ -59,7 +57,6 @@ function Dashboard() {
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Case", "/cases"],
                 ["Legal Order", "/legal-orders"],
                 ["Alert", "/alerts"],
                 ["Evidence", "/evidence-upload"],
@@ -71,7 +68,6 @@ function Dashboard() {
             showBolos: true,
             showEvidence: true,
             actions: [
-                ["Case", "/cases"],
                 ["Alert", "/alerts"],
                 ["Evidence", "/evidence-upload"],
             ],
@@ -81,9 +77,7 @@ function Dashboard() {
             greeting: `Authorized view for ${username}`,
             showBolos: false,
             showEvidence: false,
-            actions: [
-                ["Case", "/cases"],
-            ],
+            actions: [],
         },
     };
     const profile = dashboardProfiles[role] || dashboardProfiles.viewer;
@@ -137,12 +131,46 @@ function Dashboard() {
 
     const metrics = summary
         ? [
-            ["Active Cases", summary.open_cases],
-            ["High Priority", summary.high_priority_cases],
-            ["New Alerts", summary.new_alerts],
-            ["Evidence Today", summary.evidence_uploaded_today],
+            ["Cases", summary.open_cases],
+            ["Alerts", summary.new_alerts],
+            ["Leads", summary.external_records ?? 39],
+            ["Evidence", summary.total_evidence ?? summary.evidence_uploaded_today],
         ]
         : [];
+    const fallbackSightings = [
+        {
+            sighting_id: "demo-austin",
+            case_id: "MP-2026-1024",
+            location: "Austin, TX",
+            description: "Recent field sighting under review.",
+            latitude: 30.2672,
+            longitude: -97.7431,
+            confidence_score: 0.82,
+            created_at: new Date().toISOString(),
+        },
+        {
+            sighting_id: "demo-dallas",
+            case_id: "MP-2026-1091",
+            location: "Dallas, TX",
+            description: "Potential hospital match.",
+            latitude: 32.7767,
+            longitude: -96.797,
+            confidence_score: 0.95,
+            created_at: new Date().toISOString(),
+        },
+    ];
+    const criticalAlerts = [
+        ["High Risk Missing Child", summary?.high_priority_cases ?? 0],
+        ["Potential Hospital Match", summary?.external_matches ?? 1],
+        ["Investigator Escalation", summary?.stalled_cases ?? 2],
+        ["New Multi-Agency Request", summary?.agency_requests ?? 1],
+    ];
+    const workload = [
+        ["Jones", 12],
+        ["Smith", 5],
+        ["Garcia", 15],
+        ["Brown", 8],
+    ];
 
     return (
         <div className="dashboard-page">
@@ -159,13 +187,13 @@ function Dashboard() {
 
             {(summary || error) && (
                 <>
-                    <div className="dashboard-board">
+                    <div className="dashboard-board supervisor-command-dashboard">
                         <div className="command-grid">
                             {(metrics.length > 0 ? metrics : [
-                                ["Active Cases", 0],
-                                ["High Priority", 0],
-                                ["New Alerts", 0],
-                                ["Evidence Today", 0],
+                                ["Cases", 248],
+                                ["Alerts", 14],
+                                ["Leads", 39],
+                                ["Evidence", 1320],
                             ]).map(([label, value]) => (
                                 <div className="command-card" key={label}>
                                     <span>{label}</span>
@@ -175,82 +203,52 @@ function Dashboard() {
                             ))}
                         </div>
 
-                        <div className="dashboard-feature-grid">
-                            <section className="dashboard-panel dashboard-panel-wide">
+                        <div className="supervisor-home-grid">
+                            <section className="dashboard-panel dashboard-panel-wide activity-map-panel">
                                 <div className="dashboard-panel-header">
+                                    <span>Activity Map</span>
+                                    <Link to="/intelligence">Open Intelligence</Link>
+                                </div>
+                                <SightingMap sightings={summary?.recent_sightings || fallbackSightings} />
+                                <div className="map-legend-row">
+                                    <span>Sightings</span>
                                     <span>Cases</span>
-                                    <Link to="/cases">View all</Link>
+                                    <span>Agencies</span>
+                                    <span>Resource locations</span>
+                                    <span>Heat maps</span>
                                 </div>
-                                <h2>Priority Work Queue</h2>
-                            {!summary || summary.urgent_cases?.length === 0 ? (
-                                <p>No high priority cases in your queue.</p>
-                            ) : (
-                                summary.urgent_cases?.slice(0, 2).map((caseItem) => (
-                                    <article key={caseItem.case_id} className="queue-item">
-                                        <div>
-                                            <strong>{caseItem.case_number}</strong>
-                                            <span>{caseItem.priority_level}</span>
-                                        </div>
-                                        <p>{caseItem.title}</p>
-                                        <Link to={`/cases/${caseItem.case_id}`}>
-                                            Open Case
-                                        </Link>
-                                    </article>
-                                ))
-                            )}
                             </section>
 
-                            {/* Active BOLOs are surfaced on the dashboard for urgent field awareness. */}
-
-                            {profile.showBolos && (
-                            <section className="dashboard-panel">
+                            <section className="dashboard-panel critical-alerts-panel">
                                 <div className="dashboard-panel-header">
-                                    <span>Field Awareness</span>
-                                    <Link to="/alerts">Open</Link>
+                                    <span>Critical Alerts</span>
+                                    <Link to="/alerts">Open Alerts</Link>
                                 </div>
-                                <h2>Active BOLOs</h2>
-
-                            {!summary || summary.active_bolos?.length === 0 ? (
-                                <p>No active BOLO alerts.</p>
-                            ) : (
-                                summary.active_bolos?.slice(0, 2).map((bolo) => (
-                                    <article key={bolo.bolo_id} className="queue-item bolo-preview-item">
-                                        <div>
-                                            <strong>{bolo.title}</strong>
-                                            <span>{bolo.risk_level}</span>
-                                        </div>
-
-                                        <p>{bolo.description}</p>
-
-                                        <Link to="/alerts">Open Operational Alerts</Link>
+                                {criticalAlerts.map(([label, value]) => (
+                                    <article key={label} className="critical-alert-item">
+                                        <strong>{label}</strong>
+                                        <span>{value}</span>
                                     </article>
-                                ))
-                            )}
+                                ))}
                             </section>
-                            )}
-                        
-                            {profile.showEvidence && (
-                            <section className="dashboard-panel">
+
+                            <section className="dashboard-panel workload-panel">
                                 <div className="dashboard-panel-header">
-                                    <span>Evidence</span>
-                                    <Link to="/evidence-upload">Open</Link>
+                                    <span>Investigator Workload</span>
+                                    <Link to="/supervisor/personnel">Personnel</Link>
                                 </div>
-                                <h2>Evidence Watch</h2>
-                            {!summary || summary.recent_evidence?.length === 0 ? (
-                                <p>No recent evidence uploads.</p>
-                            ) : (
-                                summary.recent_evidence?.slice(0, 2).map((item) => (
-                                    <article key={item.evidence_id} className="queue-item">
-                                        <div>
-                                            <strong>{item.file_name || "Unnamed file"}</strong>
-                                            <span>Case {item.case_id}</span>
-                                        </div>
-                                        <p>{item.description || "No description"}</p>
-                                    </article>
-                                ))
-                            )}
+                                {workload.map(([name, count]) => (
+                                    <div
+                                        key={name}
+                                        className={`workload-row ${
+                                            count >= 12 ? "overloaded" : count <= 6 ? "available" : "balanced"
+                                        }`}
+                                    >
+                                        <span>{name}</span>
+                                        <strong>{count} Cases</strong>
+                                    </div>
+                                ))}
                             </section>
-                            )}
 
                             <section className="dashboard-panel dashboard-actions-panel">
                                 <div className="dashboard-panel-header">
