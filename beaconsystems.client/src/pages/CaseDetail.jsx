@@ -291,6 +291,17 @@ function CaseDetail() {
         ["documents", "Documents"],
         ["audit", "Audit Log"],
     ];
+    const intelligenceProfileItems = person
+        ? [
+            ["Associates", person.known_associates || "No known associates recorded."],
+            ["Gang Affiliations", person.gang_affiliations || "No gang affiliations recorded."],
+            ["Vehicles", person.vehicles || "No vehicle intelligence recorded."],
+            ["Addresses", person.addresses || person.last_seen_location || "No address intelligence recorded."],
+            ["Tips", person.tips || `${externalRecords.length} external records and ${sortedSightings.length} sightings available for review.`],
+            ["Sightings", sortedSightings.length ? `${sortedSightings.length} sightings linked to this case.` : "No sightings linked yet."],
+            ["Patterns", person.patterns || "No movement or contact patterns recorded."],
+        ]
+        : [];
 
     return (
         <div className="case-detail-page">
@@ -395,7 +406,7 @@ function CaseDetail() {
                     </div>
 
                     <div className="missing-person-details case-overview-grid">
-                        <h2>Overview</h2>
+                        <h2>Subject Profile</h2>
                         <p>Name: {personName}</p>
                         <p>Age: {person.age}</p>
                         <p>Eye Color: {person.eye_color}</p>
@@ -499,6 +510,16 @@ function CaseDetail() {
             {activeTab === "intelligence" && (
                 <div className="case-section case-tab-panel">
                     <h2>Intelligence</h2>
+                    <div className="case-intelligence-grid">
+                        {intelligenceProfileItems.map(([title, detail]) => (
+                            <article key={title} className="case-intelligence-card">
+                                <strong>{title}</strong>
+                                <p>{detail}</p>
+                            </article>
+                        ))}
+                    </div>
+
+                    <h3>Authorized External Records</h3>
                     {externalRecords.length === 0 ? (
                         <p>No external records found for this person.</p>
                     ) : (

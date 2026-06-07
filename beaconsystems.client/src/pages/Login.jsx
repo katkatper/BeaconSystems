@@ -16,7 +16,7 @@ function Login({ onLogin }) {
     const navigate = useNavigate();
 
     const getLandingPath = (role) => {
-        if (role === "agency_admin" || role === "supervisor") {
+        if (role === "agency_admin") {
             return "/supervisor";
         }
 

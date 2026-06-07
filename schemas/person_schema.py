@@ -26,6 +26,44 @@ class PersonCreate(BaseModel):
 
     medical_conditions: Optional[str] = None
 
+    criminal_arrests_count: Optional[int] = 0
+
+    felony_convictions_count: Optional[int] = 0
+
+    active_warrants_count: Optional[int] = 0
+
+    protective_orders_count: Optional[int] = 0
+
+    last_arrest_date: Optional[datetime] = None
+
+    most_serious_offense: Optional[str] = None
+
+    criminal_history: Optional[str] = None
+
+    warrants: Optional[str] = None
+
+    arrests: Optional[str] = None
+
+    charges: Optional[str] = None
+
+    convictions: Optional[str] = None
+
+    corrections_history: Optional[str] = None
+
+    known_associates: Optional[str] = None
+
+    gang_affiliations: Optional[str] = None
+
+    vehicles: Optional[str] = None
+
+    addresses: Optional[str] = None
+
+    tips: Optional[str] = None
+
+    patterns: Optional[str] = None
+
+    intelligence_notes: Optional[str] = None
+
     dna_profile_id: Optional[int] = None
 
     photo_url: Optional[str] = None
@@ -62,6 +100,44 @@ class PersonUpdate(BaseModel):
     tattoos: Optional[str] = None
 
     medical_conditions: Optional[str] = None
+
+    criminal_arrests_count: Optional[int] = None
+
+    felony_convictions_count: Optional[int] = None
+
+    active_warrants_count: Optional[int] = None
+
+    protective_orders_count: Optional[int] = None
+
+    last_arrest_date: Optional[datetime] = None
+
+    most_serious_offense: Optional[str] = None
+
+    criminal_history: Optional[str] = None
+
+    warrants: Optional[str] = None
+
+    arrests: Optional[str] = None
+
+    charges: Optional[str] = None
+
+    convictions: Optional[str] = None
+
+    corrections_history: Optional[str] = None
+
+    known_associates: Optional[str] = None
+
+    gang_affiliations: Optional[str] = None
+
+    vehicles: Optional[str] = None
+
+    addresses: Optional[str] = None
+
+    tips: Optional[str] = None
+
+    patterns: Optional[str] = None
+
+    intelligence_notes: Optional[str] = None
 
     dna_profile_id: Optional[int] = None
 
@@ -101,6 +177,44 @@ class PersonResponse(BaseModel):
     tattoos: Optional[str] = None
 
     medical_conditions: Optional[str] = None
+
+    criminal_arrests_count: Optional[int] = None
+
+    felony_convictions_count: Optional[int] = None
+
+    active_warrants_count: Optional[int] = None
+
+    protective_orders_count: Optional[int] = None
+
+    last_arrest_date: Optional[datetime] = None
+
+    most_serious_offense: Optional[str] = None
+
+    criminal_history: Optional[str] = None
+
+    warrants: Optional[str] = None
+
+    arrests: Optional[str] = None
+
+    charges: Optional[str] = None
+
+    convictions: Optional[str] = None
+
+    corrections_history: Optional[str] = None
+
+    known_associates: Optional[str] = None
+
+    gang_affiliations: Optional[str] = None
+
+    vehicles: Optional[str] = None
+
+    addresses: Optional[str] = None
+
+    tips: Optional[str] = None
+
+    patterns: Optional[str] = None
+
+    intelligence_notes: Optional[str] = None
 
     dna_profile_id: Optional[int] = None
 

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
+from models.activity_log import ActivityLog
 from models.legal_access_request import LegalAccessRequest
 from models.user import User
 from security.auth import get_current_user, require_role
@@ -15,22 +16,89 @@ from services.activity_service import create_activity_log
 router = APIRouter(prefix="/legal-access", tags=["Legal Access Requests"])
 
 
+def serialize_legal_request(request: LegalAccessRequest):
+    return {
+        "request_id": request.request_id,
+        "request_type": request.request_type,
+        "authority_type": request.authority_type,
+        "case_id": request.case_id,
+        "person_id": request.person_id,
+        "agency_id": request.agency_id,
+        "requested_by_user_id": request.requested_by_user_id,
+        "assigned_investigator_id": request.assigned_investigator_id,
+        "approved_by_user_id": request.approved_by_user_id,
+        "reviewed_by_user_id": request.reviewed_by_user_id,
+        "requester_name": request.requester_name,
+        "requester_organization": request.requester_organization,
+        "requester_role": request.requester_role,
+        "contact_email": request.contact_email,
+        "source_type": request.source_type,
+        "receiving_entity": request.receiving_entity,
+        "target_identifier": request.target_identifier,
+        "jurisdiction": request.jurisdiction,
+        "legal_reference": request.legal_reference,
+        "purpose": request.purpose,
+        "reason_for_request": request.reason_for_request,
+        "scope_description": request.scope_description,
+        "probable_cause_summary": request.probable_cause_summary,
+        "minimization_plan": request.minimization_plan,
+        "retention_plan": request.retention_plan,
+        "document_location": request.document_location,
+        "attachments": request.attachments,
+        "status": request.status,
+        "priority": request.priority,
+        "review_notes": request.review_notes,
+        "requested_at": request.requested_at,
+        "due_date": request.due_date,
+        "reviewed_at": request.reviewed_at,
+    }
+
+
+def get_accessible_legal_request(
+    request_id: int,
+    db: Session,
+    current_user: User,
+):
+    request = db.query(LegalAccessRequest).filter(
+        LegalAccessRequest.request_id == request_id
+    ).first()
+
+    if not request:
+        raise HTTPException(status_code=404, detail="Legal request not found")
+
+    if current_user.role != "admin" and request.agency_id != current_user.agency_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    return request
+
+
 class LegalAccessRequestCreate(BaseModel):
     case_id: Optional[int] = None
+    person_id: Optional[int] = None
+    assigned_investigator_id: Optional[int] = None
+    approved_by_user_id: Optional[int] = None
     requester_name: str
     requester_organization: str
     requester_role: str
     contact_email: Optional[str] = None
     authority_type: str
+    request_type: Optional[str] = None
     source_type: str
+    receiving_entity: Optional[str] = None
     target_identifier: Optional[str] = None
     jurisdiction: Optional[str] = None
     legal_reference: Optional[str] = None
     purpose: str
+    reason_for_request: Optional[str] = None
     scope_description: str
+    probable_cause_summary: Optional[str] = None
     minimization_plan: Optional[str] = None
     retention_plan: Optional[str] = None
     document_location: Optional[str] = None
+    attachments: Optional[str] = None
+    priority: Optional[str] = "routine"
+    due_date: Optional[datetime] = None
+    status: Optional[str] = "draft"
 
 
 class LegalAccessReview(BaseModel):
@@ -46,16 +114,46 @@ def create_legal_access_request(
 ):
     allowed_authorities = {
         "agency_agreement",
+        "interagency_request",
+        "da_prosecutor_request",
         "warrant",
         "search_warrant",
         "subpoena",
         "court_order",
+        "records_request",
+        "preservation_request",
         "wiretap_order",
         "national_security_letter",
         "consent",
         "approved_api",
         "partner_integration",
     }
+
+    allowed_statuses = {
+        "draft",
+        "submitted_for_supervisor_review",
+        "returned_for_edits",
+        "approved_by_supervisor",
+        "sent_to_da",
+        "sent_to_court",
+        "sent",
+        "awaiting_response",
+        "signed_approved",
+        "denied",
+        "served",
+        "completed",
+        "closed",
+        "pending",
+        "approved",
+        "missing_info",
+        "expired",
+        "revoked",
+    }
+
+    allowed_priorities = {"routine", "medium", "high", "urgent", "critical"}
+    request_type = data.request_type or data.authority_type
+    status_value = data.status or "draft"
+    priority_value = data.priority or "routine"
 
     allowed_sources = {
         "hospital",
@@ -74,28 +172,47 @@ def create_legal_access_request(
     if data.authority_type not in allowed_authorities:
         raise HTTPException(status_code=400, detail="Invalid authority type")
 
+    if request_type not in allowed_authorities:
+        raise HTTPException(status_code=400, detail="Invalid request type")
+
     if data.source_type not in allowed_sources:
         raise HTTPException(status_code=400, detail="Invalid source type")
 
+    if status_value not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid request status")
+
+    if priority_value not in allowed_priorities:
+        raise HTTPException(status_code=400, detail="Invalid priority")
+
     request = LegalAccessRequest(
         case_id=data.case_id,
+        person_id=data.person_id,
         agency_id=current_user.agency_id,
         requested_by_user_id=current_user.user_id,
+        assigned_investigator_id=data.assigned_investigator_id,
+        approved_by_user_id=data.approved_by_user_id,
         requester_name=data.requester_name,
         requester_organization=data.requester_organization,
         requester_role=data.requester_role,
         contact_email=data.contact_email,
         authority_type=data.authority_type,
+        request_type=request_type,
         source_type=data.source_type,
+        receiving_entity=data.receiving_entity or data.requester_organization,
         target_identifier=data.target_identifier,
         jurisdiction=data.jurisdiction,
         legal_reference=data.legal_reference,
         purpose=data.purpose,
+        reason_for_request=data.reason_for_request or data.purpose,
         scope_description=data.scope_description,
+        probable_cause_summary=data.probable_cause_summary or data.scope_description,
         minimization_plan=data.minimization_plan,
         retention_plan=data.retention_plan,
         document_location=data.document_location,
-        status="pending",
+        attachments=data.attachments or data.document_location,
+        priority=priority_value,
+        due_date=data.due_date,
+        status=status_value,
     )
 
     db.add(request)
@@ -111,7 +228,7 @@ def create_legal_access_request(
         entity_id=request.request_id,
         details=(
             f"{data.authority_type} request submitted for "
-            f"{data.source_type} data"
+            f"{data.source_type} data with status {status_value}"
         ),
     )
 
@@ -139,6 +256,65 @@ def get_legal_access_requests(
     return query.order_by(LegalAccessRequest.requested_at.desc()).all()
 
 
+@router.get("/{request_id}")
+def get_legal_access_request_detail(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    request = get_accessible_legal_request(request_id, db, current_user)
+    user_ids = {
+        value
+        for value in [
+            request.requested_by_user_id,
+            request.assigned_investigator_id,
+            request.approved_by_user_id,
+            request.reviewed_by_user_id,
+        ]
+        if value
+    }
+    users = (
+        {
+            user.user_id: user.username
+            for user in db.query(User).filter(User.user_id.in_(user_ids)).all()
+        }
+        if user_ids
+        else {}
+    )
+    audit_logs = (
+        db.query(ActivityLog)
+        .filter(
+            ActivityLog.entity == "legal_access_request",
+            ActivityLog.entity_id == request_id,
+        )
+        .order_by(ActivityLog.timestamp.desc())
+        .limit(25)
+        .all()
+    )
+
+    data = serialize_legal_request(request)
+    data.update({
+        "requested_by_name": users.get(request.requested_by_user_id),
+        "assigned_investigator_name": users.get(request.assigned_investigator_id),
+        "approved_by_name": users.get(request.approved_by_user_id),
+        "reviewed_by_name": users.get(request.reviewed_by_user_id),
+        "audit_log": [
+            {
+                "id": log.id,
+                "user_id": log.user_id,
+                "action": log.action,
+                "entity": log.entity,
+                "entity_id": log.entity_id,
+                "details": log.details,
+                "timestamp": log.timestamp,
+            }
+            for log in audit_logs
+        ],
+    })
+
+    return data
+
+
 @router.put("/{request_id}/review")
 def review_legal_access_request(
     request_id: int,
@@ -146,24 +322,37 @@ def review_legal_access_request(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
-    allowed_statuses = {"pending", "approved", "denied", "missing_info", "expired", "revoked"}
+    allowed_statuses = {
+        "draft",
+        "submitted_for_supervisor_review",
+        "returned_for_edits",
+        "approved_by_supervisor",
+        "sent_to_da",
+        "sent_to_court",
+        "sent",
+        "awaiting_response",
+        "signed_approved",
+        "denied",
+        "served",
+        "completed",
+        "closed",
+        "pending",
+        "approved",
+        "missing_info",
+        "expired",
+        "revoked",
+    }
 
     if data.status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid request status")
 
-    request = db.query(LegalAccessRequest).filter(
-        LegalAccessRequest.request_id == request_id
-    ).first()
-
-    if not request:
-        raise HTTPException(status_code=404, detail="Legal access request not found")
-
-    if current_user.role != "admin" and request.agency_id != current_user.agency_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    request = get_accessible_legal_request(request_id, db, current_user)
 
     request.status = data.status
     request.review_notes = data.review_notes
     request.reviewed_by_user_id = current_user.user_id
+    if data.status in {"approved_by_supervisor", "signed_approved", "approved"}:
+        request.approved_by_user_id = current_user.user_id
     request.reviewed_at = datetime.utcnow()
 
     db.commit()

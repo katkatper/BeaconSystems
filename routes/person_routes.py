@@ -1,5 +1,10 @@
 from datetime import datetime, time
-from fastapi import APIRouter, Depends, HTTPException, Query
+import shutil
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -12,6 +17,10 @@ from schemas.person_schema import PersonCreate, PersonUpdate, PersonResponse, Me
 
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
+
+PHOTO_UPLOAD_DIR = Path("uploads") / "person_photos"
+PHOTO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
 def infer_missing_person_risk(data: dict) -> str:
@@ -76,6 +85,44 @@ def infer_missing_person_risk(data: dict) -> str:
 @router.get("/test")
 def persons_test():
     return {"message": "Persons router is working"}
+
+
+@router.post("/photo-upload")
+def upload_person_photo(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+):
+    if file.content_type not in ALLOWED_PHOTO_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Upload a JPEG, PNG, WEBP, or GIF image",
+        )
+
+    original_file_name = Path(file.filename or "missing-person-photo").name
+    extension = Path(original_file_name).suffix.lower() or ".jpg"
+    stored_file_name = f"{uuid4().hex}{extension}"
+    file_path = PHOTO_UPLOAD_DIR / stored_file_name
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    base_url = str(request.base_url).rstrip("/")
+    return {
+        "message": "Photo uploaded",
+        "photo_url": f"{base_url}/persons/photo/{stored_file_name}",
+    }
+
+
+@router.get("/photo/{file_name}")
+def get_person_photo(file_name: str):
+    safe_name = Path(file_name).name
+    file_path = PHOTO_UPLOAD_DIR / safe_name
+
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    return FileResponse(path=file_path)
 
 
 @router.get("/", response_model=List[PersonResponse])

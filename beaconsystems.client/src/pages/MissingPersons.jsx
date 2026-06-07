@@ -9,6 +9,8 @@ function MissingPersonsList() {
     const [searchTerm, setSearchTerm] = useState("");
     const [reportDate, setReportDate] = useState("");
     const [selectedPersonId, setSelectedPersonId] = useState(null);
+    const [photoFile, setPhotoFile] = useState(null);
+    const [photoInputKey, setPhotoInputKey] = useState(0);
     const [formData, setFormData] = useState({
         first_name: "",
         last_name: "",
@@ -97,6 +99,8 @@ function MissingPersonsList() {
             medical_conditions: "",
             photo_url: "",
         });
+        setPhotoFile(null);
+        setPhotoInputKey((current) => current + 1);
     };
 
     const handleManualAdd = async (event) => {
@@ -105,10 +109,34 @@ function MissingPersonsList() {
         const token = localStorage.getItem("token");
 
         try {
+            let uploadedPhotoUrl = formData.photo_url;
+
+            if (photoFile) {
+                const uploadData = new FormData();
+                uploadData.append("file", photoFile);
+
+                const uploadResponse = await fetch("http://127.0.0.1:8000/persons/photo-upload", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: uploadData,
+                });
+
+                if (!uploadResponse.ok) {
+                    const errorData = await uploadResponse.json().catch(() => ({}));
+                    throw new Error(errorData.detail || "Could not upload missing person photo");
+                }
+
+                const uploadResult = await uploadResponse.json();
+                uploadedPhotoUrl = uploadResult.photo_url;
+            }
+
             const payload = {
                 ...formData,
                 age: formData.age ? Number(formData.age) : null,
                 weight: formData.weight ? Number(formData.weight) : null,
+                photo_url: uploadedPhotoUrl,
             };
 
             const response = await fetch("http://127.0.0.1:8000/persons/", {
@@ -130,7 +158,7 @@ function MissingPersonsList() {
             await loadPersons();
         } catch (err) {
             console.error(err);
-            setMessage("Could not add missing person.");
+            setMessage(err.message || "Could not add missing person.");
         }
     };
 
@@ -176,7 +204,18 @@ function MissingPersonsList() {
                         <input name="hair_color" placeholder="Hair Color" value={formData.hair_color} onChange={handleChange} />
                         <input name="height" placeholder="Height" value={formData.height} onChange={handleChange} />
                         <input name="weight" placeholder="Weight" value={formData.weight} onChange={handleChange} />
-                        <input className="full-width-field" name="photo_url" placeholder="Photo URL" value={formData.photo_url} onChange={handleChange} />
+                        <label className="missing-person-photo-upload full-width-field">
+                            <span>Upload Photo</span>
+                            <input
+                                key={photoInputKey}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/gif"
+                                onChange={(event) => {
+                                    setPhotoFile(event.target.files?.[0] || null);
+                                }}
+                            />
+                            <small>{photoFile ? photoFile.name : "No photo selected"}</small>
+                        </label>
                         <select name="risk_level" value={formData.risk_level} onChange={handleChange}>
                             <option value="low">Low Risk</option>
                             <option value="medium">Medium Risk</option>
@@ -308,14 +347,23 @@ function MissingPersonsList() {
                                 <span>Selected Person</span>
                                 <strong>{getPersonName(selectedPerson)}</strong>
                             </div>
-                            <div className="missing-person-detail-grid">
-                                <p>Age: {selectedPerson.age || "Unknown"}</p>
-                                <p>Report Date: {formatReportDate(selectedPerson.created_at)}</p>
-                                <p>Status: {selectedPerson.status || "Unknown"}</p>
-                                <p>Risk Level: {selectedPerson.risk_level || "Unknown"}</p>
-                                <p className="full-width-field">Medical Needs: {selectedPerson.medical_conditions || "Not recorded"}</p>
-                                <p className="full-width-field">Last Seen: {selectedPerson.last_seen_location || "Not recorded"}</p>
-                                <p className="full-width-field">{selectedPerson.description || "No description recorded."}</p>
+                            <div className="missing-person-selected-layout">
+                                <div className="missing-person-selected-photo">
+                                    {selectedPerson.photo_url ? (
+                                        <img src={selectedPerson.photo_url} alt={`${getPersonName(selectedPerson)} profile`} />
+                                    ) : (
+                                        <span>No photo</span>
+                                    )}
+                                </div>
+                                <div className="missing-person-detail-grid">
+                                    <p>Age: {selectedPerson.age || "Unknown"}</p>
+                                    <p>Report Date: {formatReportDate(selectedPerson.created_at)}</p>
+                                    <p>Status: {selectedPerson.status || "Unknown"}</p>
+                                    <p>Risk Level: {selectedPerson.risk_level || "Unknown"}</p>
+                                    <p className="full-width-field">Medical Needs: {selectedPerson.medical_conditions || "Not recorded"}</p>
+                                    <p className="full-width-field">Last Seen: {selectedPerson.last_seen_location || "Not recorded"}</p>
+                                    <p className="full-width-field">{selectedPerson.description || "No description recorded."}</p>
+                                </div>
                             </div>
                             <button
                                 type="button"

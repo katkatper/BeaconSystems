@@ -15,7 +15,7 @@ function SupervisorQueue() {
     const [teamForm, setTeamForm] = useState({
         case_id: "",
         user_id: "",
-        role: "supervisor",
+        role: "lead_investigator",
         reason: "",
     });
     const [exchanges, setExchanges] = useState([]);
@@ -124,7 +124,8 @@ function SupervisorQueue() {
                 });
 
                 if (!response.ok) {
-                    throw new Error("Could not load supervisor queue");
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || "Could not load supervisor queue");
                 }
 
                 const data = await response.json();
@@ -137,7 +138,7 @@ function SupervisorQueue() {
                 console.error(err);
 
                 if (isMounted) {
-                    setMessage("Could not load supervisor queue. Admin or agency admin access is required.");
+                    setMessage(err.message || "Could not load supervisor queue.");
                 }
             }
         };
@@ -307,7 +308,7 @@ function SupervisorQueue() {
             setTeamForm({
                 case_id: "",
                 user_id: "",
-                role: "supervisor",
+                role: "lead_investigator",
                 reason: "",
             });
         } catch (err) {
@@ -520,15 +521,15 @@ function SupervisorQueue() {
                             value={teamForm.role}
                         onChange={handleTeamChange}
                     >
-                        <option value="supervisor">Supervisor</option>
                         <option value="lead_investigator">Lead Investigator</option>
-                        <option value="investigator">Investigator</option>
+                        <option value="supervisor">Supervisor</option>
                         <option value="intelligence_analyst">Intelligence Analyst</option>
+                        <option value="investigator">Investigator</option>
                         <option value="evidence_technician">Evidence Technician</option>
                         <option value="tip_coordinator">Tip Coordinator</option>
                         <option value="external_agency_user">External Agency User</option>
-                        <option value="administrator">Administrator</option>
                         <option value="command_staff">Command Staff</option>
+                        <option value="administrator">Administrator</option>
                     </select>
 
                         <textarea

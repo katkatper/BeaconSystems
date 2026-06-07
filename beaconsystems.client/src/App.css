@@ -6307,6 +6307,34 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     gap: 8px 14px;
 }
 
+.missing-person-selected-layout {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.missing-person-selected-photo {
+    display: grid;
+    place-items: center;
+    width: 160px;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    color: #93c5fd;
+    font-size: 14px;
+    font-weight: 900;
+    text-transform: uppercase;
+    background: rgba(15, 23, 42, 0.82);
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    border-radius: 8px;
+}
+
+.missing-person-selected-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .missing-person-detail-grid p {
     margin: 0;
     color: #cbd5e1;
@@ -6332,8 +6360,13 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     .missing-registry-panel .missing-persons-grid,
     .missing-person-form-grid,
     .missing-person-search-row,
-    .missing-person-detail-grid {
+    .missing-person-detail-grid,
+    .missing-person-selected-layout {
         grid-template-columns: 1fr;
+    }
+
+    .missing-person-selected-photo {
+        width: min(220px, 100%);
     }
 
     .missing-person-form-grid .full-width-field {
@@ -6568,4 +6601,465 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
 
 .navbar-collapsed .sidebar-collapse-button {
     display: none !important;
+}
+
+/* Dashboard cards should scroll as a stable grid. Sticky cards were causing
+   lower dashboard panels to slide underneath them on longer supervisor pages. */
+.supervisor-command-dashboard .supervisor-home-grid {
+    grid-auto-flow: row !important;
+    align-items: start !important;
+}
+
+.supervisor-command-dashboard .dashboard-panel {
+    position: relative !important;
+    z-index: 0;
+    height: auto;
+}
+
+.supervisor-command-dashboard .critical-alerts-panel,
+.supervisor-command-dashboard .workload-panel {
+    position: relative !important;
+    top: auto !important;
+}
+
+.supervisor-command-dashboard .unified-timeline-panel,
+.supervisor-command-dashboard .dashboard-actions-panel {
+    align-self: start;
+}
+
+.legal-request-type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: 18px;
+    width: min(100%, 1080px);
+    margin: 0 auto 18px;
+}
+
+.legal-request-type-grid button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 108px;
+    padding: 22px;
+    color: #dbeafe;
+    text-align: left;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(147, 197, 253, 0.22);
+    border-radius: 8px;
+}
+
+.legal-request-type-grid button.active {
+    background: rgba(29, 78, 216, 0.52);
+    border-color: rgba(147, 197, 253, 0.58);
+}
+
+.legal-request-type-grid span {
+    color: #dbeafe;
+    font-size: 19px;
+    font-weight: 800;
+}
+
+.legal-request-type-grid strong {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0 10px;
+    color: #f8fafc;
+    background: rgba(30, 64, 175, 0.7);
+    border-radius: 999px;
+}
+
+.legal-supervisor-tracker {
+    width: min(100%, 1080px);
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.case-detail-page .missing-person-profile.case-tab-panel {
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+    align-items: start;
+}
+
+.case-detail-page .missing-person-profile .missing-person-photo {
+    justify-self: start;
+    width: 100%;
+    max-width: 340px;
+}
+
+.case-detail-page .missing-person-profile .missing-person-details {
+    align-self: start;
+}
+
+.case-detail-page .case-subject-profile {
+    grid-column: 1 / -1;
+}
+
+.subject-profile-card {
+    display: grid;
+    gap: 14px;
+}
+
+.subject-profile-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.subject-profile-header span {
+    color: #9bb6f7;
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.subject-profile-header h2 {
+    margin: 0;
+}
+
+.criminal-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.criminal-summary-grid div,
+.subject-profile-section-grid article {
+    min-width: 0;
+    padding: 12px;
+    background: rgba(30, 41, 59, 0.62);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.criminal-summary-grid span {
+    display: block;
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.criminal-summary-grid strong {
+    display: block;
+    margin-top: 6px;
+    color: #f8fafc;
+    font-size: 22px;
+    overflow-wrap: anywhere;
+}
+
+.subject-profile-section-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.subject-profile-section-grid strong {
+    color: #eaf2ff;
+}
+
+.subject-profile-section-grid p {
+    margin: 6px 0 0;
+    color: #b8c4d8;
+    line-height: 1.35;
+}
+
+.case-intelligence-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.case-intelligence-card {
+    min-height: 120px;
+    padding: 14px;
+    background: rgba(30, 41, 59, 0.62);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.case-intelligence-card strong {
+    color: #eaf2ff;
+    font-size: 18px;
+}
+
+.case-intelligence-card p {
+    margin: 8px 0 0;
+    color: #b8c4d8;
+    line-height: 1.4;
+}
+
+.missing-person-photo-upload {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    color: #dbeafe;
+    background: rgba(30, 41, 59, 0.58);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.missing-person-photo-upload span {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.missing-person-photo-upload input {
+    width: 100%;
+}
+
+.missing-person-photo-upload small {
+    color: #b8c4d8;
+}
+
+.legal-request-table {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.legal-request-table-head,
+.legal-request-table-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 14px;
+    align-items: center;
+}
+
+.legal-request-table-head {
+    padding: 0 8px 10px;
+    color: #9bb6f7;
+    font-size: 14px;
+    font-weight: 900;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.legal-request-table-row {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 64px;
+    padding: 14px 16px;
+    color: #e5edff;
+    text-align: left;
+    text-decoration: none;
+    background: rgba(30, 41, 59, 0.68);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.legal-request-table-row:hover {
+    background: rgba(30, 64, 175, 0.36);
+    border-color: rgba(147, 197, 253, 0.38);
+}
+
+.legal-request-topline a {
+    color: #eaf2ff;
+    font-weight: 900;
+}
+
+.legal-orders-layout {
+    grid-template-columns: minmax(380px, 0.9fr) minmax(420px, 1fr) minmax(420px, 1fr);
+    align-items: start;
+}
+
+.legal-order-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.legal-order-form textarea,
+.legal-order-form button {
+    grid-column: 1 / -1;
+}
+
+.legal-record-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.legal-record-details div {
+    min-width: 0;
+    padding: 10px;
+    background: rgba(15, 23, 42, 0.42);
+    border: 1px solid rgba(147, 197, 253, 0.12);
+    border-radius: 8px;
+}
+
+.legal-record-details dt {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.legal-record-details dd {
+    margin: 4px 0 0;
+    color: #e5edff;
+    overflow-wrap: anywhere;
+}
+
+.request-status.draft,
+.request-status.submitted_for_supervisor_review,
+.request-status.sent_to_da,
+.request-status.sent_to_court,
+.request-status.sent,
+.request-status.awaiting_response,
+.request-status.served {
+    color: #dbeafe;
+    background: rgba(30, 64, 175, 0.68);
+}
+
+.request-status.returned_for_edits {
+    color: #fef3c7;
+    background: rgba(146, 64, 14, 0.7);
+}
+
+.request-status.approved_by_supervisor,
+.request-status.signed_approved,
+.request-status.completed,
+.request-status.closed {
+    color: #dcfce7;
+    background: rgba(22, 101, 52, 0.72);
+}
+
+.legal-order-detail-page {
+    width: min(100%, 1180px);
+    margin: 0 auto;
+    padding: 22px;
+}
+
+.legal-detail-panel {
+    margin: 0 auto 18px;
+}
+
+.legal-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.legal-detail-header span {
+    color: #9bb6f7;
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.legal-detail-header h2 {
+    margin: 4px 0 0;
+}
+
+.legal-detail-header a {
+    padding: 10px 14px;
+    color: #e5edff;
+    font-weight: 800;
+    background: rgba(30, 41, 59, 0.76);
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    border-radius: 8px;
+}
+
+.legal-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.legal-detail-field {
+    min-width: 0;
+    padding: 14px;
+    background: rgba(30, 41, 59, 0.62);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.legal-detail-field.wide {
+    grid-column: 1 / -1;
+}
+
+.legal-detail-field span {
+    display: block;
+    margin-bottom: 6px;
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.legal-detail-field strong {
+    color: #e5edff;
+    font-size: 18px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.legal-audit-list {
+    display: grid;
+    gap: 10px;
+}
+
+.legal-audit-entry {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    background: rgba(30, 41, 59, 0.62);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.legal-audit-entry strong {
+    color: #eaf2ff;
+}
+
+.legal-audit-entry span {
+    color: #9fb0ca;
+}
+
+.legal-audit-entry p {
+    margin: 0;
+}
+
+@media (max-width: 1180px) {
+    .legal-request-type-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .legal-orders-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 680px) {
+    .legal-request-type-grid,
+    .legal-order-form,
+    .legal-record-details,
+    .legal-detail-grid,
+    .legal-request-table-head,
+    .legal-request-table-row {
+        grid-template-columns: 1fr;
+    }
+
+    .case-detail-page .missing-person-profile.case-tab-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .criminal-summary-grid,
+    .subject-profile-section-grid,
+    .case-intelligence-grid {
+        grid-template-columns: 1fr;
+    }
 }

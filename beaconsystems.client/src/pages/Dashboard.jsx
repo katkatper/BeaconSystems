@@ -102,7 +102,11 @@ function Dashboard() {
                 });
 
                 if (!response.ok) {
-                    throw new Error("Failed to load dashboard summary");
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(
+                        errorData.detail ||
+                        `Dashboard summary unavailable (${response.status})`
+                    );
                 }
 
                 const data = await response.json();
@@ -115,7 +119,11 @@ function Dashboard() {
                 console.error(err);
 
                 if (isMounted) {
-                    setError("Could not load dashboard summary");
+                    setError(
+                        role === "supervisor"
+                            ? ""
+                            : err.message || "Could not load dashboard summary"
+                    );
                 }
             }
         };
@@ -128,7 +136,7 @@ function Dashboard() {
             clearTimeout(timer);
             clearInterval(interval);
         };
-    }, []);
+    }, [role]);
 
     const metrics = summary
         ? [
@@ -262,7 +270,7 @@ function Dashboard() {
                 </p>
             )}
 
-            {(summary || error) && (
+            {(summary || error || role === "supervisor") && (
                 <>
                     <div className="dashboard-board supervisor-command-dashboard">
                         <div className="command-grid">

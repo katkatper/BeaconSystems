@@ -20,6 +20,7 @@ import IntelligenceCenter from "./pages/IntelligenceCenter.jsx";
 import EvidenceUpload from "./pages/EvidenceUpload.jsx";
 import LegalAccessRequests from "./pages/LegalAccessRequests.jsx";
 import LegalOrders from "./pages/LegalOrders.jsx";
+import LegalOrderDetail from "./pages/LegalOrderDetail.jsx";
 import PartnerSources from "./pages/PartnerSources.jsx";
 import CaseAccess from "./pages/CaseAccess.jsx";
 import Sightings from "./pages/Sightings.jsx";
@@ -267,6 +268,14 @@ function AppLayout() {
                     element={
                         <ProtectedRoute>
                             <SupervisorQueue />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/legal-orders/:id"
+                    element={
+                        <ProtectedRoute>
+                            <LegalOrderDetail />
                         </ProtectedRoute>
                     }
                 />

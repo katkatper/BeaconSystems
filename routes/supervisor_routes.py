@@ -33,7 +33,7 @@ class CaseAccessReview(BaseModel):
 
 class CaseTeamAssignment(BaseModel):
     user_id: int
-    role: str = "supervisor"
+    role: str = "lead_investigator"
     reason: str | None = None
 
 

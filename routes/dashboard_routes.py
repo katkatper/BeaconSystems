@@ -27,6 +27,9 @@ def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
 ):
     today = datetime.utcnow() - timedelta(days=1)
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    fourteen_days_ago = datetime.utcnow() - timedelta(days=14)
+    inactive_statuses = ["closed", "resolved", "archived"]
 
     case_query = apply_case_access_filter(db.query(Cases), current_user)
 
@@ -93,6 +96,21 @@ def get_dashboard_summary(
 
     active_partner_sources = partner_query.filter(
         IntegrationSource.is_active == True
+    ).count()
+
+    inactive_case_query = case_query.filter(
+        Cases.updated_at <= seven_days_ago,
+        func.lower(Cases.case_status).notin_(inactive_statuses),
+    )
+    stalled_cases = inactive_case_query.count()
+    inactive_7_days = stalled_cases
+    inactive_14_days = case_query.filter(
+        Cases.updated_at <= fourteen_days_ago,
+        func.lower(Cases.case_status).notin_(inactive_statuses),
+    ).count()
+    unassigned_cases = case_query.filter(
+        Cases.investigator_id == None,  # noqa: E711
+        func.lower(Cases.case_status).notin_(inactive_statuses),
     ).count()
 
     urgent_cases = (
@@ -169,10 +187,110 @@ def get_dashboard_summary(
         },
     }
 
+    def serialize_case(case: Cases):
+        return {
+            "case_id": case.case_id,
+            "case_number": case.case_number,
+            "title": case.title,
+            "person_id": case.person_id,
+            "agency_id": case.agency_id,
+            "investigator_id": case.investigator_id,
+            "case_status": case.case_status,
+            "priority_level": case.priority_level,
+            "last_seen_location": case.last_seen_location,
+            "created_at": case.created_at,
+            "updated_at": case.updated_at,
+        }
+
+    def serialize_alert(alert: Alerts):
+        return {
+            "alert_id": alert.alert_id,
+            "case_id": alert.case_id,
+            "person_id": alert.person_id,
+            "title": alert.title,
+            "alert_type": alert.alert_type,
+            "severity": alert.severity,
+            "description": alert.description,
+            "alert_status": alert.alert_status,
+            "created_at": alert.created_at,
+        }
+
+    def serialize_evidence(item: Evidence):
+        return {
+            "evidence_id": item.evidence_id,
+            "case_id": item.case_id,
+            "evidence_type": item.evidence_type,
+            "description": item.description,
+            "custody_status": item.custody_status,
+            "file_name": item.file_name,
+            "created_at": item.created_at,
+        }
+
+    def serialize_bolo(item: BoloAlert):
+        return {
+            "bolo_id": item.bolo_id,
+            "case_id": item.case_id,
+            "title": item.title,
+            "person_name": item.person_name,
+            "last_known_location": item.last_known_location,
+            "description": item.description,
+            "risk_level": item.risk_level,
+            "status": item.status,
+            "expires_at": item.expires_at,
+            "created_at": item.created_at,
+        }
+
+    def serialize_sighting(sighting: Sighting):
+        return {
+            "sighting_id": sighting.sighting_id,
+            "case_id": sighting.case_id,
+            "person_id": sighting.person_id,
+            "location": sighting.location,
+            "longitude": sighting.longitude,
+            "latitude": sighting.latitude,
+            "description": sighting.description,
+            "confidence_score": sighting.confidence_score,
+            "created_at": sighting.created_at,
+        }
+
+    def serialize_access(item: CaseAccessGrant):
+        return {
+            "grant_id": item.grant_id,
+            "case_id": item.case_id,
+            "user_id": item.user_id,
+            "status": item.status,
+            "reason": item.reason,
+            "granted_at": item.granted_at,
+            "expires_at": item.expires_at,
+        }
+
+    def serialize_activity(item: ActivityLog):
+        return {
+            "id": item.id,
+            "user_id": item.user_id,
+            "agency_id": item.agency_id,
+            "action": item.action,
+            "entity": item.entity,
+            "entity_id": item.entity_id,
+            "details": item.details,
+            "timestamp": item.timestamp,
+        }
+
     return {
         "total_cases": total_cases,
         "open_cases": open_cases,
         "high_priority_cases": high_priority_cases,
+        "stalled_cases": stalled_cases,
+        "inactive_7_days": inactive_7_days,
+        "inactive_14_days": inactive_14_days,
+        "unassigned_cases": unassigned_cases,
+        "pending_warrants": pending_legal_requests,
+        "missing_reports": inactive_14_days,
+        "external_matches": active_partner_sources,
+        "agency_requests": pending_partner_sources,
+        "outstanding_partner_requests": pending_partner_sources,
+        "joint_investigations": 0,
+        "predictive_alerts": stalled_cases + pending_legal_requests + unassigned_cases,
         "command_briefing": command_briefing,
         "new_alerts": new_alerts,
         "pending_legal_requests": pending_legal_requests,
@@ -181,13 +299,15 @@ def get_dashboard_summary(
         "approved_legal_requests": approved_legal_requests,
         "pending_partner_sources": pending_partner_sources,
         "evidence_uploaded_today": evidence_uploaded_today,
+        "total_evidence": evidence_query.count(),
+        "evidence_awaiting_review": len(recent_evidence),
         "restricted_access_events": restricted_access_events,
         "active_partner_sources": active_partner_sources,
-        "urgent_cases": urgent_cases,
-        "recent_alerts": recent_alerts,
-        "recent_evidence": recent_evidence,
-        "active_bolos": active_bolos,
-        "recent_access": recent_access,
-        "recent_sightings": recent_sightings,
-        "recent_activity": recent_activity,
+        "urgent_cases": [serialize_case(case) for case in urgent_cases],
+        "recent_alerts": [serialize_alert(alert) for alert in recent_alerts],
+        "recent_evidence": [serialize_evidence(item) for item in recent_evidence],
+        "active_bolos": [serialize_bolo(item) for item in active_bolos],
+        "recent_access": [serialize_access(item) for item in recent_access],
+        "recent_sightings": [serialize_sighting(item) for item in recent_sightings],
+        "recent_activity": [serialize_activity(item) for item in recent_activity],
     }
