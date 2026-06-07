@@ -1,4 +1,6 @@
+from datetime import datetime, time
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -12,6 +14,65 @@ from schemas.person_schema import PersonCreate, PersonUpdate, PersonResponse, Me
 router = APIRouter(prefix="/persons", tags=["Persons"])
 
 
+def infer_missing_person_risk(data: dict) -> str:
+    current_risk = (data.get("risk_level") or "medium").lower()
+    age = data.get("age")
+    risk_text = " ".join(
+        str(data.get(field) or "")
+        for field in [
+            "description",
+            "medical_conditions",
+            "scars",
+            "tattoos",
+            "last_seen_location",
+        ]
+    ).lower()
+    critical_terms = [
+        "autism",
+        "alzheimer",
+        "dementia",
+        "diabetic",
+        "insulin",
+        "medication",
+        "medicine",
+        "needs meds",
+        "life saving",
+        "lifesaving",
+        "wheelchair",
+        "disability",
+        "disabled",
+        "nonverbal",
+        "cognitive",
+        "developmental",
+    ]
+    high_terms = [
+        "elderly",
+        "child",
+        "minor",
+        "runaway",
+        "pregnant",
+        "injured",
+        "hospital",
+        "danger",
+        "impaired",
+        "limp",
+    ]
+
+    if age is not None and (age <= 12 or age >= 65):
+        return "critical"
+
+    if any(term in risk_text for term in critical_terms):
+        return "critical"
+
+    if age is not None and age < 18:
+        return "high"
+
+    if any(term in risk_text for term in high_terms):
+        return "high" if current_risk not in {"critical"} else current_risk
+
+    return current_risk
+
+
 @router.get("/test")
 def persons_test():
     return {"message": "Persons router is working"}
@@ -21,7 +82,9 @@ def persons_test():
 def get_persons(
     status: Optional[str] = Query(None),
     risk_level: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=100),
+    q: Optional[str] = Query(None),
+    reported_on: Optional[str] = Query(None),
+    limit: int = Query(20, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -34,7 +97,32 @@ def get_persons(
     if risk_level:
         query = query.filter(Person.risk_level == risk_level)
 
-    return query.offset(offset).limit(limit).all()
+    if q:
+        search = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                Person.first_name.ilike(search),
+                Person.last_name.ilike(search),
+                Person.status.ilike(search),
+                Person.risk_level.ilike(search),
+                Person.last_seen_location.ilike(search),
+                Person.medical_conditions.ilike(search),
+                Person.description.ilike(search),
+            )
+        )
+
+    if reported_on:
+        try:
+            report_day = datetime.strptime(reported_on, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="reported_on must be YYYY-MM-DD") from exc
+
+        query = query.filter(
+            Person.created_at >= datetime.combine(report_day, time.min),
+            Person.created_at <= datetime.combine(report_day, time.max),
+        )
+
+    return query.order_by(Person.created_at.desc()).offset(offset).limit(limit).all()
 
 
 @router.get("/{person_id}", response_model=PersonResponse)
@@ -55,9 +143,11 @@ def get_person_by_id(
 def create_person(
     data: PersonCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
-    new_person = Person(**data.model_dump())
+    person_data = data.model_dump()
+    person_data["risk_level"] = infer_missing_person_risk(person_data)
+    new_person = Person(**person_data)
 
     db.add(new_person)
     db.commit()

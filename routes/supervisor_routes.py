@@ -33,14 +33,20 @@ class CaseAccessReview(BaseModel):
 
 class CaseTeamAssignment(BaseModel):
     user_id: int
-    role: str = "support_investigator"
+    role: str = "supervisor"
     reason: str | None = None
 
 
 TEAM_MEMBER_ROLES = {
-    "support_investigator",
-    "analyst_support",
-    "supervisor_observer",
+    "supervisor",
+    "lead_investigator",
+    "investigator",
+    "intelligence_analyst",
+    "evidence_technician",
+    "tip_coordinator",
+    "external_agency_user",
+    "administrator",
+    "command_staff",
 }
 
 

@@ -17,18 +17,18 @@ function Navbar() {
     const role = localStorage.getItem("role");
     const username = localStorage.getItem("username") || "Beacon User";
     const navigation = [
-        ["Dashboard", "/", "DB"],
-        ["Missing Persons", "/missing", "MP"],
-        ["Cases", "/cases", "CA"],
-        ["Intelligence", "/intelligence", "IN"],
-        ["Sightings", "/sightings", "SI"],
-        ["Evidence", "/evidence-upload", "EV"],
-        ["Alerts", "/alerts", "AL"],
-        ["Agencies", "/agencies", "AG"],
-        ["Analytics", "/analytics", "AN"],
-        ["Partners", "/partner-sources", "PA"],
-        ["Users", "/admin/users", "US"],
-        ["Administration", "/administration", "AD"],
+        ["Dashboard", "/", "D"],
+        ["Missing Persons", "/missing", "M"],
+        ["Cases", "/cases", "C"],
+        ["Intelligence", "/intelligence", "I"],
+        ["Sightings", "/sightings", "S"],
+        ["Evidence", "/evidence-upload", "E"],
+        ["Alerts", "/alerts", "A"],
+        ["Agencies", "/agencies", "A"],
+        ["Analytics", "/analytics", "A"],
+        ["Partners", "/partner-sources", "P"],
+        ["Users", "/admin/users", "U"],
+        ["Administration", "/administration", "A"],
     ];
     const navLinks = {
         admin: navigation,
@@ -80,20 +80,32 @@ function Navbar() {
         }
     };
 
+    const handlePanelClick = (event) => {
+        if (event.target.closest("a, button, input, select, textarea")) return;
+
+        setCollapsed((current) => !current);
+    };
+
     return (
         <>
-            <nav className={`navbar ${collapsed ? "navbar-collapsed" : ""}`}>
+            <nav
+                className={`navbar ${collapsed ? "navbar-collapsed" : ""}`}
+                onClick={handlePanelClick}
+                title="Click empty sidebar space to collapse or expand"
+            >
                 <div className="navbar-topline">
-                    <div className="navbar-brand">
-                        <div className="brand-mark" aria-hidden="true">
-                            <span className="brand-ray brand-ray-main"></span>
-                            <span className="brand-ray brand-ray-soft"></span>
-                            <span className="brand-ray brand-ray-side"></span>
-                        </div>
-                        <div>
-                            <h2>Beacon</h2>
-                            <span>Recovery Intelligence Platform</span>
-                        </div>
+                    <div className="navbar-brand-row">
+                        <Link className="navbar-brand" to="/" aria-label="Go to Beacon dashboard">
+                            <div className="brand-mark" aria-hidden="true">
+                                <span className="brand-ray brand-ray-main"></span>
+                                <span className="brand-ray brand-ray-soft"></span>
+                                <span className="brand-ray brand-ray-side"></span>
+                            </div>
+                            <div>
+                                <h2>Beacon</h2>
+                                <span>Recovery Intelligence Platform</span>
+                            </div>
+                        </Link>
                     </div>
 
                     <div className="navbar-welcome">
@@ -102,25 +114,13 @@ function Navbar() {
                     </div>
                 </div>
 
-                <button
-                    type="button"
-                    className="sidebar-collapse-button"
-                    onClick={() => setCollapsed((current) => !current)}
-                    aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-                >
-                    {collapsed ? "Expand" : "Collapse"}
-                </button>
-
                 <div className="navbar-links">
-                    {visibleLinks.map(([label, path]) => (
+                    {visibleLinks.map(([label, path, initial]) => (
                         <NavLink key={path} to={path}>
+                            <span className="nav-initial" aria-hidden="true">{initial}</span>
                             <span className="nav-label">{label}</span>
                         </NavLink>
                     ))}
-
-                    <button onClick={handleLogout} className="logout-button">
-                        Logout
-                    </button>
                 </div>
             </nav>
 

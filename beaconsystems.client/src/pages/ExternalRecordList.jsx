@@ -53,10 +53,6 @@ function ExternalRecordList() {
         <div className="external-records-page">
             <div className="external-records-header">
                 <h1>External Records</h1>
-                <p>
-                    Review partner-provided intelligence with source attribution and
-                    approval status.
-                </p>
             </div>
 
             <div className="external-records-toolbar">

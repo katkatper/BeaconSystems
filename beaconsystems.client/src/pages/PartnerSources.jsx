@@ -369,10 +369,6 @@ function PartnerSources() {
         <div className="partner-page">
             <div className="partner-header">
                 <h1>Partners</h1>
-                <p>
-                    Manage approved data partners, review incoming leads, and attach
-                    relevant records to authorized cases.
-                </p>
             </div>
 
             {message && <p className="alert-banner">{message}</p>}

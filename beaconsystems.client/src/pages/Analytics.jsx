@@ -37,7 +37,6 @@ function Analytics() {
         <div className="analytics-page beacon-page">
             <section className="beacon-page-header">
                 <h1>Analytics</h1>
-                <p>Command-level visibility into case aging, recovery outcomes, and workload.</p>
             </section>
 
             <section className="beacon-three-panel analytics-grid">

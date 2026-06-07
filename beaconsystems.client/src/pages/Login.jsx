@@ -112,10 +112,6 @@ function Login({ onLogin }) {
             <div className="login-card">
                 <h1>Beacon</h1>
 
-                <p className="login-subtitle">
-                    Recovery Intelligence Platform
-                </p>
-
                 {!pendingToken ? (
                     <form onSubmit={handleSubmit}>
                         <input

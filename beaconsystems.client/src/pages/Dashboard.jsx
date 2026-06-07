@@ -6,6 +6,7 @@ import SightingMap from "./SightingMap.jsx";
 
 function Dashboard() {
     const [summary, setSummary] = useState(null);
+    const [showAllActionItems, setShowAllActionItems] = useState(false);
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
     );
@@ -171,12 +172,88 @@ function Dashboard() {
         ["Garcia", 15],
         ["Brown", 8],
     ];
+    const actionRequiredItems = [
+        {
+            title: "High-risk missing person cases",
+            count: summary?.high_priority_cases ?? 3,
+            severity: "high",
+            detail: "Confirm command attention and next investigative action.",
+            path: "/cases",
+        },
+        {
+            title: "Investigations at risk of stalling",
+            count: summary?.stalled_cases ?? 2,
+            severity: "high",
+            detail: "No recent activity, missing follow-up, or pending reports.",
+            path: "/supervisor/investigations",
+        },
+        {
+            title: "Unassigned leads",
+            count: summary?.unassigned_leads ?? 5,
+            severity: "medium",
+            detail: "Assign leads to investigators with available capacity.",
+            path: "/intelligence",
+        },
+        {
+            title: "Unreviewed evidence",
+            count: summary?.evidence_awaiting_review ?? 4,
+            severity: "medium",
+            detail: "Review lab returns, new uploads, and custody exceptions.",
+            path: "/evidence-upload",
+        },
+        {
+            title: "Critical sightings",
+            count: summary?.critical_sightings ?? 2,
+            severity: "high",
+            detail: "Validate urgent sightings and decide whether to escalate.",
+            path: "/sightings",
+        },
+        {
+            title: "Escalated alerts",
+            count: summary?.new_alerts ?? 0,
+            severity: "high",
+            detail: "Review BOLOs, potential matches, and investigator escalations.",
+            path: "/alerts",
+        },
+    ];
+    const visibleActionItems = showAllActionItems ? actionRequiredItems : actionRequiredItems.slice(0, 4);
+    const riskScore = Math.min(
+        99,
+        58
+            + ((summary?.high_priority_cases ?? 3) * 6)
+            + ((summary?.new_alerts ?? 0) * 2)
+            + ((summary?.stalled_cases ?? 2) * 5)
+    );
+    const riskSignals = [
+        ["Risk score", `${riskScore}`, "Weighted by case priority, stale activity, and alerts."],
+        ["Case health", `${summary?.stalled_cases ?? 2} at risk`, "Stale activity, missing reports, or pending warrants."],
+        ["Predictive alerts", `${summary?.predictive_alerts ?? 4}`, "Likely delays based on activity and workload patterns."],
+    ];
+    const caseHealthItems = [
+        ["Inactive 7+ days", summary?.inactive_7_days ?? 6],
+        ["Pending warrants", summary?.pending_warrants ?? 2],
+        ["Missing reports", summary?.missing_reports ?? 3],
+    ];
+    const intelligenceItems = [
+        ["External match", "Hospital, shelter, jail, and partner records consolidated."],
+        ["Data match engine", "High-confidence matches routed to supervisor review."],
+        ["Public tips", "New sightings and tips connected to active cases."],
+    ];
+    const agencyCoordination = [
+        ["Agencies involved", summary?.agency_requests ?? 4],
+        ["Outstanding requests", summary?.outstanding_partner_requests ?? 3],
+        ["Joint investigations", summary?.joint_investigations ?? 2],
+    ];
+    const unifiedTimeline = [
+        ["Today", "Critical sighting and supervisor alert review."],
+        ["Yesterday", "Evidence submitted and external intelligence received."],
+        ["This week", "Investigator actions, lead assignments, and agency requests."],
+    ];
 
     return (
         <div className="dashboard-page">
             <div className="dashboard-header">
                 <h1>{profile.title}</h1>
-                <p>{profile.greeting}</p>
             </div>
 
             {error && (
@@ -204,9 +281,54 @@ function Dashboard() {
                         </div>
 
                         <div className="supervisor-home-grid">
+                            <section className="dashboard-panel action-required-panel">
+                                <div className="dashboard-panel-header">
+                                    <span>Action Required Center</span>
+                                    <Link to="/command/tasks">Open Tasks</Link>
+                                </div>
+                                <div className="action-required-list">
+                                    {visibleActionItems.map((item) => (
+                                        <article key={item.title} className={`action-required-item ${item.severity}`}>
+                                            <div>
+                                                <strong>{item.title}</strong>
+                                                <p>{item.detail}</p>
+                                            </div>
+                                            <Link to={item.path}>{item.count}</Link>
+                                        </article>
+                                    ))}
+                                </div>
+                                {!showAllActionItems && (
+                                    <button
+                                        className="list-toggle-button"
+                                        type="button"
+                                        onClick={() => setShowAllActionItems(true)}
+                                    >
+                                        Show all action items
+                                    </button>
+                                )}
+                            </section>
+
+                            <section className="dashboard-panel risk-scoring-panel">
+                                <div className="dashboard-panel-header">
+                                    <span>Risk Scoring Engine</span>
+                                    <Link to="/analytics">Analytics</Link>
+                                </div>
+                                <div className="risk-score-meter">
+                                    <strong>{riskScore}</strong>
+                                    <span>Command risk</span>
+                                </div>
+                                {riskSignals.slice(1).map(([label, value, detail]) => (
+                                    <div key={label} className="risk-signal-row">
+                                        <span>{label}</span>
+                                        <strong>{value}</strong>
+                                        <small>{detail}</small>
+                                    </div>
+                                ))}
+                            </section>
+
                             <section className="dashboard-panel dashboard-panel-wide activity-map-panel">
                                 <div className="dashboard-panel-header">
-                                    <span>Activity Map</span>
+                                    <span>Geographic Activity Map</span>
                                     <Link to="/intelligence">Open Intelligence</Link>
                                 </div>
                                 <SightingMap sightings={summary?.recent_sightings || fallbackSightings} />
@@ -232,9 +354,22 @@ function Dashboard() {
                                 ))}
                             </section>
 
+                            <section className="dashboard-panel case-health-panel">
+                                <div className="dashboard-panel-header">
+                                    <span>Case Health Monitoring</span>
+                                    <Link to="/cases">Open Cases</Link>
+                                </div>
+                                {caseHealthItems.map(([label, value]) => (
+                                    <div key={label} className="case-health-row">
+                                        <span>{label}</span>
+                                        <strong>{value}</strong>
+                                    </div>
+                                ))}
+                            </section>
+
                             <section className="dashboard-panel workload-panel">
                                 <div className="dashboard-panel-header">
-                                    <span>Investigator Workload</span>
+                                    <span>Investigator Workload Analytics</span>
                                     <Link to="/supervisor/personnel">Personnel</Link>
                                 </div>
                                 {workload.map(([name, count]) => (
@@ -247,6 +382,45 @@ function Dashboard() {
                                         <span>{name}</span>
                                         <strong>{count} Cases</strong>
                                     </div>
+                                ))}
+                            </section>
+
+                            <section className="dashboard-panel intelligence-feed-panel">
+                                <div className="dashboard-panel-header">
+                                    <span>Intelligence Feed</span>
+                                    <Link to="/intelligence">Open Feed</Link>
+                                </div>
+                                {intelligenceItems.map(([label, detail]) => (
+                                    <article key={label} className="intelligence-signal-item">
+                                        <strong>{label}</strong>
+                                        <p>{detail}</p>
+                                    </article>
+                                ))}
+                            </section>
+
+                            <section className="dashboard-panel agency-coordination-panel">
+                                <div className="dashboard-panel-header">
+                                    <span>Inter-Agency Coordination</span>
+                                    <Link to="/partner-sources">Partners</Link>
+                                </div>
+                                {agencyCoordination.map(([label, value]) => (
+                                    <div key={label} className="agency-coordination-row">
+                                        <span>{label}</span>
+                                        <strong>{value}</strong>
+                                    </div>
+                                ))}
+                            </section>
+
+                            <section className="dashboard-panel unified-timeline-panel">
+                                <div className="dashboard-panel-header">
+                                    <span>Unified Timeline Across Cases</span>
+                                    <Link to="/cases">Review</Link>
+                                </div>
+                                {unifiedTimeline.map(([time, detail]) => (
+                                    <article key={time} className="timeline-signal-row">
+                                        <strong>{time}</strong>
+                                        <p>{detail}</p>
+                                    </article>
                                 ))}
                             </section>
 

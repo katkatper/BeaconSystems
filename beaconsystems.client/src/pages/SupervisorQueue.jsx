@@ -15,7 +15,7 @@ function SupervisorQueue() {
     const [teamForm, setTeamForm] = useState({
         case_id: "",
         user_id: "",
-        role: "support_investigator",
+        role: "supervisor",
         reason: "",
     });
     const [exchanges, setExchanges] = useState([]);
@@ -307,7 +307,7 @@ function SupervisorQueue() {
             setTeamForm({
                 case_id: "",
                 user_id: "",
-                role: "support_investigator",
+                role: "supervisor",
                 reason: "",
             });
         } catch (err) {
@@ -483,8 +483,8 @@ function SupervisorQueue() {
                     </div>
 
                     <p className="supervisor-panel-note">
-                        Add support investigators, analysts, or supervisor observers when a
-                        case needs additional staffing.
+                        Assign the supervisor, lead investigator, analysts, evidence
+                        technicians, coordinators, agency partners, or command staff.
                     </p>
 
                     <form className="case-team-form" onSubmit={assignCaseTeamMember}>
@@ -518,12 +518,18 @@ function SupervisorQueue() {
                         <select
                             name="role"
                             value={teamForm.role}
-                            onChange={handleTeamChange}
-                        >
-                            <option value="support_investigator">Support Investigator</option>
-                            <option value="analyst_support">Analyst Support</option>
-                            <option value="supervisor_observer">Supervisor Observer</option>
-                        </select>
+                        onChange={handleTeamChange}
+                    >
+                        <option value="supervisor">Supervisor</option>
+                        <option value="lead_investigator">Lead Investigator</option>
+                        <option value="investigator">Investigator</option>
+                        <option value="intelligence_analyst">Intelligence Analyst</option>
+                        <option value="evidence_technician">Evidence Technician</option>
+                        <option value="tip_coordinator">Tip Coordinator</option>
+                        <option value="external_agency_user">External Agency User</option>
+                        <option value="administrator">Administrator</option>
+                        <option value="command_staff">Command Staff</option>
+                    </select>
 
                         <textarea
                             name="reason"

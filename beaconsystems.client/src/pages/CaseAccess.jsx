@@ -56,10 +56,6 @@ function CaseAccess() {
         <div className="case-access-page">
             <div className="case-access-header">
                 <h1>Case Access</h1>
-                <p>
-                    Request logged access to a restricted case when operationally
-                    necessary.
-                </p>
             </div>
 
             <section className="case-access-panel">

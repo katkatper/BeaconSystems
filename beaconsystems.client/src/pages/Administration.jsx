@@ -15,7 +15,6 @@ function Administration() {
         <div className="administration-page beacon-page">
             <section className="beacon-page-header">
                 <h1>Administration</h1>
-                <p>Beacon control room for account, access, audit, and governance work.</p>
             </section>
 
             <section className="beacon-three-panel">

@@ -37,16 +37,11 @@ function CommandTools() {
         <div className="command-tools-page beacon-page">
             <section className="beacon-page-header">
                 <h1>
-                    {isTasks && "Supervisor Tasks"}
+                    {isTasks && "Action Required Center"}
                     {isNotifications && "Notifications"}
                     {isSettings && "Settings"}
                     {isProfile && "User Profile"}
                 </h1>
-                <p>
-                    {isNotifications && "Recent operational updates from Beacon."}
-                    {isSettings && "Workspace preferences and account controls."}
-                    {isProfile && `${username} | ${role}`}
-                </p>
             </section>
 
             {isTasks && (

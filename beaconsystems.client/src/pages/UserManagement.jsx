@@ -222,7 +222,6 @@ function UserManagement() {
         <div className="users-page">
             <header className="users-header">
                 <h1>User Management</h1>
-                <p>Manage Beacon account status, roles, and investigator access.</p>
             </header>
 
             {message && <p className="alert-banner">{message}</p>}

@@ -12,6 +12,7 @@ function AddPerson() {
         last_seen_location: "",
         risk_level: "high",
         status: "missing",
+        medical_conditions: "",
         description: "",
     });
 
@@ -52,7 +53,7 @@ function AddPerson() {
             const data = await response.json();
             console.log("Person created:", data);
 
-            setMessage("Missing person created successfully.");
+            setMessage("Report submitted and added to the Missing Persons registry.");
 
             setFormData({
                 first_name: "",
@@ -65,6 +66,7 @@ function AddPerson() {
                 last_seen_location: "",
                 risk_level: "high",
                 status: "missing",
+                medical_conditions: "",
                 description: "",
             });
         } catch (err) {
@@ -101,6 +103,12 @@ function AddPerson() {
                 </select>
 
                 <textarea name="description" placeholder="Description" value={formData.description} onChange={handleChange} />
+                <textarea
+                    name="medical_conditions"
+                    placeholder="Medical needs, disability, medication dependency, or cognitive concerns"
+                    value={formData.medical_conditions}
+                    onChange={handleChange}
+                />
 
                 <button type="submit">Submit Missing Person</button>
             </form>

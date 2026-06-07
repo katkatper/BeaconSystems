@@ -36,7 +36,6 @@ function Sightings() {
         <div className="sightings-page beacon-page">
             <section className="beacon-page-header">
                 <h1>Sightings</h1>
-                <p>Review field sightings, locations, confidence, and case links.</p>
             </section>
 
             <section className="beacon-three-panel">

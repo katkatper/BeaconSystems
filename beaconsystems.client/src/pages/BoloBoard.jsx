@@ -111,7 +111,6 @@ function BoloBoard() {
         <div className="bolo-page">
             <div className="bolo-header">
                 <h1>BOLO Board</h1>
-                <p>Be On The Lookout notices for urgent field coordination.</p>
             </div>
 
             {message && <p className="alert-banner">{message}</p>}

@@ -49,10 +49,6 @@ function IntelligenceCenter() {
             <div className="intelligence-header">
                 <div>
                     <h1>Beacon Intelligence Center</h1>
-                    <p>
-                        Authorized source fusion for missing-person and trafficking
-                        investigations.
-                    </p>
                 </div>
 
                 <div className="live-status">

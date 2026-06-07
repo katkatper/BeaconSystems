@@ -145,11 +145,6 @@ function LegalOrders() {
         <div className="legal-access-page">
             <div className="legal-access-header">
                 <h1>Legal Orders</h1>
-                <p>
-                    Request subpoenas, court orders, warrants, wiretap orders, and
-                    national security letters from the DA or court, then track approved
-                    documents for partner service.
-                </p>
             </div>
 
             {message && <p className="alert-banner">{message}</p>}

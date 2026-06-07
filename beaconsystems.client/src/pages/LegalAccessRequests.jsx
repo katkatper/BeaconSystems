@@ -169,10 +169,6 @@ function LegalAccessRequests() {
         <div className="legal-access-page">
             <div className="legal-access-header">
                 <h1>Request Legal Access</h1>
-                <p>
-                    Submit and review authority documents before Beacon obtains live
-                    data from external partners.
-                </p>
             </div>
 
             <div className="legal-access-layout">
