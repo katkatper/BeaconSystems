@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { apiGet } from "../api.jsx";
 import SightingMap from "./SightingMap.jsx";
 
 
@@ -90,26 +91,10 @@ function Dashboard() {
         let isMounted = true;
 
         const loadSummary = async () => {
-            const token = localStorage.getItem("token");
-
-            if (!token) return;
+            if (!localStorage.getItem("token")) return;
 
             try {
-                const response = await fetch("http://127.0.0.1:8000/dashboard/summary", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(
-                        errorData.detail ||
-                        `Dashboard summary unavailable (${response.status})`
-                    );
-                }
-
-                const data = await response.json();
+                const data = await apiGet("/dashboard/summary");
 
                 if (isMounted) {
                     setSummary(data);
@@ -138,6 +123,12 @@ function Dashboard() {
         };
     }, [role]);
 
+    const metricLinks = {
+        Cases: "/cases",
+        Alerts: "/alerts",
+        Leads: "/intelligence",
+        Evidence: "/evidence-upload",
+    };
     const metrics = summary
         ? [
             ["Cases", summary.open_cases],
@@ -186,14 +177,14 @@ function Dashboard() {
             count: summary?.high_priority_cases ?? 3,
             severity: "high",
             detail: "Confirm command attention and next investigative action.",
-            path: "/cases",
+            path: "/missing?risk=high",
         },
         {
             title: "Investigations at risk of stalling",
             count: summary?.stalled_cases ?? 2,
             severity: "high",
             detail: "No recent activity, missing follow-up, or pending reports.",
-            path: "/supervisor/investigations",
+            path: "/cases?filter=stalled",
         },
         {
             title: "Unassigned leads",
@@ -207,14 +198,14 @@ function Dashboard() {
             count: summary?.evidence_awaiting_review ?? 4,
             severity: "medium",
             detail: "Review lab returns, new uploads, and custody exceptions.",
-            path: "/evidence-upload",
+            path: "/evidence-upload?status=overdue_review",
         },
         {
             title: "Critical sightings",
             count: summary?.critical_sightings ?? 2,
             severity: "high",
             detail: "Validate urgent sightings and decide whether to escalate.",
-            path: "/sightings",
+            path: "/sightings?filter=critical",
         },
         {
             title: "Escalated alerts",
@@ -238,9 +229,9 @@ function Dashboard() {
         ["Predictive alerts", `${summary?.predictive_alerts ?? 4}`, "Likely delays based on activity and workload patterns."],
     ];
     const caseHealthItems = [
-        ["Inactive 7+ days", summary?.inactive_7_days ?? 6],
-        ["Pending warrants", summary?.pending_warrants ?? 2],
-        ["Missing reports", summary?.missing_reports ?? 3],
+        ["Inactive 7+ days", summary?.inactive_7_days ?? 6, "/cases?filter=stalled"],
+        ["Pending warrants", summary?.pending_warrants ?? 2, "/legal-orders?status=pending"],
+        ["Missing reports", summary?.missing_reports ?? 3, "/cases?filter=missing_reports"],
     ];
     const intelligenceItems = [
         ["External match", "Hospital, shelter, jail, and partner records consolidated."],
@@ -280,11 +271,11 @@ function Dashboard() {
                                 ["Leads", 39],
                                 ["Evidence", 1320],
                             ]).map(([label, value]) => (
-                                <div className="command-card" key={label}>
+                                <Link className="command-card" to={metricLinks[label] || "/"} key={label}>
                                     <span>{label}</span>
                                     <strong>{value ?? 0}</strong>
                                     <small>{summary ? "Current authorized view" : "Waiting for data"}</small>
-                                </div>
+                                </Link>
                             ))}
                         </div>
 
@@ -367,11 +358,11 @@ function Dashboard() {
                                     <span>Case Health Monitoring</span>
                                     <Link to="/cases">Open Cases</Link>
                                 </div>
-                                {caseHealthItems.map(([label, value]) => (
-                                    <div key={label} className="case-health-row">
+                                {caseHealthItems.map(([label, value, path]) => (
+                                    <Link key={label} to={path} className="case-health-row">
                                         <span>{label}</span>
                                         <strong>{value}</strong>
-                                    </div>
+                                    </Link>
                                 ))}
                             </section>
 

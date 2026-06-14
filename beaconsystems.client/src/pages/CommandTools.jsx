@@ -2,8 +2,8 @@ import React from "react";
 import { Link, useParams } from "react-router-dom";
 
 const taskItems = [
-    ["High-risk missing person cases", "Review active critical-risk cases and confirm command attention.", "High", "/cases"],
-    ["Overdue investigations", "Check cases with no recent activity or missing follow-up documentation.", "High", "/supervisor/investigations"],
+    ["High-risk missing person cases", "Review active critical-risk cases and confirm command attention.", "High", "/missing?risk=high"],
+    ["Overdue investigations", "Check cases with no recent activity or missing follow-up documentation.", "High", "/cases?filter=stalled"],
     ["Unassigned leads", "Assign new leads to investigators with available capacity.", "Medium", "/intelligence"],
     ["Unreviewed evidence", "Review new evidence, lab returns, and custody exceptions.", "Medium", "/evidence-upload"],
     ["New critical sightings", "Validate urgent sightings and decide whether to escalate alerts.", "High", "/sightings"],

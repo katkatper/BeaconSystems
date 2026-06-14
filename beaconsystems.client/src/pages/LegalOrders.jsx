@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { apiGet, apiPost } from "../api.jsx";
+import ActiveFilterBanner from "../components/ActiveFilterBanner.jsx";
 
 const requestTypes = [
     ["interagency_request", "Interagency Requests"],
@@ -69,19 +71,8 @@ const formatDate = (value) => {
     return date.toLocaleDateString();
 };
 
-const fetchLegalOrders = async (token) => {
-    const response = await fetch("http://127.0.0.1:8000/legal-access/", {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Could not load legal orders");
-    }
-
-    const data = await response.json();
+const fetchLegalOrders = async () => {
+    const data = await apiGet("/legal-access/");
     const legalTypes = new Set(requestTypes.map(([value]) => value));
     const legacyTypes = new Set([
         "court_order",
@@ -101,7 +92,8 @@ const fetchLegalOrders = async (token) => {
 };
 
 function LegalOrders() {
-    const token = localStorage.getItem("token");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const statusFilter = searchParams.get("status") || "";
     const username = localStorage.getItem("username") || "";
     const role = localStorage.getItem("role") || "viewer";
     const isSupervisor = role === "supervisor";
@@ -133,14 +125,14 @@ function LegalOrders() {
     });
 
     const loadOrders = async () => {
-        const data = await fetchLegalOrders(token);
+        const data = await fetchLegalOrders();
         setOrders(data);
     };
 
     useEffect(() => {
         let isMounted = true;
 
-        fetchLegalOrders(token)
+        fetchLegalOrders()
             .then((data) => {
                 if (isMounted) {
                     setOrders(data);
@@ -157,17 +149,25 @@ function LegalOrders() {
         return () => {
             isMounted = false;
         };
-    }, [token]);
+    }, []);
 
     const filteredOrders = useMemo(() => {
-        if (selectedType === "all") {
-            return orders;
+        const typeFiltered = selectedType === "all"
+            ? orders
+            : orders.filter((order) =>
+                (order.request_type || order.authority_type) === selectedType
+            );
+
+        if (!statusFilter) {
+            return typeFiltered;
         }
 
-        return orders.filter((order) =>
-            (order.request_type || order.authority_type) === selectedType
-        );
-    }, [orders, selectedType]);
+        if (statusFilter === "pending") {
+            return typeFiltered.filter((order) => !closedStatuses.has(order.status));
+        }
+
+        return typeFiltered.filter((order) => order.status === statusFilter);
+    }, [orders, selectedType, statusFilter]);
 
     const activeOrders = filteredOrders.filter((order) =>
         !closedStatuses.has(order.status)
@@ -227,19 +227,7 @@ function LegalOrders() {
         };
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/legal-access/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not create legal request");
-            }
+            await apiPost("/legal-access/", payload);
 
             setMessage("Legal request record created and audit logged.");
             setForm((current) => ({
@@ -402,6 +390,14 @@ function LegalOrders() {
                     </button>
                 ))}
             </section>
+
+            {statusFilter && (
+                <ActiveFilterBanner onClear={() => setSearchParams({})}>
+                    {statusFilter === "pending"
+                        ? "Showing active legal order requests"
+                        : `Showing ${labelFor(statusOptions, statusFilter)} requests`}
+                </ActiveFilterBanner>
+            )}
 
             {isSupervisor ? (
                 <section className="legal-panel legal-supervisor-tracker">

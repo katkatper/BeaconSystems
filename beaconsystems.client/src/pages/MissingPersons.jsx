@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { apiGet, apiPost, apiPostForm } from "../api.jsx";
+import ActiveFilterBanner from "../components/ActiveFilterBanner.jsx";
+import ShowMoreControls from "../components/ShowMoreControls.jsx";
 
 function MissingPersonsList() {
 
+    const [searchParams, setSearchParams] = useSearchParams();
+    const riskFilter = searchParams.get("risk") || "";
     const [persons, setPersons] = useState([]);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
@@ -28,8 +34,6 @@ function MissingPersonsList() {
     });
 
     const loadPersons = useCallback(() => {
-        const token = localStorage.getItem("token");
-
         const params = new URLSearchParams({ limit: "100" });
 
         if (searchTerm.trim()) {
@@ -40,18 +44,7 @@ function MissingPersonsList() {
             params.set("reported_on", reportDate);
         }
 
-        fetch(`http://127.0.0.1:8000/persons/?${params.toString()}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Failed to load persons");
-                }
-
-                return res.json();
-            })
+        apiGet(`/persons/?${params.toString()}`)
             .then((data) => {
                 setPersons(Array.isArray(data) ? data : []);
                 setError("");
@@ -106,8 +99,6 @@ function MissingPersonsList() {
     const handleManualAdd = async (event) => {
         event.preventDefault();
 
-        const token = localStorage.getItem("token");
-
         try {
             let uploadedPhotoUrl = formData.photo_url;
 
@@ -115,20 +106,7 @@ function MissingPersonsList() {
                 const uploadData = new FormData();
                 uploadData.append("file", photoFile);
 
-                const uploadResponse = await fetch("http://127.0.0.1:8000/persons/photo-upload", {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: uploadData,
-                });
-
-                if (!uploadResponse.ok) {
-                    const errorData = await uploadResponse.json().catch(() => ({}));
-                    throw new Error(errorData.detail || "Could not upload missing person photo");
-                }
-
-                const uploadResult = await uploadResponse.json();
+                const uploadResult = await apiPostForm("/persons/photo-upload", uploadData);
                 uploadedPhotoUrl = uploadResult.photo_url;
             }
 
@@ -139,18 +117,7 @@ function MissingPersonsList() {
                 photo_url: uploadedPhotoUrl,
             };
 
-            const response = await fetch("http://127.0.0.1:8000/persons/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to add missing person");
-            }
+            await apiPost("/persons/", payload);
 
             setMessage("Missing person added to the registry.");
             resetForm();
@@ -168,11 +135,23 @@ function MissingPersonsList() {
         return new Date(dateValue).toLocaleDateString();
     };
     const getPersonName = (person) => `${person.first_name || ""} ${person.last_name || ""}`.trim();
-    const sortedPersons = [...persons].sort((firstPerson, secondPerson) =>
+    const filteredPersons = persons.filter((person) => {
+        const riskLevel = (person.risk_level || "").toLowerCase();
+
+        if (riskFilter === "high") {
+            return riskLevel === "high" || riskLevel === "critical";
+        }
+
+        if (riskFilter) {
+            return riskLevel === riskFilter;
+        }
+
+        return true;
+    });
+    const sortedPersons = [...filteredPersons].sort((firstPerson, secondPerson) =>
         getPersonName(firstPerson).localeCompare(getPersonName(secondPerson))
     );
     const visiblePersons = sortedPersons.slice(0, visiblePersonCount);
-    const remainingPersonCount = Math.max(sortedPersons.length - visiblePersonCount, 0);
     const selectedPerson = sortedPersons.find((person) => person.person_id === selectedPersonId) || visiblePersons[0];
 
     return (
@@ -250,6 +229,20 @@ function MissingPersonsList() {
                         <span>Registry</span>
                     </div>
 
+                    {riskFilter && (
+                        <ActiveFilterBanner
+                            compact
+                            onClear={() => {
+                                setSearchParams({});
+                                setVisiblePersonCount(2);
+                            }}
+                        >
+                            {riskFilter === "high"
+                                ? "Showing high and critical risk subjects"
+                                : `Showing ${riskFilter} risk subjects`}
+                        </ActiveFilterBanner>
+                    )}
+
                     <div className="missing-person-search-row">
                         <input
                             type="search"
@@ -305,40 +298,18 @@ function MissingPersonsList() {
                             </button>
                         ))}
 
-                        {sortedPersons.length > 2 && (
-                            <div className="list-toggle-row">
-                                {remainingPersonCount > 0 ? (
-                                    <>
-                                        <button
-                                            type="button"
-                                            className="list-toggle-button"
-                                            onClick={() => {
-                                                setVisiblePersonCount((current) =>
-                                                    Math.min(current + 4, sortedPersons.length)
-                                                );
-                                            }}
-                                        >
-                                            Show {Math.min(4, remainingPersonCount)} more persons
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="list-toggle-button"
-                                            onClick={() => setVisiblePersonCount(sortedPersons.length)}
-                                        >
-                                            Show all
-                                        </button>
-                                    </>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="list-toggle-button"
-                                        onClick={() => setVisiblePersonCount(2)}
-                                    >
-                                        Show fewer
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                        <ShowMoreControls
+                            total={sortedPersons.length}
+                            visible={visiblePersonCount}
+                            noun="persons"
+                            onShowMore={() => {
+                                setVisiblePersonCount((current) =>
+                                    Math.min(current + 4, sortedPersons.length)
+                                );
+                            }}
+                            onShowAll={() => setVisiblePersonCount(sortedPersons.length)}
+                            onShowFewer={() => setVisiblePersonCount(2)}
+                        />
                     </div>
 
                     {selectedPerson && (

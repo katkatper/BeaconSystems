@@ -69,12 +69,9 @@ function SupervisorQueue() {
     const timelineSummary = queue?.timeline_summary || {};
     const agencyCoordination = queue?.agency_coordination || {};
     const workspaceCards = [
-        ["personnel", "Personnel", "Staffing, users, teams, and workload.", capacityInvestigators.length],
-        ["investigations", "Investigations", "Stalls, leads, timelines, sightings, and evidence.", commandDashboard.cases_needing_attention_today || 0],
-        ["operations", "Operations", "Alerts, BOLOs, and urgent field activity.", commandDashboard.critical_alerts || queue?.active_bolos?.length || 0],
-        ["compliance", "Compliance", "Legal, access, audit, and evidence reviews.", oversightCount],
-        ["community", "Agency Coordination", "Partner agencies, shared intelligence, and requests.", agencyCoordination.shared_intelligence || exchanges.length],
-        ["reports", "Reports", "Command snapshots and performance summaries.", commandDashboard.active_cases || 0],
+        ["personnel", "Personnel", "Workload, capacity, team assignments, and staffing.", capacityInvestigators.length],
+        ["investigations", "Investigations", "Stall risk, lead follow-up, timelines, and command attention.", commandDashboard.cases_needing_attention_today || 0],
+        ["compliance", "Compliance Review", "Legal approvals, access reviews, and audit readiness.", oversightCount],
     ];
     const visibleItems = (sectionKey, items, collapsedCount = 2, expandedCount = 6) =>
         (items || []).slice(0, expandedSections[sectionKey] ? expandedCount : collapsedCount);

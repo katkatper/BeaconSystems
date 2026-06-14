@@ -1,28 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { apiGet } from "../api.jsx";
+import ActiveFilterBanner from "../components/ActiveFilterBanner.jsx";
 
 const fetchCases = async (includeArchived) => {
-    const token = localStorage.getItem("token");
-
-    const response = await fetch(
-        `http://127.0.0.1:8000/cases/?include_archived=${includeArchived}&limit=100`,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error("Failed to load cases");
-    }
-
-    return response.json();
+    return apiGet(`/cases/?include_archived=${includeArchived}&limit=100`);
 };
 
 function Cases() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeFilter = searchParams.get("filter") || "all";
+    const includeArchived = activeFilter === "archived";
+    const [referenceNow] = useState(() => Date.now());
     const [cases, setCases] = useState([]);
-    const [includeArchived, setIncludeArchived] = useState(false);
     const [message, setMessage] = useState("");
 
     useEffect(() => {
@@ -50,6 +40,26 @@ function Cases() {
         };
     }, [includeArchived]);
 
+    const isInactive = (caseItem) => {
+        const lastUpdated = new Date(caseItem.updated_at || caseItem.created_at);
+
+        if (Number.isNaN(lastUpdated.getTime())) {
+            return false;
+        }
+
+        const ageInDays = (referenceNow - lastUpdated.getTime()) / (1000 * 60 * 60 * 24);
+        return ageInDays >= 7;
+    };
+
+    const filterLabels = {
+        all: "All active cases",
+        stalled: "Investigations at risk of stalling",
+        unassigned: "Unassigned cases",
+        high_risk: "High-risk cases",
+        missing_reports: "Cases missing reports",
+        archived: "Archived and closed cases",
+    };
+
     const openCases = cases.filter((caseItem) => {
         const status = (caseItem.case_status || "").toLowerCase();
         return status !== "closed" && status !== "archived";
@@ -58,6 +68,28 @@ function Cases() {
     const closedCases = cases.filter((caseItem) => {
         const status = (caseItem.case_status || "").toLowerCase();
         return status === "closed" || status === "archived";
+    });
+
+    const filteredOpenCases = openCases.filter((caseItem) => {
+        const priority = (caseItem.priority_level || "").toLowerCase();
+
+        if (activeFilter === "stalled") {
+            return isInactive(caseItem);
+        }
+
+        if (activeFilter === "unassigned") {
+            return !caseItem.investigator_id;
+        }
+
+        if (activeFilter === "high_risk") {
+            return priority === "high" || priority === "critical";
+        }
+
+        if (activeFilter === "missing_reports") {
+            return isInactive(caseItem);
+        }
+
+        return true;
     });
 
     const renderCaseRows = (items, emptyMessage) => {
@@ -105,13 +137,19 @@ function Cases() {
 
             {message && <p className="alert-banner">{message}</p>}
 
+            {activeFilter !== "all" && (
+                <ActiveFilterBanner onClear={() => setSearchParams({})}>
+                    {filterLabels[activeFilter] || "Filtered case queue"}
+                </ActiveFilterBanner>
+            )}
+
             <div className="case-summary-sections">
                 <section className="case-summary-panel">
                     <div className="case-summary-title">
                         <h2>Open Cases</h2>
-                        <span>{openCases.length}</span>
+                        <span>{filteredOpenCases.length}</span>
                     </div>
-                    {renderCaseRows(openCases, "No open cases available.")}
+                    {renderCaseRows(filteredOpenCases, "No cases match this queue.")}
                 </section>
 
                 <section className="case-summary-panel">
@@ -122,7 +160,10 @@ function Cases() {
                                 <input
                                     type="checkbox"
                                     checked={includeArchived}
-                                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        setSearchParams(checked ? { filter: "archived" } : {});
+                                    }}
                                 />
                                 Show archived
                             </label>

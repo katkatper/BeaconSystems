@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { apiGet } from "../api.jsx";
 
 const globalSearchTargets = [
     ["Cases", "/cases", "case number, status, assigned investigator"],
@@ -14,6 +15,7 @@ function Navbar() {
     const navigate = useNavigate();
     const [collapsed, setCollapsed] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [summary, setSummary] = useState(null);
     const role = localStorage.getItem("role");
     const username = localStorage.getItem("username") || "Beacon User";
     const navigation = [
@@ -33,7 +35,9 @@ function Navbar() {
     const navLinks = {
         admin: navigation,
         agency_admin: navigation,
-        supervisor: navigation,
+        supervisor: navigation.filter(([label]) =>
+            !["Users", "Administration"].includes(label)
+        ),
         investigator: navigation.filter(([label]) =>
             ["Dashboard", "Missing Persons", "Cases", "Intelligence", "Sightings", "Evidence", "Alerts"].includes(label)
         ),
@@ -54,6 +58,18 @@ function Navbar() {
     };
     const displayRole = roleLabels[role] || "Team Member";
     const visibleLinks = navLinks[role] || navLinks.viewer;
+    const taskCount = summary
+        ? (summary.high_priority_cases || 0)
+            + (summary.stalled_cases || 0)
+            + (summary.unassigned_cases || 0)
+            + (summary.evidence_awaiting_review || 0)
+            + (summary.new_alerts || 0)
+        : 0;
+    const notificationCount = summary
+        ? (summary.new_alerts || 0)
+            + (summary.external_matches || 0)
+            + (summary.agency_requests || 0)
+        : 0;
     const searchResults = useMemo(() => {
         const normalized = searchTerm.trim().toLowerCase();
 
@@ -70,6 +86,32 @@ function Navbar() {
         localStorage.clear();
         navigate("/login");
     };
+
+    useEffect(() => {
+        if (!localStorage.getItem("token")) return undefined;
+
+        let isMounted = true;
+
+        const loadSummary = async () => {
+            try {
+                const data = await apiGet("/dashboard/summary");
+
+                if (isMounted) {
+                    setSummary(data);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        loadSummary();
+        const interval = setInterval(loadSummary, 30000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, []);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -156,8 +198,14 @@ function Navbar() {
                 </form>
 
                 <div className="top-header-actions" aria-label="Command tools">
-                    <Link to="/command/notifications">Notifications</Link>
-                <Link to="/command/tasks">Tasks</Link>
+                    <Link to="/command/notifications">
+                        Notifications
+                        {notificationCount > 0 && <span className="command-badge">{notificationCount}</span>}
+                    </Link>
+                <Link to="/command/tasks">
+                    Tasks
+                    {taskCount > 0 && <span className="command-badge">{taskCount}</span>}
+                </Link>
                 <Link to="/command/settings">Settings</Link>
                 <Link to="/command/profile">Profile</Link>
                 <button type="button" onClick={handleLogout}>Logout</button>

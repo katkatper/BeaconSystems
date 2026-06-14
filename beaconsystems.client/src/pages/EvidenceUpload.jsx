@@ -1,22 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { apiBlob, apiGet, apiPost, apiPostForm, apiRequest } from "../api.jsx";
+import ShowMoreControls from "../components/ShowMoreControls.jsx";
 
 const fetchEvidence = async (caseFilter = "") => {
-    const token = localStorage.getItem("token");
-    const url = caseFilter
-        ? `http://127.0.0.1:8000/evidence/?case_id=${caseFilter}`
-        : "http://127.0.0.1:8000/evidence/";
-
-    const response = await fetch(url, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to load evidence");
-    }
-
-    return response.json();
+    return apiGet(caseFilter ? `/evidence/?case_id=${caseFilter}` : "/evidence/");
 };
 
 const normalizeStatus = (status) => status || "collected";
@@ -59,16 +47,17 @@ const isThisWeek = (dateValue) => {
 };
 
 function EvidenceUpload() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const statusFilter = searchParams.get("status") || "all";
     const [caseId, setCaseId] = useState("");
     const [filterCaseId, setFilterCaseId] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
     const [evidenceType, setEvidenceType] = useState("");
     const [description, setDescription] = useState("");
     const [file, setFile] = useState(null);
     const [evidence, setEvidence] = useState([]);
     const [evidenceChains, setEvidenceChains] = useState({});
     const [custodyForms, setCustodyForms] = useState({});
-    const [showMoreEvidence, setShowMoreEvidence] = useState(false);
+    const [visibleEvidenceCount, setVisibleEvidenceCount] = useState(2);
     const [message, setMessage] = useState("");
     const custodyActions = [
         ["TRANSFERRED", "Transferred"],
@@ -173,7 +162,6 @@ function EvidenceUpload() {
     const submitEvidence = async (e) => {
         e.preventDefault();
 
-        const token = localStorage.getItem("token");
         const formData = new FormData();
 
         formData.append("case_id", caseId);
@@ -182,22 +170,7 @@ function EvidenceUpload() {
         formData.append("file", file);
 
         try {
-            const response = await fetch(
-                "http://127.0.0.1:8000/evidence/upload",
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: formData,
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Upload failed");
-            }
-
-            const data = await response.json();
+            const data = await apiPostForm("/evidence/upload", formData);
 
             setMessage(data.message);
             setEvidenceType("");
@@ -211,23 +184,8 @@ function EvidenceUpload() {
     };
 
     const viewEvidence = async (evidenceId) => {
-        const token = localStorage.getItem("token");
-
         try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/evidence/view/${evidenceId}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not open evidence");
-            }
-
-            const blob = await response.blob();
+            const blob = await apiBlob(`/evidence/view/${evidenceId}`);
             const fileUrl = window.URL.createObjectURL(blob);
             window.open(fileUrl, "_blank");
         } catch (err) {
@@ -237,21 +195,8 @@ function EvidenceUpload() {
     };
 
     const loadEvidenceChain = async (evidenceId) => {
-        const token = localStorage.getItem("token");
-
         try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/evidence/chain/${evidenceId}`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to load chain");
-            }
-
-            const data = await response.json();
+            const data = await apiGet(`/evidence/chain/${evidenceId}`);
             setEvidenceChains((prev) => ({
                 ...prev,
                 [evidenceId]: data,
@@ -262,22 +207,10 @@ function EvidenceUpload() {
     };
 
     const markEvidenceSensitive = async (evidenceId, isSensitive) => {
-        const token = localStorage.getItem("token");
-
         try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/evidence/${evidenceId}/sensitive?is_sensitive=${isSensitive}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not update sensitivity");
-            }
+            await apiRequest(`/evidence/${evidenceId}/sensitive?is_sensitive=${isSensitive}`, {
+                method: "PUT",
+            });
 
             setEvidence(
                 evidence.map((item) =>
@@ -312,7 +245,6 @@ function EvidenceUpload() {
     const submitCustodyEvent = async (e, item) => {
         e.preventDefault();
 
-        const token = localStorage.getItem("token");
         const form = custodyForms[item.evidence_id] || {};
         const payload = {
             action: form.action || "TRANSFERRED",
@@ -325,22 +257,7 @@ function EvidenceUpload() {
         };
 
         try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/evidence/${item.evidence_id}/custody`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not update custody");
-            }
+            await apiPost(`/evidence/${item.evidence_id}/custody`, payload);
 
             setMessage("Evidence custody updated.");
             setCustodyForms((current) => ({
@@ -492,14 +409,21 @@ function EvidenceUpload() {
                                 type="number"
                                 placeholder="Filter by Case ID"
                                 value={filterCaseId}
-                                onChange={(e) => setFilterCaseId(e.target.value)}
+                                onChange={(e) => {
+                                    setFilterCaseId(e.target.value);
+                                    setVisibleEvidenceCount(2);
+                                }}
                             />
                             <button onClick={() => loadEvidence(filterCaseId)}>
                                 Search
                             </button>
                             <select
                                 value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
+                                onChange={(e) => {
+                                    const nextStatus = e.target.value;
+                                    setSearchParams(nextStatus === "all" ? {} : { status: nextStatus });
+                                    setVisibleEvidenceCount(2);
+                                }}
                             >
                                 <option value="all">All statuses</option>
                                 <option value="collected">Collected</option>
@@ -515,7 +439,8 @@ function EvidenceUpload() {
                             <button
                                 onClick={() => {
                                     setFilterCaseId("");
-                                    setStatusFilter("all");
+                                    setSearchParams({});
+                                    setVisibleEvidenceCount(2);
                                     loadEvidence("");
                                 }}
                             >
@@ -528,7 +453,7 @@ function EvidenceUpload() {
                         <p>No evidence uploaded yet.</p>
                     ) : (
                         <div className="evidence-list">
-                            {visibleEvidence.slice(0, showMoreEvidence ? 6 : 2).map((item) => (
+                            {visibleEvidence.slice(0, visibleEvidenceCount).map((item) => (
                                 <article key={item.evidence_id} className="evidence-card">
                                     <div className="evidence-card-topline">
                                         <strong>{item.file_name || "Unnamed file"}</strong>
@@ -657,15 +582,18 @@ function EvidenceUpload() {
                                     ))}
                                 </article>
                             ))}
-                            {visibleEvidence.length > 2 && (
-                                <button
-                                    type="button"
-                                    className="list-toggle-button"
-                                    onClick={() => setShowMoreEvidence((current) => !current)}
-                                >
-                                    {showMoreEvidence ? "Show fewer" : `Show ${Math.min(4, visibleEvidence.length - 2)} more evidence items`}
-                                </button>
-                            )}
+                            <ShowMoreControls
+                                total={visibleEvidence.length}
+                                visible={visibleEvidenceCount}
+                                noun="evidence items"
+                                onShowMore={() => {
+                                    setVisibleEvidenceCount((current) =>
+                                        Math.min(current + 4, visibleEvidence.length)
+                                    );
+                                }}
+                                onShowAll={() => setVisibleEvidenceCount(visibleEvidence.length)}
+                                onShowFewer={() => setVisibleEvidenceCount(2)}
+                            />
                         </div>
                     )}
                 </section>
