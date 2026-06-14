@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { apiGet, apiPost, apiRequest } from "../api.jsx";
 
 
 // SupervisorQueue gives agency leadership one place to review items that need
@@ -32,7 +33,7 @@ function SupervisorQueue() {
     const token = localStorage.getItem("token");
     const location = useLocation();
     const workspaceFromPath = location.pathname.split("/")[2] || "";
-    const activeWorkspace = workspaceFromPath || null;
+    const activeWorkspace = workspaceFromPath || "personnel";
 
     const formatDateTime = (value) => {
         if (!value) {
@@ -114,18 +115,7 @@ function SupervisorQueue() {
 
         const loadQueue = async () => {
             try {
-                const response = await fetch("http://127.0.0.1:8000/supervisor/queue", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.detail || "Could not load supervisor queue");
-                }
-
-                const data = await response.json();
+                const data = await apiGet("/supervisor/queue");
 
                 if (isMounted) {
                     setQueue(data);
@@ -152,17 +142,7 @@ function SupervisorQueue() {
 
         const loadUsers = async () => {
             try {
-                const response = await fetch("http://127.0.0.1:8000/admin/users/", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error("Could not load users");
-                }
-
-                const data = await response.json();
+                const data = await apiGet("/admin/users/");
 
                 if (isMounted) {
                     setUsers(Array.isArray(data) ? data : []);
@@ -185,17 +165,7 @@ function SupervisorQueue() {
 
         const loadExchanges = async () => {
             try {
-                const response = await fetch("http://127.0.0.1:8000/agency-exchanges/", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error("Could not load agency exchanges");
-                }
-
-                const data = await response.json();
+                const data = await apiGet("/agency-exchanges/");
 
                 if (isMounted) {
                     setExchanges(Array.isArray(data) ? data : []);
@@ -214,26 +184,15 @@ function SupervisorQueue() {
 
     const reviewCaseAccess = async (grantId, action) => {
         try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/supervisor/case-access/${grantId}/${action}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        review_notes: reviewNotes[grantId] || "",
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not review case access request");
-            }
-
-            const data = await response.json();
+            const data = await apiRequest(`/supervisor/case-access/${grantId}/${action}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    review_notes: reviewNotes[grantId] || "",
+                }),
+            });
             setMessage(data.message);
 
             setQueue((currentQueue) => {
@@ -284,22 +243,7 @@ function SupervisorQueue() {
                 reason: teamForm.reason,
             };
 
-            const response = await fetch(
-                `http://127.0.0.1:8000/supervisor/cases/${Number(teamForm.case_id)}/team`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not assign case team member");
-            }
+            await apiPost(`/supervisor/cases/${Number(teamForm.case_id)}/team`, payload);
 
             setMessage("Case team member assigned and logged.");
             setTeamForm({
@@ -323,19 +267,7 @@ function SupervisorQueue() {
                 case_id: Number(exchangeForm.case_id),
             };
 
-            const response = await fetch("http://127.0.0.1:8000/agency-exchanges/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not record agency exchange");
-            }
+            await apiPost("/agency-exchanges/", payload);
 
             setMessage("Agency information exchange recorded and audited.");
             setExchangeForm({
@@ -348,12 +280,7 @@ function SupervisorQueue() {
                 summary: "",
             });
 
-            const refreshResponse = await fetch("http://127.0.0.1:8000/agency-exchanges/", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            const refreshData = refreshResponse.ok ? await refreshResponse.json() : [];
+            const refreshData = await apiGet("/agency-exchanges/");
             setExchanges(Array.isArray(refreshData) ? refreshData : []);
         } catch (err) {
             console.error(err);

@@ -20,6 +20,9 @@ def ensure_local_schema(engine) -> None:
             "current_holder": "ALTER TABLE evidence ADD COLUMN current_holder VARCHAR(200)",
             "lab_reference": "ALTER TABLE evidence ADD COLUMN lab_reference VARCHAR(200)",
             "available_at": "ALTER TABLE evidence ADD COLUMN available_at TIMESTAMP",
+            "is_encrypted": "ALTER TABLE evidence ADD COLUMN is_encrypted BOOLEAN DEFAULT FALSE",
+            "encryption_key_id": "ALTER TABLE evidence ADD COLUMN encryption_key_id VARCHAR(120)",
+            "content_sha256": "ALTER TABLE evidence ADD COLUMN content_sha256 VARCHAR(64)",
         }
 
         for column_name, statement in evidence_columns.items():
@@ -83,6 +86,17 @@ def ensure_local_schema(engine) -> None:
             if not _has_column(inspector, "persons", column_name):
                 statements.append(statement)
 
+    if "users" in table_names:
+        user_columns = {
+            "mfa_enabled": "ALTER TABLE users ADD COLUMN mfa_enabled BOOLEAN DEFAULT FALSE",
+            "mfa_verified_at": "ALTER TABLE users ADD COLUMN mfa_verified_at TIMESTAMP",
+            "last_login_at": "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP",
+        }
+
+        for column_name, statement in user_columns.items():
+            if not _has_column(inspector, "users", column_name):
+                statements.append(statement)
+
     if not statements:
         return
 
@@ -93,6 +107,14 @@ def ensure_local_schema(engine) -> None:
         if "evidence" in table_names:
             connection.execute(
                 text("UPDATE evidence SET custody_status = COALESCE(custody_status, 'collected')")
+            )
+            connection.execute(
+                text("UPDATE evidence SET is_encrypted = COALESCE(is_encrypted, FALSE)")
+            )
+
+        if "users" in table_names:
+            connection.execute(
+                text("UPDATE users SET mfa_enabled = COALESCE(mfa_enabled, FALSE)")
             )
 
         if "legal_access_requests" in table_names:

@@ -21,7 +21,7 @@ router = APIRouter(prefix="/audit", tags=["Audit & Compliance"])
 def get_audit_summary(
     limit: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     activity_query = db.query(ActivityLog)
     access_query = db.query(CaseAccessGrant)
@@ -90,7 +90,7 @@ def search_audit_users(
     q: str = Query("", min_length=0),
     limit: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     query = db.query(User)
 
@@ -116,7 +116,7 @@ def get_user_audit_activity(
     user_id: int,
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     user = db.query(User).filter(User.user_id == user_id).first()
 

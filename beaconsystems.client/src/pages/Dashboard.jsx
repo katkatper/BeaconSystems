@@ -7,6 +7,7 @@ import SightingMap from "./SightingMap.jsx";
 
 function Dashboard() {
     const [summary, setSummary] = useState(null);
+    const [supervisorQueue, setSupervisorQueue] = useState(null);
     const [showAllActionItems, setShowAllActionItems] = useState(false);
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
@@ -123,6 +124,38 @@ function Dashboard() {
         };
     }, [role]);
 
+    useEffect(() => {
+        if (!["admin", "agency_admin", "supervisor"].includes(role)) {
+            return;
+        }
+
+        let isMounted = true;
+
+        const loadSupervisorQueue = async () => {
+            try {
+                const data = await apiGet("/supervisor/queue");
+
+                if (isMounted) {
+                    setSupervisorQueue(data);
+                }
+            } catch (err) {
+                console.error(err);
+
+                if (isMounted) {
+                    setSupervisorQueue(null);
+                }
+            }
+        };
+
+        loadSupervisorQueue();
+        const interval = setInterval(loadSupervisorQueue, 30000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, [role]);
+
     const metricLinks = {
         Cases: "/cases",
         Alerts: "/alerts",
@@ -159,18 +192,36 @@ function Dashboard() {
             created_at: new Date().toISOString(),
         },
     ];
-    const criticalAlerts = [
-        ["High Risk Missing Child", summary?.high_priority_cases ?? 0],
-        ["Potential Hospital Match", summary?.external_matches ?? 1],
-        ["Investigator Escalation", summary?.stalled_cases ?? 2],
-        ["New Multi-Agency Request", summary?.agency_requests ?? 1],
-    ];
-    const workload = [
+    const commandDashboard = supervisorQueue?.command_dashboard || {};
+    const stallRiskSummary = supervisorQueue?.stall_risk_summary || {};
+    const leadSummary = supervisorQueue?.lead_summary || {};
+    const timelineSummary = supervisorQueue?.timeline_summary || {};
+    const agencySummary = supervisorQueue?.agency_coordination || {};
+    const fallbackWorkload = [
         ["Jones", 12],
         ["Smith", 5],
         ["Garcia", 15],
         ["Brown", 8],
     ];
+    const workload = (supervisorQueue?.investigator_workload || []).length > 0
+        ? supervisorQueue.investigator_workload.map((item) => [
+            item.username,
+            item.active_cases,
+            item.workload_status,
+            item.recent_results,
+        ])
+        : fallbackWorkload;
+    const criticalAlerts = (summary?.recent_alerts || []).length > 0
+        ? summary.recent_alerts.slice(0, 4).map((alert) => [
+            alert.title || alert.alert_type || "Critical alert",
+            alert.severity || "active",
+        ])
+        : [
+            ["High Risk Missing Child", summary?.high_priority_cases ?? commandDashboard.high_risk_missing_persons ?? 0],
+            ["Potential Hospital Match", summary?.external_matches ?? 0],
+            ["Investigator Escalation", summary?.stalled_cases ?? stallRiskSummary.inactive_7_days ?? 0],
+            ["New Multi-Agency Request", summary?.agency_requests ?? agencySummary.outstanding_requests ?? 0],
+        ];
     const actionRequiredItems = [
         {
             title: "High-risk missing person cases",
@@ -181,14 +232,14 @@ function Dashboard() {
         },
         {
             title: "Investigations at risk of stalling",
-            count: summary?.stalled_cases ?? 2,
+            count: summary?.stalled_cases ?? stallRiskSummary.inactive_7_days ?? 0,
             severity: "high",
             detail: "No recent activity, missing follow-up, or pending reports.",
             path: "/cases?filter=stalled",
         },
         {
             title: "Unassigned leads",
-            count: summary?.unassigned_leads ?? 5,
+            count: summary?.unassigned_leads ?? leadSummary.unassigned ?? 0,
             severity: "medium",
             detail: "Assign leads to investigators with available capacity.",
             path: "/intelligence",
@@ -202,7 +253,7 @@ function Dashboard() {
         },
         {
             title: "Critical sightings",
-            count: summary?.critical_sightings ?? 2,
+            count: summary?.critical_sightings ?? (timelineSummary.recent_sightings || []).length,
             severity: "high",
             detail: "Validate urgent sightings and decide whether to escalate.",
             path: "/sightings?filter=critical",
@@ -221,33 +272,49 @@ function Dashboard() {
         58
             + ((summary?.high_priority_cases ?? 3) * 6)
             + ((summary?.new_alerts ?? 0) * 2)
-            + ((summary?.stalled_cases ?? 2) * 5)
+            + ((summary?.stalled_cases ?? stallRiskSummary.inactive_7_days ?? 0) * 5)
     );
     const riskSignals = [
         ["Risk score", `${riskScore}`, "Weighted by case priority, stale activity, and alerts."],
-        ["Case health", `${summary?.stalled_cases ?? 2} at risk`, "Stale activity, missing reports, or pending warrants."],
+        ["Case health", `${summary?.stalled_cases ?? stallRiskSummary.inactive_7_days ?? 0} at risk`, "Stale activity, missing reports, or pending warrants."],
         ["Predictive alerts", `${summary?.predictive_alerts ?? 4}`, "Likely delays based on activity and workload patterns."],
     ];
     const caseHealthItems = [
-        ["Inactive 7+ days", summary?.inactive_7_days ?? 6, "/cases?filter=stalled"],
-        ["Pending warrants", summary?.pending_warrants ?? 2, "/legal-orders?status=pending"],
-        ["Missing reports", summary?.missing_reports ?? 3, "/cases?filter=missing_reports"],
+        ["Inactive 7+ days", summary?.inactive_7_days ?? stallRiskSummary.inactive_7_days ?? 0, "/cases?filter=stalled"],
+        ["Pending warrants", summary?.pending_warrants ?? stallRiskSummary.pending_warrants ?? 0, "/legal-orders?status=pending"],
+        ["Missing reports", summary?.missing_reports ?? stallRiskSummary.missing_reports ?? 0, "/cases?filter=missing_reports"],
     ];
     const intelligenceItems = [
-        ["External match", "Hospital, shelter, jail, and partner records consolidated."],
-        ["Data match engine", "High-confidence matches routed to supervisor review."],
-        ["Public tips", "New sightings and tips connected to active cases."],
+        ["External match", `${summary?.external_matches ?? 0} approved partner sources feeding Beacon.`],
+        ["Data match engine", `${summary?.predictive_alerts ?? 0} predictive alerts from case health and workload signals.`],
+        ["Public tips", `${leadSummary.new ?? 0} new leads and ${(timelineSummary.recent_sightings || []).length} recent sightings connected to active cases.`],
     ];
     const agencyCoordination = [
-        ["Agencies involved", summary?.agency_requests ?? 4],
-        ["Outstanding requests", summary?.outstanding_partner_requests ?? 3],
-        ["Joint investigations", summary?.joint_investigations ?? 2],
+        ["Agencies involved", (agencySummary.involved_agencies || []).length || summary?.agency_requests || 0],
+        ["Outstanding requests", agencySummary.outstanding_requests ?? summary?.outstanding_partner_requests ?? 0],
+        ["Joint investigations", agencySummary.joint_investigations ?? summary?.joint_investigations ?? 0],
     ];
-    const unifiedTimeline = [
-        ["Today", "Critical sighting and supervisor alert review."],
-        ["Yesterday", "Evidence submitted and external intelligence received."],
-        ["This week", "Investigator actions, lead assignments, and agency requests."],
+    const recentTimelineEvents = [
+        ...(timelineSummary.recent_events || []).map((event) => [
+            event.case_number || `Case ${event.case_id}`,
+            event.description || event.event_type || event.location || "Timeline event recorded.",
+        ]),
+        ...(timelineSummary.recent_sightings || []).map((sighting) => [
+            sighting.case_number || `Case ${sighting.case_id}`,
+            `Sighting reported${sighting.location ? ` at ${sighting.location}` : ""}.`,
+        ]),
+        ...(timelineSummary.recent_evidence || []).map((item) => [
+            item.case_number || `Case ${item.case_id}`,
+            `${item.evidence_type || "Evidence"} recorded as ${item.custody_status || "collected"}.`,
+        ]),
     ];
+    const unifiedTimeline = recentTimelineEvents.length > 0
+        ? recentTimelineEvents.slice(0, 3)
+        : [
+            ["Today", "Critical sighting and supervisor alert review."],
+            ["Yesterday", "Evidence submitted and external intelligence received."],
+            ["This week", "Investigator actions, lead assignments, and agency requests."],
+        ];
 
     return (
         <div className="dashboard-page">
@@ -371,15 +438,16 @@ function Dashboard() {
                                     <span>Investigator Workload Analytics</span>
                                     <Link to="/supervisor/personnel">Personnel</Link>
                                 </div>
-                                {workload.map(([name, count]) => (
+                                {workload.map(([name, count, status, recentResults]) => (
                                     <div
                                         key={name}
-                                        className={`workload-row ${
+                                        className={`workload-row ${status || (
                                             count >= 12 ? "overloaded" : count <= 6 ? "available" : "balanced"
-                                        }`}
+                                        )}`}
                                     >
                                         <span>{name}</span>
                                         <strong>{count} Cases</strong>
+                                        {recentResults !== undefined && <small>{recentResults} recent actions</small>}
                                     </div>
                                 ))}
                             </section>

@@ -29,6 +29,9 @@ class Evidence(Base):
     available_at = Column(DateTime, nullable=True)
 
     is_sensitive = Column(Boolean, default=False)
+    is_encrypted = Column(Boolean, default=False)
+    encryption_key_id = Column(String(120), nullable=True)
+    content_sha256 = Column(String(64), nullable=True)
 
     file_name = Column(String(255), nullable=True)
     file_path = Column(String(500), nullable=True)

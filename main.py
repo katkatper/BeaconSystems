@@ -67,6 +67,7 @@ from routes.bolo_routes import router as bolo_router
 from routes.supervisor_routes import router as supervisor_router
 from routes.audit_routes import router as audit_router
 from routes.agency_exchange_routes import router as agency_exchange_router
+from routes.security_routes import router as security_router
 
 
 # Register API areas. Each router owns one operational workflow such as cases,
@@ -139,6 +140,7 @@ app.include_router(bolo_router)
 app.include_router(supervisor_router)
 app.include_router(audit_router)
 app.include_router(agency_exchange_router)
+app.include_router(security_router)
 
 # Lightweight health endpoint used to confirm the API process is reachable.
 

@@ -634,106 +634,108 @@ function PartnerSources() {
                     )}
                 </section>
 
-                <section className="partner-panel">
-                    <h2>Source Registry</h2>
-                    <div className="partner-source-controls">
-                        <input
-                            type="search"
-                            placeholder="Search partners"
-                            value={sourceSearch}
-                            onChange={(event) => setSourceSearch(event.target.value)}
-                        />
-                        <select
-                            value={sourceStatusFilter}
-                            onChange={(event) => setSourceStatusFilter(event.target.value)}
-                        >
-                            <option value="all">All statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="suspended">Suspended</option>
-                            <option value="revoked">Revoked</option>
-                            <option value="denied">Denied</option>
-                        </select>
-                        <select
-                            value={sourceTypeFilter}
-                            onChange={(event) => setSourceTypeFilter(event.target.value)}
-                        >
-                            <option value="all">All types</option>
-                            {sourceTypes.map((type) => (
-                                <option key={type} value={type}>
-                                    {type.replace("_", " ")}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {filteredSources.length === 0 ? (
-                        <p>No partner sources match the current filters.</p>
-                    ) : (
-                        <div className="partner-list">
-                            {filteredSources.map((source) => {
-                                const recordCount = externalRecords.filter(
-                                    (record) =>
-                                        record.integration_source_id === source.id
-                                ).length;
-
-                                return (
-                                    <article key={source.id} className="partner-card">
-                                        <div className="partner-topline">
-                                            <strong>{source.name}</strong>
-                                            <span className={`request-status ${source.status}`}>
-                                                {source.status}
-                                            </span>
-                                        </div>
-
-                                        <p>{source.source_type.replace("_", " ")}</p>
-                                        <p>{source.description || "No description provided"}</p>
-                                        <p>{source.api_url || "No API URL registered"}</p>
-                                        <p>
-                                            {source.is_active
-                                                ? "Active for approved use"
-                                                : "Inactive until approved"}
-                                        </p>
-                                        <p>{recordCount} external records linked</p>
-
-                                        <div className="partner-actions">
-                                            <button
-                                                onClick={() =>
-                                                    updateSource(source.id, {
-                                                        status: "approved",
-                                                        is_active: true,
-                                                    })
-                                                }
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    updateSource(source.id, {
-                                                        status: "suspended",
-                                                        is_active: false,
-                                                    })
-                                                }
-                                            >
-                                                Suspend
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    updateSource(source.id, {
-                                                        status: "revoked",
-                                                        is_active: false,
-                                                    })
-                                                }
-                                            >
-                                                Revoke
-                                            </button>
-                                        </div>
-                                    </article>
-                                );
-                            })}
+                {canCreatePartnerSource && (
+                    <section className="partner-panel">
+                        <h2>Source Registry</h2>
+                        <div className="partner-source-controls">
+                            <input
+                                type="search"
+                                placeholder="Search partners"
+                                value={sourceSearch}
+                                onChange={(event) => setSourceSearch(event.target.value)}
+                            />
+                            <select
+                                value={sourceStatusFilter}
+                                onChange={(event) => setSourceStatusFilter(event.target.value)}
+                            >
+                                <option value="all">All statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="suspended">Suspended</option>
+                                <option value="revoked">Revoked</option>
+                                <option value="denied">Denied</option>
+                            </select>
+                            <select
+                                value={sourceTypeFilter}
+                                onChange={(event) => setSourceTypeFilter(event.target.value)}
+                            >
+                                <option value="all">All types</option>
+                                {sourceTypes.map((type) => (
+                                    <option key={type} value={type}>
+                                        {type.replace("_", " ")}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
-                    )}
-                </section>
+
+                        {filteredSources.length === 0 ? (
+                            <p>No partner sources match the current filters.</p>
+                        ) : (
+                            <div className="partner-list">
+                                {filteredSources.map((source) => {
+                                    const recordCount = externalRecords.filter(
+                                        (record) =>
+                                            record.integration_source_id === source.id
+                                    ).length;
+
+                                    return (
+                                        <article key={source.id} className="partner-card">
+                                            <div className="partner-topline">
+                                                <strong>{source.name}</strong>
+                                                <span className={`request-status ${source.status}`}>
+                                                    {source.status}
+                                                </span>
+                                            </div>
+
+                                            <p>{source.source_type.replace("_", " ")}</p>
+                                            <p>{source.description || "No description provided"}</p>
+                                            <p>{source.api_url || "No API URL registered"}</p>
+                                            <p>
+                                                {source.is_active
+                                                    ? "Active for approved use"
+                                                    : "Inactive until approved"}
+                                            </p>
+                                            <p>{recordCount} external records linked</p>
+
+                                            <div className="partner-actions">
+                                                <button
+                                                    onClick={() =>
+                                                        updateSource(source.id, {
+                                                            status: "approved",
+                                                            is_active: true,
+                                                        })
+                                                    }
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={() =>
+                                                        updateSource(source.id, {
+                                                            status: "suspended",
+                                                            is_active: false,
+                                                        })
+                                                    }
+                                                >
+                                                    Suspend
+                                                </button>
+                                                <button
+                                                    onClick={() =>
+                                                        updateSource(source.id, {
+                                                            status: "revoked",
+                                                            is_active: false,
+                                                        })
+                                                    }
+                                                >
+                                                    Revoke
+                                                </button>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
+                )}
 
                 {canCreatePartnerSource && (
                     <section className="partner-panel">

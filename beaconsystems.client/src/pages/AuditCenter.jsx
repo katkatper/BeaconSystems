@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { apiGet } from "../api.jsx";
 
 function AuditCenter() {
     const [search, setSearch] = useState("");
@@ -6,11 +7,10 @@ function AuditCenter() {
     const [selectedUser, setSelectedUser] = useState(null);
     const [audit, setAudit] = useState(null);
     const [summary, setSummary] = useState(null);
+    const [securityPosture, setSecurityPosture] = useState(null);
     const [showMoreUsers, setShowMoreUsers] = useState(false);
     const [expandedAuditLists, setExpandedAuditLists] = useState({});
     const [message, setMessage] = useState("");
-
-    const token = localStorage.getItem("token");
 
     // Audit search starts with users, then drills into one person's full trail.
     // This keeps supervisors focused and avoids showing every log by default.
@@ -19,17 +19,7 @@ function AuditCenter() {
 
         const loadSummary = async () => {
             try {
-                const response = await fetch("http://127.0.0.1:8000/audit/summary", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error("Could not load audit summary");
-                }
-
-                const data = await response.json();
+                const data = await apiGet("/audit/summary");
 
                 if (isMounted) {
                     setSummary(data);
@@ -44,27 +34,36 @@ function AuditCenter() {
         return () => {
             isMounted = false;
         };
-    }, [token]);
+    }, []);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadSecurityPosture = async () => {
+            try {
+                const data = await apiGet("/security/posture");
+
+                if (isMounted) {
+                    setSecurityPosture(data);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        loadSecurityPosture();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
 
         const loadUsers = async () => {
             try {
-                const response = await fetch(
-                    `http://127.0.0.1:8000/audit/users?q=${encodeURIComponent(search)}&limit=5`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
-                );
-
-                if (!response.ok) {
-                    throw new Error("Could not load audit users");
-                }
-
-                const data = await response.json();
+                const data = await apiGet(`/audit/users?q=${encodeURIComponent(search)}&limit=5`);
 
                 if (isMounted) {
                     setUsers(Array.isArray(data) ? data : []);
@@ -85,7 +84,7 @@ function AuditCenter() {
             isMounted = false;
             clearTimeout(timer);
         };
-    }, [search, token]);
+    }, [search]);
 
     const loadUserActivity = async (user) => {
         setSelectedUser(user);
@@ -93,20 +92,7 @@ function AuditCenter() {
         setMessage("");
 
         try {
-            const response = await fetch(
-                `http://127.0.0.1:8000/audit/users/${user.user_id}/activity`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not load user activity");
-            }
-
-            const data = await response.json();
+            const data = await apiGet(`/audit/users/${user.user_id}/activity`);
             setAudit(data);
         } catch (err) {
             console.error(err);
@@ -141,6 +127,53 @@ function AuditCenter() {
             </div>
 
             {message && <p className="alert-banner">{message}</p>}
+
+            <section className="audit-panel security-posture-panel">
+                <div className="audit-panel-heading">
+                    <span>Security Dashboard</span>
+                    <strong>Secure Data-Sharing Posture</strong>
+                </div>
+
+                <div className="security-control-grid">
+                    {(securityPosture?.controls || []).map((control) => (
+                        <article
+                            key={control.key}
+                            className={`security-control-card ${control.status}`}
+                        >
+                            <div>
+                                <strong>{control.label}</strong>
+                                <span>{control.status === "active" ? "Active" : "Needs attention"}</span>
+                            </div>
+                            <p>{control.summary}</p>
+                            {control.roles && (
+                                <small>Roles: {control.roles.join(", ")}</small>
+                            )}
+                            {control.key_id && (
+                                <small>Key ID: {control.key_id}</small>
+                            )}
+                        </article>
+                    ))}
+                </div>
+
+                <div className="security-transparency-row">
+                    <span>
+                        Audit events
+                        <strong>{securityPosture?.transparency?.audit_events_total ?? 0}</strong>
+                    </span>
+                    <span>
+                        Evidence custody events
+                        <strong>{securityPosture?.transparency?.evidence_chain_events ?? 0}</strong>
+                    </span>
+                    <span>
+                        Partner approvals pending
+                        <strong>{securityPosture?.transparency?.pending_partner_approvals ?? 0}</strong>
+                    </span>
+                    <span>
+                        Restricted access pending
+                        <strong>{securityPosture?.transparency?.restricted_access_pending ?? 0}</strong>
+                    </span>
+                </div>
+            </section>
 
             <div className="audit-search-layout">
                 <section className="audit-panel">

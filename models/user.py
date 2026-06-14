@@ -29,3 +29,9 @@ class User(Base):
     password_changed_at = Column(DateTime, default=datetime.utcnow)
 
     must_change_password = Column(Boolean, default=False)
+
+    mfa_enabled = Column(Boolean, default=False)
+
+    mfa_verified_at = Column(DateTime, nullable=True)
+
+    last_login_at = Column(DateTime, nullable=True)

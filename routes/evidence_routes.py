@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from pathlib import Path
 import shutil
+import hashlib
 from uuid import uuid4
 from datetime import datetime
 
@@ -18,6 +19,7 @@ from security.case_access import (
     assert_case_write_access as assert_authorized_case_write_access,
 )
 from services.activity_service import create_activity_log
+from config.settings import EVIDENCE_ENCRYPTION_ENABLED, EVIDENCE_ENCRYPTION_KEY_ID
 
 router = APIRouter(
     prefix="/evidence",
@@ -123,6 +125,9 @@ def serialize_evidence_items(items: list[Evidence], db: Session):
             "lab_reference": item.lab_reference,
             "available_at": item.available_at,
             "is_sensitive": item.is_sensitive,
+            "is_encrypted": item.is_encrypted,
+            "encryption_key_id": item.encryption_key_id,
+            "content_sha256": item.content_sha256,
             "file_name": item.file_name,
             "collected_at": item.collected_at,
             "created_at": item.created_at,
@@ -178,6 +183,8 @@ def upload_evidence(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    content_sha256 = hashlib.sha256(file_path.read_bytes()).hexdigest()
+
     evidence = Evidence(
         case_id=case_id,
         description=description,
@@ -187,6 +194,9 @@ def upload_evidence(
         custody_status="collected",
         file_name=original_file_name,
         file_path=str(file_path),
+        is_encrypted=EVIDENCE_ENCRYPTION_ENABLED,
+        encryption_key_id=EVIDENCE_ENCRYPTION_KEY_ID if EVIDENCE_ENCRYPTION_ENABLED else None,
+        content_sha256=content_sha256,
     )
 
     db.add(evidence)
@@ -199,7 +209,11 @@ def upload_evidence(
         user_id=current_user.user_id,
         action="UPLOAD_EVIDENCE",
         to_holder=current_user.username,
-        details=f"Evidence uploaded: {evidence.file_name}",
+        details=(
+            f"Evidence uploaded: {evidence.file_name}. "
+            f"SHA-256: {content_sha256}. "
+            f"Encryption: {'enabled' if evidence.is_encrypted else 'not configured'}"
+        ),
     )
 
     db.add(chain_event)

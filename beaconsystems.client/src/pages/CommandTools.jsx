@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { apiGet } from "../api.jsx";
 
 const taskItems = [
     ["High-risk missing person cases", "Review active critical-risk cases and confirm command attention.", "High", "/missing?risk=high"],
@@ -26,12 +27,43 @@ const settingsItems = [
 
 function CommandTools() {
     const { tool = "tasks" } = useParams();
+    const [summary, setSummary] = useState(null);
     const username = localStorage.getItem("username") || "Beacon User";
     const role = localStorage.getItem("role") || "viewer";
     const isTasks = tool === "tasks";
     const isNotifications = tool === "notifications";
     const isSettings = tool === "settings";
     const isProfile = tool === "profile";
+    const liveTaskItems = [
+        [taskItems[0][0], taskItems[0][1], taskItems[0][2], taskItems[0][3], summary?.high_priority_cases ?? 0],
+        [taskItems[1][0], taskItems[1][1], taskItems[1][2], taskItems[1][3], summary?.stalled_cases ?? 0],
+        [taskItems[2][0], taskItems[2][1], taskItems[2][2], taskItems[2][3], summary?.unassigned_cases ?? 0],
+        [taskItems[3][0], taskItems[3][1], taskItems[3][2], taskItems[3][3], summary?.evidence_awaiting_review ?? 0],
+        [taskItems[4][0], taskItems[4][1], taskItems[4][2], taskItems[4][3], summary?.critical_sightings ?? 0],
+        [taskItems[5][0], taskItems[5][1], taskItems[5][2], taskItems[5][3], summary?.new_alerts ?? 0],
+    ];
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadSummary = async () => {
+            try {
+                const data = await apiGet("/dashboard/summary");
+
+                if (isMounted) {
+                    setSummary(data);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        loadSummary();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     return (
         <div className="command-tools-page beacon-page">
@@ -46,12 +78,13 @@ function CommandTools() {
 
             {isTasks && (
                 <section className="command-tool-grid">
-                    {taskItems.map(([title, detail, priority, path]) => (
+                    {liveTaskItems.map(([title, detail, priority, path, count]) => (
                         <article key={title} className="beacon-panel command-tool-card">
                             <div>
                                 <span className={`task-priority ${priority.toLowerCase()}`}>
                                     {priority}
                                 </span>
+                                <span className="task-count">{count}</span>
                                 <h2>{title}</h2>
                             </div>
                             <p>{detail}</p>

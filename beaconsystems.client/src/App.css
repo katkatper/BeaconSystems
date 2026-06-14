@@ -7098,6 +7098,134 @@ a.case-health-row:hover {
     margin: 0;
 }
 
+.supervisor-command-dashboard .supervisor-home-grid {
+    align-items: start;
+    grid-auto-flow: row;
+}
+
+.supervisor-command-dashboard .dashboard-panel {
+    min-height: 0;
+    height: auto;
+}
+
+.supervisor-command-dashboard .dashboard-panel,
+.supervisor-command-dashboard .dashboard-panel * {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.supervisor-command-dashboard .unified-timeline-panel,
+.supervisor-command-dashboard .dashboard-actions-panel,
+.supervisor-command-dashboard .agency-coordination-panel {
+    position: relative;
+    z-index: 0;
+}
+
+.workload-row small {
+    display: block;
+    grid-column: 1 / -1;
+    color: #9fb0ca;
+    font-size: 13px;
+}
+
+.command-tool-card > div {
+    position: relative;
+}
+
+.task-count {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 34px;
+    padding: 6px 10px;
+    color: #eaf2ff;
+    text-align: center;
+    font-weight: 900;
+    background: rgba(30, 64, 175, 0.72);
+    border: 1px solid rgba(147, 197, 253, 0.28);
+    border-radius: 999px;
+}
+
+.security-posture-panel {
+    width: min(100%, 1320px);
+    margin: 0 auto 18px;
+}
+
+.security-control-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.security-control-card {
+    display: grid;
+    gap: 10px;
+    min-height: 150px;
+    padding: 14px;
+    background: rgba(30, 41, 59, 0.62);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.security-control-card.active {
+    border-color: rgba(34, 197, 94, 0.42);
+}
+
+.security-control-card.attention {
+    border-color: rgba(245, 158, 11, 0.52);
+}
+
+.security-control-card div,
+.security-transparency-row span {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.security-control-card strong {
+    color: #eaf2ff;
+    font-size: 18px;
+}
+
+.security-control-card span {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.security-control-card p {
+    margin: 0;
+    color: #cbd5e1;
+    line-height: 1.45;
+}
+
+.security-control-card small {
+    color: #9fb0ca;
+    overflow-wrap: anywhere;
+}
+
+.security-transparency-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.security-transparency-row span {
+    align-items: center;
+    padding: 12px;
+    color: #cbd5e1;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(147, 197, 253, 0.14);
+    border-radius: 8px;
+}
+
+.security-transparency-row strong {
+    color: #eaf2ff;
+    font-size: 22px;
+}
+
 @media (max-width: 1180px) {
     .legal-request-type-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7106,6 +7234,11 @@ a.case-health-row:hover {
     .legal-orders-layout {
         grid-template-columns: 1fr;
     }
+
+    .security-control-grid,
+    .security-transparency-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 680px) {
@@ -7113,6 +7246,8 @@ a.case-health-row:hover {
     .legal-order-form,
     .legal-record-details,
     .legal-detail-grid,
+    .security-control-grid,
+    .security-transparency-row,
     .legal-request-table-head,
     .legal-request-table-row {
         grid-template-columns: 1fr;

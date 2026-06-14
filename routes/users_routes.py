@@ -108,6 +108,7 @@ def login(
 
     password_change_required = user.must_change_password or datetime.utcnow() >= password_expires_at
 
+    user.last_login_at = datetime.utcnow()
 
     token = create_access_token({
 
