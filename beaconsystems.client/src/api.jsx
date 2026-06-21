@@ -80,7 +80,11 @@ export async function apiBlob(path) {
     });
 
     if (!response.ok) {
-        throw new Error(`Request failed (${response.status})`);
+        const contentType = response.headers.get("content-type") || "";
+        const errorData = contentType.includes("application/json")
+            ? await response.json().catch(() => ({}))
+            : {};
+        throw new Error(errorData.detail || `Request failed (${response.status})`);
     }
 
     return response.blob();

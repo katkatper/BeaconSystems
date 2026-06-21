@@ -1,5 +1,17 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiGet } from "../api.jsx";
+
+const securityControlLinks = {
+    mfa: "/command/profile",
+    audit_logging: "/audit",
+    rbac: "/users",
+    evidence_encryption: "/evidence-upload",
+    session_timeout: "/command/settings",
+    sharing_approvals: "/partner-sources",
+    security_dashboard: "/audit",
+    splunk: "/command/settings",
+};
 
 function AuditCenter() {
     const [search, setSearch] = useState("");
@@ -136,8 +148,9 @@ function AuditCenter() {
 
                 <div className="security-control-grid">
                     {(securityPosture?.controls || []).map((control) => (
-                        <article
+                        <Link
                             key={control.key}
+                            to={securityControlLinks[control.key] || "/audit"}
                             className={`security-control-card ${control.status}`}
                         >
                             <div>
@@ -151,7 +164,7 @@ function AuditCenter() {
                             {control.key_id && (
                                 <small>Key ID: {control.key_id}</small>
                             )}
-                        </article>
+                        </Link>
                     ))}
                 </div>
 

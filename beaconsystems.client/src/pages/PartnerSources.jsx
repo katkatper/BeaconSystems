@@ -2,11 +2,18 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const sourceTypes = [
     "hospital",
+    "medical_examiner",
+    "crime_lab",
     "transportation",
     "camera",
     "toll",
     "cell_provider",
     "social_media",
+    "fusion_center",
+    "prosecutor",
+    "court",
+    "social_services",
+    "family_portal",
     "ngo",
     "other",
 ];
@@ -37,6 +44,16 @@ const legalAuthorityOptions = [
     { value: "emergency_disclosure", label: "Emergency disclosure" },
     { value: "partner_agreement", label: "Approved partner agreement" },
     { value: "other", label: "Other approved authority" },
+];
+
+const partnerCapabilityRows = [
+    ["Hospitals / Mental Health", "Encounter checks, admission inquiries, emergency disclosure requests", "Legal access required"],
+    ["Medical Examiners", "Morgue comparison, decedent identification, fingerprints, dental, DNA", "Case-linked request"],
+    ["Crime Labs", "DNA, fingerprints, toxicology, evidence analysis", "Submission tracking"],
+    ["Missing Person Organizations", "NamUs, NCMEC, advocacy partner coordination", "Approved referral"],
+    ["Courts / Prosecutors", "Warrants, subpoenas, court orders, filing packets", "Judicial workflow"],
+    ["Fusion Centers", "Intelligence bulletins, regional leads, cross-jurisdiction coordination", "Supervisor review"],
+    ["Family Portal", "Controlled updates, tips, documents, consent-based information", "Limited access"],
 ];
 
 const authHeaders = (includeJson = false) => {
@@ -94,6 +111,7 @@ function PartnerSources() {
     const role = localStorage.getItem("role");
     const canCreatePartnerSource = role === "admin";
     const canReceivePartnerData = role === "admin" || role === "agency_admin";
+    const showSupervisorPartnerView = !canCreatePartnerSource;
     const visibleItems = (key, items) =>
         (items || []).slice(0, expandedLists[key] ? 6 : 2);
     const renderListToggle = (key, count, label) => count > 2 ? (
@@ -118,6 +136,20 @@ function PartnerSources() {
             ),
         [sources]
     );
+    const partnerSummary = useMemo(() => {
+        const pendingSources = sources.filter((source) => source.status === "pending").length;
+        const suspendedSources = sources.filter(
+            (source) => source.status === "suspended" || source.status === "revoked"
+        ).length;
+
+        return [
+            ["Approved Partners", approvedSources.length],
+            ["Pending Data Reviews", intakeRecords.length],
+            ["Linked External Records", externalRecords.length],
+            ["Suspended / Revoked", suspendedSources],
+            ["Pending Approvals", pendingSources],
+        ];
+    }, [approvedSources.length, externalRecords.length, intakeRecords.length, sources]);
     const filteredSources = useMemo(() => {
         const searchTerm = sourceSearch.trim().toLowerCase();
 
@@ -374,6 +406,73 @@ function PartnerSources() {
             {message && <p className="alert-banner">{message}</p>}
 
             <div className="partner-workspace-layout">
+                {showSupervisorPartnerView && (
+                    <section className="partner-panel partner-summary-panel">
+                        <div className="partner-intake-panel-header">
+                            <span>Partner Network</span>
+                            <strong>Operational Visibility</strong>
+                        </div>
+
+                        <div className="partner-summary-grid">
+                            {partnerSummary.map(([label, value]) => (
+                                <span key={label}>
+                                    {label}
+                                    <strong>{value}</strong>
+                                </span>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {showSupervisorPartnerView && (
+                    <section className="partner-panel partner-directory-panel">
+                        <div className="partner-intake-panel-header">
+                            <span>Directory</span>
+                            <strong>Approved Collaboration Partners</strong>
+                        </div>
+
+                        {approvedSources.length === 0 ? (
+                            <p>No approved partner sources are active yet.</p>
+                        ) : (
+                            <div className="partner-list">
+                                {visibleItems("approvedSources", approvedSources).map((source) => (
+                                    <article key={source.id} className="partner-card">
+                                        <div className="partner-topline">
+                                            <strong>{source.name}</strong>
+                                            <span className={`request-status ${source.status}`}>
+                                                {source.status}
+                                            </span>
+                                        </div>
+                                        <p>{source.source_type.replace("_", " ")}</p>
+                                        <p>{source.description || "No agreement notes recorded."}</p>
+                                        <p>{source.api_url || "No secure endpoint registered."}</p>
+                                    </article>
+                                ))}
+                                {renderListToggle("approvedSources", approvedSources.length, "partners")}
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {showSupervisorPartnerView && (
+                    <section className="partner-panel partner-capability-panel">
+                        <div className="partner-intake-panel-header">
+                            <span>Collaboration</span>
+                            <strong>Missing Persons Partner Capabilities</strong>
+                        </div>
+
+                        <div className="partner-capability-list">
+                            {partnerCapabilityRows.map(([name, capability, guardrail]) => (
+                                <article key={name}>
+                                    <strong>{name}</strong>
+                                    <p>{capability}</p>
+                                    <span>{guardrail}</span>
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 {canReceivePartnerData && (
                     <section className="partner-intake-panel">
                         <div className="partner-intake-panel-header">

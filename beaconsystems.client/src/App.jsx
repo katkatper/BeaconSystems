@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 
-import { BrowserRouter as Router,Routes,Route,Navigate,useLocation} from "react-router-dom";
+import { BrowserRouter as Router,Routes,Route,Navigate,useLocation,useNavigate} from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard.jsx";
 import MissingPersonsList from "./pages/MissingPersons.jsx";
@@ -32,6 +32,32 @@ import BoloBoard from "./pages/BoloBoard.jsx";
 import SupervisorQueue from "./pages/SupervisorQueue";
 import AuditCenter from "./pages/AuditCenter.jsx";
 
+const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+function clearAuthSession(message) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("username");
+    localStorage.removeItem("agency_id");
+    localStorage.removeItem("last_activity_at");
+    localStorage.removeItem("session_expires_at");
+
+    if (message) {
+        localStorage.setItem("session_timeout_message", message);
+    }
+}
+
+function isSessionExpired() {
+    const lastActivityAt = Number(localStorage.getItem("last_activity_at") || Date.now());
+    const sessionExpiresAt = localStorage.getItem("session_expires_at");
+    const absoluteExpiresAt = sessionExpiresAt ? Date.parse(sessionExpiresAt) : null;
+    const now = Date.now();
+
+    return (
+        now - lastActivityAt > SESSION_IDLE_TIMEOUT_MS ||
+        (absoluteExpiresAt && now > absoluteExpiresAt)
+    );
+}
 
 // ProtectedRoute keeps application pages behind login. The backend still
 // enforces real authorization; this only controls frontend navigation.
@@ -39,7 +65,11 @@ import AuditCenter from "./pages/AuditCenter.jsx";
 function ProtectedRoute({ children }) {
     const token = localStorage.getItem("token");
 
-    if (!token) {
+    if (!token || isSessionExpired()) {
+        if (token) {
+            clearAuthSession("Your Beacon session expired. Please sign in again.");
+        }
+
         return <Navigate to="/login" replace />;
     }
 
@@ -49,8 +79,41 @@ function ProtectedRoute({ children }) {
 // so unauthenticated users only see the sign-in screen.
 function AppLayout() {
     const location = useLocation();
+    const navigate = useNavigate();
 
     const hideNavbar = location.pathname === "/login";
+
+    useEffect(() => {
+        if (hideNavbar || !localStorage.getItem("token")) {
+            return undefined;
+        }
+
+        const recordActivity = () => {
+            localStorage.setItem("last_activity_at", String(Date.now()));
+        };
+
+        const checkSession = () => {
+            if (localStorage.getItem("token") && isSessionExpired()) {
+                clearAuthSession("Your Beacon session expired. Please sign in again.");
+                navigate("/login", { replace: true });
+            }
+        };
+
+        const activityEvents = ["click", "keydown", "mousemove", "scroll", "touchstart"];
+        activityEvents.forEach((eventName) =>
+            window.addEventListener(eventName, recordActivity, { passive: true })
+        );
+
+        const interval = window.setInterval(checkSession, 15000);
+        recordActivity();
+
+        return () => {
+            activityEvents.forEach((eventName) =>
+                window.removeEventListener(eventName, recordActivity)
+            );
+            window.clearInterval(interval);
+        };
+    }, [hideNavbar, navigate]);
 
     return (
         <>

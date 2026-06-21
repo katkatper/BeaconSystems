@@ -34,11 +34,18 @@ def create_integration_source(
 ):
     allowed_source_types = {
         "hospital",
+        "medical_examiner",
+        "crime_lab",
         "transportation",
         "camera",
         "toll",
         "cell_provider",
         "social_media",
+        "fusion_center",
+        "prosecutor",
+        "court",
+        "social_services",
+        "family_portal",
         "ngo",
         "other",
     }

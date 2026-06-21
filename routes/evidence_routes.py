@@ -361,7 +361,13 @@ def view_evidence(
             )
 
     if not evidence.file_path or not Path(evidence.file_path).is_file():
-        raise HTTPException(status_code=404, detail="Evidence file is missing")
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Evidence file is missing from storage. The registry record exists, "
+                "but the uploaded file is not available on disk."
+            ),
+        )
 
     chain_event = EvidenceChain(
         evidence_id=evidence.evidence_id,

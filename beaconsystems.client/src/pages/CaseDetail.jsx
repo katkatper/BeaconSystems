@@ -17,6 +17,7 @@ function CaseDetail() {
     const [selectedExternalRecord, setSelectedExternalRecord] = useState(null);
     const [showSightingForm, setShowSightingForm] = useState(false);
     const [agencyExchanges, setAgencyExchanges] = useState([]);
+    const [selectedExternalRequest, setSelectedExternalRequest] = useState(null);
     const [activeTab, setActiveTab] = useState("overview");
 
     const [sightingForm, setSightingForm] = useState({
@@ -288,6 +289,7 @@ function CaseDetail() {
         ["evidence", "Evidence"],
         ["leads", "Leads"],
         ["intelligence", "Intelligence"],
+        ["externalRequests", "External Requests"],
         ["documents", "Documents"],
         ["audit", "Audit Log"],
     ];
@@ -302,6 +304,79 @@ function CaseDetail() {
             ["Patterns", person.patterns || "No movement or contact patterns recorded."],
         ]
         : [];
+    const statusLabel = (status) =>
+        String(status || "pending")
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    const externalRequestExamples = [
+        {
+            exchange_id: "example-dna",
+            request_type: "DNA Analysis",
+            to_agency: "DPS Crime Lab",
+            status: "in_progress",
+            assigned_to: "Lab Liaison",
+            submitted_at: new Date().toISOString(),
+            requested_by: "Det. Smith",
+            legal_authority: "Lab Submission",
+            requested_records: "Biological material comparison and DNA report.",
+            summary: "DNA comparison submitted to DPS Crime Lab.",
+            audit_log: "Example workflow: submitted, received, in analysis.",
+        },
+        {
+            exchange_id: "example-namus",
+            request_type: "NamUs Entry",
+            to_agency: "NamUs",
+            status: "submitted",
+            assigned_to: "Case Detective",
+            submitted_at: new Date().toISOString(),
+            requested_by: "Investigator",
+            legal_authority: "Missing persons coordination",
+            requested_records: "Case profile and missing person details.",
+            summary: "NamUs entry submitted for national visibility.",
+            audit_log: "Example workflow: created and submitted.",
+        },
+        {
+            exchange_id: "example-morgue",
+            request_type: "Morgue Comparison",
+            to_agency: "Dallas ME",
+            status: "pending",
+            assigned_to: "Decedent ID Coordinator",
+            submitted_at: new Date().toISOString(),
+            requested_by: "Supervisor",
+            legal_authority: "Inter-agency request",
+            requested_records: "Decedent comparison, fingerprints, dental, and DNA status.",
+            summary: "Medical examiner comparison pending.",
+            audit_log: "Example workflow: requested, pending review.",
+        },
+        {
+            exchange_id: "example-hospital",
+            request_type: "Hospital Inquiry",
+            to_agency: "Regional Network",
+            status: "completed",
+            assigned_to: "Analyst",
+            submitted_at: new Date().toISOString(),
+            requested_by: "Investigator",
+            legal_authority: "Court-authorized request",
+            requested_records: "Admission or encounter confirmation.",
+            summary: "Regional hospital inquiry completed.",
+            audit_log: "Example workflow: submitted, reviewed, completed.",
+        },
+        {
+            exchange_id: "example-fingerprint",
+            request_type: "Fingerprint Comparison",
+            to_agency: "DPS",
+            status: "match_found",
+            assigned_to: "Evidence Technician",
+            submitted_at: new Date().toISOString(),
+            requested_by: "Investigator",
+            legal_authority: "Evidence Transfer",
+            requested_records: "Latent print comparison and response report.",
+            summary: "Fingerprint comparison returned a possible match.",
+            audit_log: "Example workflow: submitted, analysis complete, match found.",
+        },
+    ];
+    const externalRequests = agencyExchanges.length > 0 ? agencyExchanges : externalRequestExamples;
+    const selectedRequestDetails = selectedExternalRequest || externalRequests[0];
 
     return (
         <div className="case-detail-page">
@@ -556,6 +631,75 @@ function CaseDetail() {
                             <p>Notes: {selectedExternalRecord.notes || "Not provided"}</p>
                         </div>
                     )}
+                </div>
+            )}
+
+            {activeTab === "externalRequests" && (
+                <div className="case-section case-tab-panel">
+                    <h2>External Requests & Collaboration</h2>
+                    <div className="case-external-request-layout">
+                        <section className="case-external-request-list">
+                            <div className="external-request-table-head">
+                                <span>Request Type</span>
+                                <span>Agency</span>
+                                <span>Status</span>
+                            </div>
+
+                            {externalRequests.map((request) => (
+                                <button
+                                    key={request.exchange_id}
+                                    type="button"
+                                    className={`external-request-row ${selectedRequestDetails?.exchange_id === request.exchange_id ? "active" : ""}`}
+                                    onClick={() => setSelectedExternalRequest(request)}
+                                >
+                                    <span>{request.request_type || request.information_type}</span>
+                                    <span>{request.to_agency}</span>
+                                    <span>{statusLabel(request.status)}</span>
+                                </button>
+                            ))}
+                        </section>
+
+                        <section className="case-external-request-detail">
+                            <div className="audit-panel-heading">
+                                <span>Request Detail</span>
+                                <strong>{selectedRequestDetails?.request_type || selectedRequestDetails?.information_type}</strong>
+                            </div>
+                            <dl className="external-request-detail-grid">
+                                <div>
+                                    <dt>Submission Date</dt>
+                                    <dd>
+                                        {selectedRequestDetails?.submitted_at || selectedRequestDetails?.created_at
+                                            ? new Date(selectedRequestDetails.submitted_at || selectedRequestDetails.created_at).toLocaleString()
+                                            : "Not submitted"}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Requestor</dt>
+                                    <dd>{selectedRequestDetails?.requesting_officer || selectedRequestDetails?.requested_by || `User ${selectedRequestDetails?.approved_by || "Unknown"}`}</dd>
+                                </div>
+                                <div>
+                                    <dt>Authority</dt>
+                                    <dd>{selectedRequestDetails?.legal_authority || "Not recorded"}</dd>
+                                </div>
+                                <div>
+                                    <dt>Follow-Up Reminder</dt>
+                                    <dd>{selectedRequestDetails?.due_date ? new Date(selectedRequestDetails.due_date).toLocaleString() : "No reminder set"}</dd>
+                                </div>
+                                <div>
+                                    <dt>Documents</dt>
+                                    <dd>{selectedRequestDetails?.attachments || selectedRequestDetails?.requested_records || "No documents linked"}</dd>
+                                </div>
+                                <div>
+                                    <dt>Responses</dt>
+                                    <dd>{selectedRequestDetails?.summary || "No response recorded yet"}</dd>
+                                </div>
+                            </dl>
+                            <div className="external-request-audit">
+                                <strong>Audit History</strong>
+                                <p>{selectedRequestDetails?.audit_log || "Created in Beacon; future views, responses, uploads, and status changes will be logged."}</p>
+                            </div>
+                        </section>
+                    </div>
                 </div>
             )}
 

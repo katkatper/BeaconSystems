@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 
@@ -13,6 +13,8 @@ function Login({ onLogin }) {
     const [message, setMessage] = useState("");
     const [recoveryMode, setRecoveryMode] = useState("");
     const [pendingToken, setPendingToken] = useState("");
+    const [mfaToken, setMfaToken] = useState("");
+    const [mfaCode, setMfaCode] = useState("");
     const navigate = useNavigate();
 
     const getLandingPath = (role) => {
@@ -23,10 +25,49 @@ function Login({ onLogin }) {
         return "/";
     };
 
+    useEffect(() => {
+        const timeoutMessage = localStorage.getItem("session_timeout_message");
+
+        if (timeoutMessage) {
+            setMessage(timeoutMessage);
+            localStorage.removeItem("session_timeout_message");
+        }
+    }, []);
+
+    const storeSession = (data) => {
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("agency_id", data.agency_id || "");
+        localStorage.setItem("last_activity_at", String(Date.now()));
+
+        if (data.session_expires_at) {
+            localStorage.setItem("session_expires_at", data.session_expires_at);
+        }
+    };
+
+    const completeLogin = (data) => {
+        storeSession(data);
+
+        if (data.password_change_required) {
+            setPendingToken(data.access_token);
+            setMessage("Your password must be updated before continuing.");
+            return;
+        }
+
+        if (onLogin) {
+            onLogin(data.access_token);
+        }
+
+        navigate(getLandingPath(data.role));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
         setMessage("");
+        setMfaToken("");
+        setMfaCode("");
 
         try {
             const response = await fetch("http://127.0.0.1:8000/users/login", {
@@ -45,26 +86,49 @@ function Login({ onLogin }) {
             }
 
             const data = await response.json();
-            console.log("Login response:", data);
 
-            localStorage.setItem("token", data.access_token);
-            localStorage.setItem("role", data.role);
-            localStorage.setItem("username", data.username);
-
-            if (data.password_change_required) {
-                setPendingToken(data.access_token);
-                setMessage("Your password must be updated before continuing.");
+            if (data.mfa_required) {
+                setMfaToken(data.mfa_token);
+                setMessage("Enter your Beacon MFA code to complete sign-in.");
                 return;
             }
 
-            if (onLogin) {
-                onLogin(data.access_token);
-            }
-
-            navigate(getLandingPath(data.role));
+            completeLogin(data);
         } catch (err) {
             console.error(err);
             setError("Invalid username or password");
+        }
+    };
+
+    const handleMfaVerify = async (e) => {
+        e.preventDefault();
+        setError("");
+        setMessage("");
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/users/mfa/verify", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    mfa_token: mfaToken,
+                    code: mfaCode,
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.detail || "MFA verification failed");
+            }
+
+            const data = await response.json();
+            setMfaToken("");
+            setMfaCode("");
+            completeLogin(data);
+        } catch (err) {
+            console.error(err);
+            setError(err.message || "Could not verify MFA code");
         }
     };
 
@@ -112,7 +176,24 @@ function Login({ onLogin }) {
             <div className="login-card">
                 <h1>Beacon</h1>
 
-                {!pendingToken ? (
+                {mfaToken ? (
+                    <form className="mfa-challenge-panel" onSubmit={handleMfaVerify}>
+                        <h2>MFA Verification</h2>
+                        <p>Enter the six-digit code from your authenticator app.</p>
+
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="MFA code"
+                            value={mfaCode}
+                            onChange={(e) => setMfaCode(e.target.value)}
+                        />
+
+                        <button type="submit">
+                            Verify Code
+                        </button>
+                    </form>
+                ) : !pendingToken ? (
                     <form onSubmit={handleSubmit}>
                         <input
                             type="text"

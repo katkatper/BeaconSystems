@@ -29,6 +29,17 @@ def ensure_local_schema(engine) -> None:
             if not _has_column(inspector, "evidence", column_name):
                 statements.append(statement)
 
+    if "alerts" in table_names:
+        alert_columns = {
+            "alert_source": "ALTER TABLE alerts ADD COLUMN alert_source VARCHAR(100)",
+            "source_detail": "ALTER TABLE alerts ADD COLUMN source_detail VARCHAR(255)",
+            "confidence_score": "ALTER TABLE alerts ADD COLUMN confidence_score FLOAT",
+        }
+
+        for column_name, statement in alert_columns.items():
+            if not _has_column(inspector, "alerts", column_name):
+                statements.append(statement)
+
     if "evidence_chain" in table_names:
         chain_columns = {
             "from_holder": "ALTER TABLE evidence_chain ADD COLUMN from_holder VARCHAR(200)",
@@ -57,6 +68,28 @@ def ensure_local_schema(engine) -> None:
 
         for column_name, statement in legal_request_columns.items():
             if not _has_column(inspector, "legal_access_requests", column_name):
+                statements.append(statement)
+
+    if "agency_exchanges" in table_names:
+        agency_exchange_columns = {
+            "requesting_officer": "ALTER TABLE agency_exchanges ADD COLUMN requesting_officer VARCHAR(200)",
+            "badge_number": "ALTER TABLE agency_exchanges ADD COLUMN badge_number VARCHAR(80)",
+            "subject": "ALTER TABLE agency_exchanges ADD COLUMN subject VARCHAR(255)",
+            "request_type": "ALTER TABLE agency_exchanges ADD COLUMN request_type VARCHAR(120)",
+            "priority": "ALTER TABLE agency_exchanges ADD COLUMN priority VARCHAR(50)",
+            "due_date": "ALTER TABLE agency_exchanges ADD COLUMN due_date TIMESTAMP",
+            "delivery_method": "ALTER TABLE agency_exchanges ADD COLUMN delivery_method VARCHAR(100)",
+            "requested_records": "ALTER TABLE agency_exchanges ADD COLUMN requested_records TEXT",
+            "attachments": "ALTER TABLE agency_exchanges ADD COLUMN attachments TEXT",
+            "assigned_to": "ALTER TABLE agency_exchanges ADD COLUMN assigned_to VARCHAR(200)",
+            "requested_by": "ALTER TABLE agency_exchanges ADD COLUMN requested_by INTEGER",
+            "audit_log": "ALTER TABLE agency_exchanges ADD COLUMN audit_log TEXT",
+            "submitted_at": "ALTER TABLE agency_exchanges ADD COLUMN submitted_at TIMESTAMP",
+            "fulfilled_at": "ALTER TABLE agency_exchanges ADD COLUMN fulfilled_at TIMESTAMP",
+        }
+
+        for column_name, statement in agency_exchange_columns.items():
+            if not _has_column(inspector, "agency_exchanges", column_name):
                 statements.append(statement)
 
     if "persons" in table_names:
@@ -89,6 +122,7 @@ def ensure_local_schema(engine) -> None:
     if "users" in table_names:
         user_columns = {
             "mfa_enabled": "ALTER TABLE users ADD COLUMN mfa_enabled BOOLEAN DEFAULT FALSE",
+            "mfa_secret": "ALTER TABLE users ADD COLUMN mfa_secret VARCHAR(255)",
             "mfa_verified_at": "ALTER TABLE users ADD COLUMN mfa_verified_at TIMESTAMP",
             "last_login_at": "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP",
         }
@@ -115,6 +149,14 @@ def ensure_local_schema(engine) -> None:
         if "users" in table_names:
             connection.execute(
                 text("UPDATE users SET mfa_enabled = COALESCE(mfa_enabled, FALSE)")
+            )
+
+        if "agency_exchanges" in table_names:
+            connection.execute(
+                text("UPDATE agency_exchanges SET priority = COALESCE(priority, 'routine')")
+            )
+            connection.execute(
+                text("UPDATE agency_exchanges SET request_type = COALESCE(request_type, information_type)")
             )
 
         if "legal_access_requests" in table_names:

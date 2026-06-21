@@ -190,7 +190,7 @@ function EvidenceUpload() {
             window.open(fileUrl, "_blank");
         } catch (err) {
             console.error(err);
-            alert("Could not open evidence.");
+            setMessage(err.message || "Could not open evidence.");
         }
     };
 

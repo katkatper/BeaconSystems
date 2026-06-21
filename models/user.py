@@ -32,6 +32,8 @@ class User(Base):
 
     mfa_enabled = Column(Boolean, default=False)
 
+    mfa_secret = Column(String, nullable=True)
+
     mfa_verified_at = Column(DateTime, nullable=True)
 
     last_login_at = Column(DateTime, nullable=True)

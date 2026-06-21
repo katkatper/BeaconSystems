@@ -23,6 +23,15 @@ class PasswordChange(BaseModel):
     new_password: str
 
 
+class MfaEnable(BaseModel):
+    code: str
+
+
+class MfaLoginVerify(BaseModel):
+    mfa_token: str
+    code: str
+
+
 class AdminPasswordReset(BaseModel):
     temporary_password: str
 

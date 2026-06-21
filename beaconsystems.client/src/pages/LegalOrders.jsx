@@ -7,10 +7,16 @@ const requestTypes = [
     ["interagency_request", "Interagency Requests"],
     ["da_prosecutor_request", "DA / Prosecutor Requests"],
     ["court_order", "Court Orders"],
-    ["warrant", "Warrants"],
+    ["search_warrant", "Search Warrant"],
+    ["arrest_warrant", "Arrest Warrant"],
     ["subpoena", "Subpoenas"],
     ["records_request", "Records Requests"],
     ["preservation_request", "Preservation Requests"],
+    ["emergency_disclosure_request", "Emergency Disclosure Request"],
+    ["prosecutor_filing_packet", "Prosecutor Filing Packet"],
+    ["grand_jury_request", "Grand Jury Request"],
+    ["lab_submission", "Lab Submission"],
+    ["evidence_transfer", "Evidence Transfer"],
 ];
 
 const statusOptions = [
