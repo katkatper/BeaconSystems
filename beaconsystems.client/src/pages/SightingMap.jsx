@@ -46,6 +46,15 @@ function createMarkerIcon(confidence, index) {
     });
 }
 
+function createAssociateIcon(index) {
+    return L.divIcon({
+        className: "custom-marker associate-marker",
+        html: `<div class="associate-pin">A${index + 1}</div>`,
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+    });
+}
+
 function createArrowIcon(angle) {
     return L.divIcon({
         className: "direction-arrow",
@@ -86,7 +95,23 @@ function buildSearchedArea(validSightings) {
     ];
 }
 
-function SightingMap({ sightings }) {
+function buildRouteCorridors(origin, routeCount = 3) {
+    const bearings = [-25, 0, 28];
+    const distance = 0.16;
+
+    return bearings.slice(0, routeCount).map((bearing) => {
+        const radians = (bearing - 90) * (Math.PI / 180);
+        return [
+            origin,
+            [
+                origin[0] + Math.sin(radians) * distance,
+                origin[1] + Math.cos(radians) * distance,
+            ],
+        ];
+    });
+}
+
+function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations = [] }) {
     const validSightings = sightings
         .filter(
             (s) =>
@@ -104,10 +129,29 @@ function SightingMap({ sightings }) {
                 new Date(b.sighting_time || b.created_at)
         );
 
+    const validAssociateLocations = associateLocations
+        .filter(
+            (location) =>
+                Number.isFinite(Number(location.latitude)) &&
+                Number.isFinite(Number(location.longitude))
+        )
+        .map((location) => ({
+            ...location,
+            latitude: Number(location.latitude),
+            longitude: Number(location.longitude),
+        }));
+
     const pathPositions = validSightings.map((s) => [
         s.latitude,
         s.longitude,
     ]);
+    const associatePositions = validAssociateLocations.map((location) => [
+        location.latitude,
+        location.longitude,
+    ]);
+    const originPosition = pathPositions[0] || associatePositions[0] || [32.7767, -96.797];
+    const fitPositions = [...pathPositions, ...associatePositions];
+    const routeCorridors = escapeAnalysis ? buildRouteCorridors(originPosition, escapeAnalysis.likelyRoutes?.length || 3) : [];
 
     const arrowPositions = [];
 
@@ -126,8 +170,8 @@ function SightingMap({ sightings }) {
         });
     }
 
-    if (validSightings.length === 0) {
-        return <p>No mapped sightings yet.</p>;
+    if (validSightings.length === 0 && validAssociateLocations.length === 0 && !escapeAnalysis) {
+        return <p>No mapped sightings, route analysis, or associate locations yet.</p>;
     }
 
     const searchedArea = buildSearchedArea(validSightings);
@@ -145,7 +189,7 @@ function SightingMap({ sightings }) {
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
 
-                    <FitMapToSightings positions={pathPositions} />
+                    <FitMapToSightings positions={fitPositions.length > 0 ? fitPositions : [originPosition]} />
 
                     {searchedArea.length > 0 && (
                         <Polygon
@@ -160,6 +204,41 @@ function SightingMap({ sightings }) {
                             }}
                         />
                     )}
+
+                    {escapeAnalysis?.reachableBands?.map((band) => (
+                        <Circle
+                            key={`escape-band-${band.minutes}`}
+                            center={originPosition}
+                            radius={band.miles * 1609.34}
+                            pathOptions={{
+                                color: band.active ? "#60a5fa" : "#64748b",
+                                fillColor: band.active ? "#2563eb" : "#475569",
+                                fillOpacity: band.active ? 0.05 : 0.02,
+                                opacity: band.active ? 0.56 : 0.28,
+                                weight: 2,
+                                dashArray: band.active ? "10 8" : "5 8",
+                            }}
+                        >
+                            <Popup>
+                                <strong>{band.minutes}-minute reachable area</strong>
+                                <br />
+                                Estimated radius: {band.miles} miles
+                            </Popup>
+                        </Circle>
+                    ))}
+
+                    {routeCorridors.map((corridor, index) => (
+                        <Polyline
+                            key={`escape-corridor-${index}`}
+                            positions={corridor}
+                            pathOptions={{
+                                color: ["#f97316", "#facc15", "#38bdf8"][index] || "#93c5fd",
+                                dashArray: "12 8",
+                                weight: 5,
+                                opacity: 0.82,
+                            }}
+                        />
+                    ))}
 
                     {validSightings.map((sighting, index) => (
                         <Circle
@@ -221,6 +300,22 @@ function SightingMap({ sightings }) {
                             </Popup>
                         </Marker>
                     ))}
+
+                    {validAssociateLocations.map((location, index) => (
+                        <Marker
+                            key={location.id || `associate-${index}`}
+                            position={[location.latitude, location.longitude]}
+                            icon={createAssociateIcon(index)}
+                        >
+                            <Popup>
+                                <strong>{location.name || `Known associate ${index + 1}`}</strong>
+                                <br />
+                                {location.address || "Address recorded"}
+                                <br />
+                                Relationship: {location.relationship || "Not recorded"}
+                            </Popup>
+                        </Marker>
+                    ))}
                 </MapContainer>
             </div>
 
@@ -248,6 +343,14 @@ function SightingMap({ sightings }) {
                 <span>
                     <i className="legend-area"></i>
                     Searched area
+                </span>
+                <span>
+                    <i className="legend-escape"></i>
+                    Escape route intelligence
+                </span>
+                <span>
+                    <i className="legend-associate"></i>
+                    Associate address
                 </span>
             </div>
         </div>

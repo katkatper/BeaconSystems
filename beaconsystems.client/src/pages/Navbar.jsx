@@ -25,8 +25,6 @@ function Navbar() {
         ["Missing Persons", "/missing", "M"],
         ["Cases", "/cases", "C"],
         ["Intelligence", "/intelligence", "I"],
-        ["Sightings", "/sightings", "S"],
-        ["Evidence", "/evidence-upload", "E"],
         ["Alerts", "/alerts", "A"],
         ["Agencies", "/agencies", "A"],
         ["Analytics", "/analytics", "A"],
@@ -41,10 +39,10 @@ function Navbar() {
             !["Users", "Administration"].includes(label)
         ),
         investigator: navigation.filter(([label]) =>
-            ["Dashboard", "Missing Persons", "Cases", "Intelligence", "Sightings", "Evidence", "Alerts"].includes(label)
+            ["Dashboard", "Missing Persons", "Cases", "Intelligence", "Alerts"].includes(label)
         ),
         analyst: navigation.filter(([label]) =>
-            ["Dashboard", "Cases", "Intelligence", "Sightings", "Evidence", "Alerts", "Analytics"].includes(label)
+            ["Dashboard", "Cases", "Intelligence", "Alerts", "Analytics"].includes(label)
         ),
         viewer: navigation.filter(([label]) =>
             ["Dashboard", "Missing Persons", "Cases"].includes(label)
@@ -155,7 +153,7 @@ function Navbar() {
                             </div>
                             <div>
                                 <h2>Beacon</h2>
-                                <span>Recovery Intelligence Platform</span>
+                                <span>Investigative Intelligence Platform</span>
                             </div>
                         </Link>
                     </div>

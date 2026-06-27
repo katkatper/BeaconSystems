@@ -7525,6 +7525,309 @@ a.case-health-row:hover {
     border-color: rgba(34, 197, 94, 0.42);
 }
 
+.associate-pin {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    color: #fef3c7;
+    font-size: 12px;
+    font-weight: 900;
+    background: rgba(124, 45, 18, 0.92);
+    border: 2px solid rgba(251, 191, 36, 0.86);
+    border-radius: 999px;
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.28);
+}
+
+.legend-escape,
+.legend-associate {
+    display: inline-block;
+    width: 26px;
+    height: 8px;
+    border-radius: 999px;
+}
+
+.legend-escape {
+    background: linear-gradient(90deg, #f97316 0 45%, transparent 45% 58%, #38bdf8 58% 100%);
+    border: 1px solid rgba(251, 191, 36, 0.55);
+}
+
+.legend-associate {
+    width: 14px;
+    height: 14px;
+    background: rgba(124, 45, 18, 0.92);
+    border: 2px solid rgba(251, 191, 36, 0.86);
+    border-radius: 999px;
+}
+
+.case-associates-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(320px, 0.9fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.case-associate-list {
+    display: grid;
+    gap: 12px;
+}
+
+.case-associate-card,
+.case-associate-form {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    background: rgba(30, 41, 59, 0.66);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.case-associate-card strong,
+.case-associate-form h2 {
+    color: #eef4ff;
+}
+
+.case-associate-card span {
+    color: #93c5fd;
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.case-associate-card p,
+.case-associate-card small,
+.case-associate-form p {
+    margin: 0;
+    color: #b8c4d8;
+    line-height: 1.4;
+}
+
+.case-associate-coordinate-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.case-associate-form textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+
+@media (max-width: 900px) {
+    .case-associates-layout,
+    .case-associate-coordinate-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.escape-route-page {
+    max-width: 1500px;
+}
+
+.escape-route-embedded {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+.escape-route-case-heading {
+    margin-bottom: 14px;
+}
+
+.escape-route-layout,
+.escape-analysis-grid {
+    display: grid;
+    grid-template-columns: minmax(420px, 1.05fr) minmax(380px, 0.95fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.escape-analysis-grid {
+    grid-template-columns: repeat(2, minmax(360px, 1fr));
+    margin-top: 18px;
+}
+
+.escape-route-form,
+.escape-route-map-panel,
+.route-ranking-panel,
+.choke-point-panel,
+.resource-allocation-panel,
+.transparency-panel {
+    min-height: 0;
+}
+
+.escape-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.escape-form-grid textarea {
+    grid-column: span 3;
+    min-height: 96px;
+    resize: vertical;
+}
+
+.escape-route-form button {
+    width: 100%;
+    min-height: 54px;
+    margin-top: 14px;
+}
+
+.escape-radius-map {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 420px;
+    overflow: hidden;
+    background:
+        linear-gradient(rgba(96, 165, 250, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(96, 165, 250, 0.08) 1px, transparent 1px),
+        radial-gradient(circle at center, rgba(59, 130, 246, 0.16), rgba(15, 23, 42, 0.34));
+    background-size: 42px 42px, 42px 42px, auto;
+    border: 1px solid rgba(147, 197, 253, 0.24);
+    border-radius: 8px;
+}
+
+.escape-radius-map span {
+    position: absolute;
+    display: grid;
+    place-items: start center;
+    padding-top: 8px;
+    color: rgba(191, 219, 254, 0.86);
+    font-size: 12px;
+    font-weight: 900;
+    border: 1px solid rgba(148, 163, 184, 0.34);
+    border-radius: 999px;
+}
+
+.escape-radius-map span.active {
+    color: #dbeafe;
+    border-color: rgba(96, 165, 250, 0.78);
+    box-shadow: 0 0 24px rgba(37, 99, 235, 0.18);
+}
+
+.escape-radius-map strong {
+    z-index: 1;
+    max-width: 180px;
+    padding: 10px 14px;
+    color: #eff6ff;
+    text-align: center;
+    background: rgba(15, 23, 42, 0.82);
+    border: 1px solid rgba(147, 197, 253, 0.28);
+    border-radius: 999px;
+}
+
+.escape-radius-list {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.escape-radius-list div,
+.choke-point-card,
+.route-score-card {
+    padding: 12px;
+    background: rgba(30, 41, 59, 0.66);
+    border: 1px solid rgba(147, 197, 253, 0.18);
+    border-radius: 8px;
+}
+
+.escape-radius-list span,
+.route-score-card span,
+.choke-point-card span {
+    display: block;
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.escape-radius-list strong {
+    display: block;
+    margin-top: 4px;
+    color: #eaf2ff;
+    font-size: 20px;
+}
+
+.route-ranking-panel,
+.choke-point-panel,
+.resource-allocation-panel,
+.transparency-panel {
+    display: grid;
+    gap: 12px;
+}
+
+.route-score-card {
+    display: grid;
+    gap: 10px;
+}
+
+.route-score-card div {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: start;
+}
+
+.route-score-card h2 {
+    margin: 0;
+    color: #eef4ff;
+    font-size: 22px;
+}
+
+.route-score-card meter {
+    width: 100%;
+    height: 14px;
+}
+
+.route-score-card p,
+.choke-point-card p,
+.resource-allocation-panel p,
+.transparency-panel p {
+    margin: 0;
+    color: #cbd5e1;
+    line-height: 1.45;
+}
+
+.choke-point-card {
+    display: grid;
+    gap: 8px;
+}
+
+.choke-point-card strong {
+    color: #eef4ff;
+    font-size: 18px;
+}
+
+.resource-allocation-panel p {
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.46);
+    border: 1px solid rgba(147, 197, 253, 0.14);
+    border-radius: 8px;
+}
+
+@media (max-width: 1100px) {
+    .escape-route-layout,
+    .escape-analysis-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .escape-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .escape-form-grid textarea {
+        grid-column: auto;
+    }
+
+    .escape-radius-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 .security-control-card.attention {
     border-color: rgba(245, 158, 11, 0.52);
 }

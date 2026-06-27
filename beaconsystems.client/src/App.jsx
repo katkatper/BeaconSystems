@@ -27,6 +27,7 @@ import Sightings from "./pages/Sightings.jsx";
 import Analytics from "./pages/Analytics.jsx";
 import Administration from "./pages/Administration.jsx";
 import CommandTools from "./pages/CommandTools.jsx";
+import EscapeRouteAnalysis from "./pages/EscapeRouteAnalysis.jsx";
 import "./App.css";
 import BoloBoard from "./pages/BoloBoard.jsx";
 import SupervisorQueue from "./pages/SupervisorQueue";
@@ -242,6 +243,14 @@ function AppLayout() {
                     element={
                         <ProtectedRoute>
                             <IntelligenceCenter />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/escape-routes"
+                    element={
+                        <ProtectedRoute>
+                            <EscapeRouteAnalysis />
                         </ProtectedRoute>
                     }
                 />

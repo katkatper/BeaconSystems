@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import SightingMap from "./SightingMap.jsx";
+import EscapeRouteAnalysis from "./EscapeRouteAnalysis.jsx";
 
 function CaseDetail() {
     const { id } = useParams();
@@ -19,6 +20,15 @@ function CaseDetail() {
     const [agencyExchanges, setAgencyExchanges] = useState([]);
     const [selectedExternalRequest, setSelectedExternalRequest] = useState(null);
     const [activeTab, setActiveTab] = useState("overview");
+    const [associateForm, setAssociateForm] = useState({
+        name: "",
+        relationship: "",
+        address: "",
+        latitude: "",
+        longitude: "",
+        notes: "",
+    });
+    const [associateMessage, setAssociateMessage] = useState("");
 
     const [sightingForm, setSightingForm] = useState({
         location: "",
@@ -128,6 +138,13 @@ function CaseDetail() {
         });
     };
 
+    const handleAssociateChange = (e) => {
+        setAssociateForm({
+            ...associateForm,
+            [e.target.name]: e.target.value,
+        });
+    };
+
     const submitSighting = async (e) => {
         e.preventDefault();
 
@@ -180,6 +197,59 @@ function CaseDetail() {
         } catch (err) {
             console.error(err);
             setSightingMessage("Could not add sighting.");
+        }
+    };
+
+    const submitAssociate = async (e) => {
+        e.preventDefault();
+
+        if (!person?.person_id) {
+            setAssociateMessage("Missing person profile is not loaded yet.");
+            return;
+        }
+
+        const token = localStorage.getItem("token");
+        const nextAssociate = {
+            id: `associate-${Date.now()}`,
+            name: associateForm.name || "Known associate",
+            relationship: associateForm.relationship || "Not recorded",
+            address: associateForm.address || "Address not recorded",
+            latitude: associateForm.latitude,
+            longitude: associateForm.longitude,
+            notes: associateForm.notes,
+        };
+        const nextAssociates = [...associates, nextAssociate];
+
+        try {
+            const response = await fetch(`http://127.0.0.1:8000/persons/${person.person_id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    known_associates: JSON.stringify(nextAssociates),
+                }),
+            });
+
+            if (!response.ok) throw new Error("Failed to save associate");
+
+            setPerson({
+                ...person,
+                known_associates: JSON.stringify(nextAssociates),
+            });
+            setAssociateForm({
+                name: "",
+                relationship: "",
+                address: "",
+                latitude: "",
+                longitude: "",
+                notes: "",
+            });
+            setAssociateMessage("Associate added to this case profile.");
+        } catch (err) {
+            console.error(err);
+            setAssociateMessage("Could not save associate.");
         }
     };
 
@@ -279,14 +349,53 @@ function CaseDetail() {
             .replace(/_/g, " ")
             .replace(/\b\w/g, (letter) => letter.toUpperCase());
     };
+    const parseAssociates = () => {
+        const raw = person?.known_associates || person?.addresses || "";
+
+        if (!raw.trim()) return [];
+
+        try {
+            const parsed = JSON.parse(raw);
+            const entries = Array.isArray(parsed) ? parsed : [parsed];
+
+            return entries.map((entry, index) => ({
+                id: entry.id || `associate-${index}`,
+                name: entry.name || entry.associate || `Known associate ${index + 1}`,
+                relationship: entry.relationship || entry.type || "Not recorded",
+                address: entry.address || entry.location || "Address recorded",
+                latitude: entry.latitude ?? entry.lat ?? "",
+                longitude: entry.longitude ?? entry.lng ?? entry.lon ?? "",
+                notes: entry.notes || "",
+            }));
+        } catch {
+            return raw
+                .split(";")
+                .map((entry, index) => {
+                    const parts = entry.split("|").map((part) => part.trim());
+                    return {
+                        id: `associate-${index}`,
+                        name: parts[0] || `Known associate ${index + 1}`,
+                        address: parts[1] || parts[0] || "Address recorded",
+                        relationship: parts[2] || "Not recorded",
+                        latitude: parts[3],
+                        longitude: parts[4],
+                        notes: parts[5] || "",
+                    };
+                });
+        }
+    };
     const personName = person
         ? `${person.first_name || ""} ${person.last_name || ""}`.trim()
         : "Missing Person";
+    const associates = parseAssociates();
+    const associateLocations = associates.filter((entry) => entry.latitude && entry.longitude);
     const caseTabs = [
         ["overview", "Overview"],
         ["timeline", "Timeline"],
+        ["escapeRoutes", "Escape Routes"],
         ["sightings", "Sightings"],
         ["evidence", "Evidence"],
+        ["associates", "Associates"],
         ["leads", "Leads"],
         ["intelligence", "Intelligence"],
         ["externalRequests", "External Requests"],
@@ -520,10 +629,27 @@ function CaseDetail() {
                 </div>
             )}
 
+            {activeTab === "escapeRoutes" && (
+                <div className="case-section case-tab-panel">
+                    <EscapeRouteAnalysis
+                        embedded
+                        caseContext={{
+                            caseNumber: caseItem.case_number || `Case ${caseItem.case_id}`,
+                            lastSeenLocation: person?.last_seen_location || "",
+                            sightings: sortedSightings,
+                            associateLocations,
+                        }}
+                    />
+                </div>
+            )}
+
             {activeTab === "sightings" && (
                 <div className="case-section case-tab-panel">
-                    <h2>Sightings</h2>
-                    <SightingMap sightings={sortedSightings} />
+                    <h2>Case Geography</h2>
+                    <SightingMap
+                        sightings={sortedSightings}
+                        associateLocations={associateLocations}
+                    />
                 </div>
             )}
 
@@ -567,6 +693,79 @@ function CaseDetail() {
                             </article>
                         ))
                     )}
+                </div>
+            )}
+
+            {activeTab === "associates" && (
+                <div className="case-section case-tab-panel">
+                    <div className="case-associates-layout">
+                        <section>
+                            <h2>Known Associates</h2>
+                            {associates.length === 0 ? (
+                                <p>No known associates recorded.</p>
+                            ) : (
+                                <div className="case-associate-list">
+                                    {associates.map((associate) => (
+                                        <article key={associate.id} className="case-associate-card">
+                                            <strong>{associate.name}</strong>
+                                            <span>{associate.relationship}</span>
+                                            <p>{associate.address}</p>
+                                            {associate.latitude && associate.longitude ? (
+                                                <small>Mapped at {associate.latitude}, {associate.longitude}</small>
+                                            ) : (
+                                                <small>No map coordinates recorded.</small>
+                                            )}
+                                            {associate.notes && <p>{associate.notes}</p>}
+                                        </article>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        <form className="case-associate-form" onSubmit={submitAssociate}>
+                            <h2>Add Associate</h2>
+                            <input
+                                name="name"
+                                value={associateForm.name}
+                                onChange={handleAssociateChange}
+                                placeholder="Associate name"
+                            />
+                            <input
+                                name="relationship"
+                                value={associateForm.relationship}
+                                onChange={handleAssociateChange}
+                                placeholder="Relationship"
+                            />
+                            <input
+                                name="address"
+                                value={associateForm.address}
+                                onChange={handleAssociateChange}
+                                placeholder="Address or known location"
+                            />
+                            <div className="case-associate-coordinate-row">
+                                <input
+                                    name="latitude"
+                                    value={associateForm.latitude}
+                                    onChange={handleAssociateChange}
+                                    placeholder="Latitude"
+                                />
+                                <input
+                                    name="longitude"
+                                    value={associateForm.longitude}
+                                    onChange={handleAssociateChange}
+                                    placeholder="Longitude"
+                                />
+                            </div>
+                            <textarea
+                                name="notes"
+                                value={associateForm.notes}
+                                onChange={handleAssociateChange}
+                                placeholder="Notes, caution flags, or investigative context"
+                            />
+                            <button type="submit">Add Associate</button>
+                            {associateMessage && <p>{associateMessage}</p>}
+                        </form>
+                    </div>
                 </div>
             )}
 
