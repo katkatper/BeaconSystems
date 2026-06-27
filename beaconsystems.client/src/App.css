@@ -5729,11 +5729,16 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
 
 .top-header-actions button {
     position: relative;
+    display: flex;
+    align-items: center;
     min-height: 38px;
     padding: 7px 11px;
     color: #dbeafe;
+    font-weight: 800;
     background: rgba(30, 41, 59, 0.62);
     border: 1px solid rgba(147, 197, 253, 0.22);
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 .top-header-actions a {
@@ -5768,7 +5773,8 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     border-radius: 999px;
 }
 
-.top-header-actions a:hover {
+.top-header-actions a:hover,
+.top-header-actions button:hover {
     color: #f8fafc;
     background: rgba(37, 99, 235, 0.24);
     border-color: rgba(147, 197, 253, 0.4);

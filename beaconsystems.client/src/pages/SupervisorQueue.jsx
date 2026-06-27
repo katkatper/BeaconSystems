@@ -72,7 +72,10 @@ function SupervisorQueue() {
     const workspaceCards = [
         ["personnel", "Personnel", "Workload, capacity, team assignments, and staffing.", capacityInvestigators.length],
         ["investigations", "Investigations", "Stall risk, lead follow-up, timelines, and command attention.", commandDashboard.cases_needing_attention_today || 0],
+        ["operations", "Operations", "Operational alerts, BOLOs, and urgent field activity.", commandDashboard.active_alerts || 0],
         ["compliance", "Compliance Review", "Legal approvals, access reviews, and audit readiness.", oversightCount],
+        ["community", "Agency Coordination", "Partner agencies, shared intelligence, and outside requests.", agencyCoordination.outstanding_requests || 0],
+        ["reports", "Reports", "Command snapshots, productivity, and readiness summaries.", commandDashboard.active_cases || 0],
     ];
     const visibleItems = (sectionKey, items, collapsedCount = 2, expandedCount = 6) =>
         (items || []).slice(0, expandedSections[sectionKey] ? expandedCount : collapsedCount);
@@ -125,7 +128,9 @@ function SupervisorQueue() {
                 console.error(err);
 
                 if (isMounted) {
-                    setMessage(err.message || "Could not load supervisor queue.");
+                    setMessage(
+                        "Supervisor queue is unavailable. Confirm this account has a role and agency assignment if this persists."
+                    );
                 }
             }
         };

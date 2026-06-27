@@ -367,7 +367,7 @@ def attach_partner_intake_to_case(
     intake_id: int,
     data: PartnerIntakeAttach,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
     intake = db.query(PartnerIntakeRecord).filter(
         PartnerIntakeRecord.intake_id == intake_id
@@ -458,7 +458,7 @@ def dismiss_partner_intake_record(
     intake_id: int,
     data: PartnerIntakeReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
     intake = db.query(PartnerIntakeRecord).filter(
         PartnerIntakeRecord.intake_id == intake_id

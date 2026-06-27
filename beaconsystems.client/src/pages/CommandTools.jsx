@@ -1,21 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiGet, apiPost } from "../api.jsx";
+import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
 
 const taskItems = [
-    ["High-risk missing person cases", "Review active critical-risk cases and confirm command attention.", "High", "/missing?risk=high"],
-    ["Overdue investigations", "Check cases with no recent activity or missing follow-up documentation.", "High", "/cases?filter=stalled"],
-    ["Unassigned leads", "Assign new leads to investigators with available capacity.", "Medium", "/intelligence"],
-    ["Unreviewed evidence", "Review new evidence, lab returns, and custody exceptions.", "Medium", "/evidence-upload"],
-    ["New critical sightings", "Validate urgent sightings and decide whether to escalate alerts.", "High", "/sightings"],
-    ["Escalated alerts", "Review BOLOs, potential matches, and investigator escalations.", "High", "/alerts"],
+    ["high-risk-missing-persons", "High-risk missing person cases", "Review active critical-risk cases and confirm command attention.", "High", "/missing?risk=high"],
+    ["overdue-investigations", "Overdue investigations", "Check cases with no recent activity or missing follow-up documentation.", "High", "/cases?filter=stalled"],
+    ["unassigned-leads", "Unassigned leads", "Assign new leads to investigators with available capacity.", "Medium", "/intelligence"],
+    ["unreviewed-evidence", "Unreviewed evidence", "Review new evidence, lab returns, and custody exceptions.", "Medium", "/evidence-upload"],
+    ["new-critical-sightings", "New critical sightings", "Validate urgent sightings and decide whether to escalate alerts.", "High", "/sightings"],
+    ["escalated-alerts", "Escalated alerts", "Review BOLOs, potential matches, and investigator escalations.", "High", "/alerts"],
 ];
 
 const notificationItems = [
-    ["Potential hospital match", "External record match is ready for supervisor review.", "/intelligence"],
-    ["New BOLO activity", "An operational alert was created for field coordination.", "/alerts"],
-    ["Evidence custody update", "A custody event was recorded on an active case.", "/evidence-upload"],
-    ["Agency request received", "A partner agency submitted a new information request.", "/agencies"],
+    ["potential-hospital-match", "Potential hospital match", "External record match is ready for supervisor review.", "/intelligence"],
+    ["new-bolo-activity", "New BOLO activity", "An operational alert was created for field coordination.", "/alerts"],
+    ["evidence-custody-update", "Evidence custody update", "A custody event was recorded on an active case.", "/evidence-upload"],
+    ["agency-request-received", "Agency request received", "A partner agency submitted a new information request.", "/agencies"],
 ];
 
 const settingsItems = [
@@ -31,6 +32,7 @@ function CommandTools() {
     const [mfaSetup, setMfaSetup] = useState(null);
     const [mfaCode, setMfaCode] = useState("");
     const [mfaMessage, setMfaMessage] = useState("");
+    const [, setReadStateVersion] = useState(0);
     const username = localStorage.getItem("username") || "Beacon User";
     const role = localStorage.getItem("role") || "viewer";
     const isTasks = tool === "tasks";
@@ -38,13 +40,19 @@ function CommandTools() {
     const isSettings = tool === "settings";
     const isProfile = tool === "profile";
     const liveTaskItems = [
-        [taskItems[0][0], taskItems[0][1], taskItems[0][2], taskItems[0][3], summary?.high_priority_cases ?? 0],
-        [taskItems[1][0], taskItems[1][1], taskItems[1][2], taskItems[1][3], summary?.stalled_cases ?? 0],
-        [taskItems[2][0], taskItems[2][1], taskItems[2][2], taskItems[2][3], summary?.unassigned_cases ?? 0],
-        [taskItems[3][0], taskItems[3][1], taskItems[3][2], taskItems[3][3], summary?.evidence_awaiting_review ?? 0],
-        [taskItems[4][0], taskItems[4][1], taskItems[4][2], taskItems[4][3], summary?.critical_sightings ?? 0],
-        [taskItems[5][0], taskItems[5][1], taskItems[5][2], taskItems[5][3], summary?.new_alerts ?? 0],
-    ];
+        { id: taskItems[0][0], title: taskItems[0][1], detail: taskItems[0][2], priority: taskItems[0][3], path: taskItems[0][4], count: summary?.high_priority_cases ?? 0 },
+        { id: taskItems[1][0], title: taskItems[1][1], detail: taskItems[1][2], priority: taskItems[1][3], path: taskItems[1][4], count: summary?.stalled_cases ?? 0 },
+        { id: taskItems[2][0], title: taskItems[2][1], detail: taskItems[2][2], priority: taskItems[2][3], path: taskItems[2][4], count: summary?.unassigned_cases ?? 0 },
+        { id: taskItems[3][0], title: taskItems[3][1], detail: taskItems[3][2], priority: taskItems[3][3], path: taskItems[3][4], count: summary?.evidence_awaiting_review ?? 0 },
+        { id: taskItems[4][0], title: taskItems[4][1], detail: taskItems[4][2], priority: taskItems[4][3], path: taskItems[4][4], count: summary?.critical_sightings ?? 0 },
+        { id: taskItems[5][0], title: taskItems[5][1], detail: taskItems[5][2], priority: taskItems[5][3], path: taskItems[5][4], count: summary?.new_alerts ?? 0 },
+    ].map((item) => ({ ...item, count: getVisibleCount("tasks", item) }));
+    const liveNotificationItems = [
+        { id: notificationItems[0][0], title: notificationItems[0][1], detail: notificationItems[0][2], path: notificationItems[0][3], count: summary?.external_matches ?? 0 },
+        { id: notificationItems[1][0], title: notificationItems[1][1], detail: notificationItems[1][2], path: notificationItems[1][3], count: summary?.new_alerts ?? 0 },
+        { id: notificationItems[2][0], title: notificationItems[2][1], detail: notificationItems[2][2], path: notificationItems[2][3], count: summary?.evidence_awaiting_review ?? 0 },
+        { id: notificationItems[3][0], title: notificationItems[3][1], detail: notificationItems[3][2], path: notificationItems[3][3], count: summary?.agency_requests ?? 0 },
+    ].map((item) => ({ ...item, count: getVisibleCount("notifications", item) }));
 
     useEffect(() => {
         let isMounted = true;
@@ -67,6 +75,10 @@ function CommandTools() {
             isMounted = false;
         };
     }, []);
+
+    useEffect(() => subscribeToReadState(() => {
+        setReadStateVersion((current) => current + 1);
+    }), []);
 
     const startMfaSetup = async () => {
         setMfaMessage("");
@@ -123,7 +135,7 @@ function CommandTools() {
 
             {isTasks && (
                 <section className="command-tool-grid">
-                    {liveTaskItems.map(([title, detail, priority, path, count]) => (
+                    {liveTaskItems.map(({ id, title, detail, priority, path, count }) => (
                         <article key={title} className="beacon-panel command-tool-card">
                             <div>
                                 <span className={`task-priority ${priority.toLowerCase()}`}>
@@ -133,7 +145,9 @@ function CommandTools() {
                                 <h2>{title}</h2>
                             </div>
                             <p>{detail}</p>
-                            <Link to={path}>Open</Link>
+                            <Link to={path} onClick={() => markItemViewed("tasks", id)}>
+                                Open
+                            </Link>
                         </article>
                     ))}
                 </section>
@@ -141,11 +155,16 @@ function CommandTools() {
 
             {isNotifications && (
                 <section className="command-tool-grid">
-                    {notificationItems.map(([title, detail, path]) => (
+                    {liveNotificationItems.map(({ id, title, detail, path, count }) => (
                         <article key={title} className="beacon-panel command-tool-card">
-                            <h2>{title}</h2>
+                            <div>
+                                <span className="task-count">{count}</span>
+                                <h2>{title}</h2>
+                            </div>
                             <p>{detail}</p>
-                            <Link to={path}>Review</Link>
+                            <Link to={path} onClick={() => markItemViewed("notifications", id)}>
+                                Review
+                            </Link>
                         </article>
                     ))}
                 </section>

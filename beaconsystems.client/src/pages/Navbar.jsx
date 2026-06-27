@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { apiGet } from "../api.jsx";
+import { getUnviewedCount, subscribeToReadState } from "../commandCenterState.js";
 
 const globalSearchTargets = [
     ["Cases", "/cases", "case number, status, assigned investigator"],
@@ -16,6 +17,7 @@ function Navbar() {
     const [collapsed, setCollapsed] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [summary, setSummary] = useState(null);
+    const [, setReadStateVersion] = useState(0);
     const role = localStorage.getItem("role");
     const username = localStorage.getItem("username") || "Beacon User";
     const navigation = [
@@ -58,18 +60,22 @@ function Navbar() {
     };
     const displayRole = roleLabels[role] || "Team Member";
     const visibleLinks = navLinks[role] || navLinks.viewer;
-    const taskCount = summary
-        ? (summary.high_priority_cases || 0)
-            + (summary.stalled_cases || 0)
-            + (summary.unassigned_cases || 0)
-            + (summary.evidence_awaiting_review || 0)
-            + (summary.new_alerts || 0)
-        : 0;
-    const notificationCount = summary
-        ? (summary.new_alerts || 0)
-            + (summary.external_matches || 0)
-            + (summary.agency_requests || 0)
-        : 0;
+    const taskBadgeItems = [
+        { id: "high-risk-missing-persons", count: summary?.high_priority_cases || 0 },
+        { id: "overdue-investigations", count: summary?.stalled_cases || 0 },
+        { id: "unassigned-leads", count: summary?.unassigned_cases || 0 },
+        { id: "unreviewed-evidence", count: summary?.evidence_awaiting_review || 0 },
+        { id: "new-critical-sightings", count: summary?.critical_sightings || 0 },
+        { id: "escalated-alerts", count: summary?.new_alerts || 0 },
+    ];
+    const notificationBadgeItems = [
+        { id: "potential-hospital-match", count: summary?.external_matches || 0 },
+        { id: "new-bolo-activity", count: summary?.new_alerts || 0 },
+        { id: "evidence-custody-update", count: summary?.evidence_awaiting_review || 0 },
+        { id: "agency-request-received", count: summary?.agency_requests || 0 },
+    ];
+    const taskCount = getUnviewedCount("tasks", taskBadgeItems);
+    const notificationCount = getUnviewedCount("notifications", notificationBadgeItems);
     const searchResults = useMemo(() => {
         const normalized = searchTerm.trim().toLowerCase();
 
@@ -112,6 +118,10 @@ function Navbar() {
             clearInterval(interval);
         };
     }, []);
+
+    useEffect(() => subscribeToReadState(() => {
+        setReadStateVersion((current) => current + 1);
+    }), []);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -202,14 +212,14 @@ function Navbar() {
                         Notifications
                         {notificationCount > 0 && <span className="command-badge">{notificationCount}</span>}
                     </Link>
-                <Link to="/command/tasks">
-                    Tasks
-                    {taskCount > 0 && <span className="command-badge">{taskCount}</span>}
-                </Link>
-                <Link to="/command/settings">Settings</Link>
-                <Link to="/command/profile">Profile</Link>
-                <button type="button" onClick={handleLogout}>Logout</button>
-            </div>
+                    <Link to="/command/tasks">
+                        Tasks
+                        {taskCount > 0 && <span className="command-badge">{taskCount}</span>}
+                    </Link>
+                    <Link to="/command/settings">Settings</Link>
+                    <Link to="/command/profile">Profile</Link>
+                    <button type="button" onClick={handleLogout}>Logout</button>
+                </div>
             </header>
         </>
     );

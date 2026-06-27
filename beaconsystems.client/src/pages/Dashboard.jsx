@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiGet } from "../api.jsx";
 import SightingMap from "./SightingMap.jsx";
+import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
 
 
 
@@ -9,6 +10,7 @@ function Dashboard() {
     const [summary, setSummary] = useState(null);
     const [supervisorQueue, setSupervisorQueue] = useState(null);
     const [showAllActionItems, setShowAllActionItems] = useState(false);
+    const [, setReadStateVersion] = useState(0);
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
     );
@@ -26,6 +28,7 @@ function Dashboard() {
                 ["Personnel", "/supervisor/personnel"],
                 ["Audit Center", "/audit"],
                 ["Evidence", "/evidence-upload"],
+                ["Partners", "/partner-sources"],
             ],
         },
         agency_admin: {
@@ -39,6 +42,7 @@ function Dashboard() {
                 ["Personnel", "/supervisor/personnel"],
                 ["Audit Center", "/audit"],
                 ["Evidence", "/evidence-upload"],
+                ["Partners", "/partner-sources"],
             ],
         },
         supervisor: {
@@ -52,6 +56,7 @@ function Dashboard() {
                 ["Personnel", "/supervisor/personnel"],
                 ["Audit Center", "/audit"],
                 ["Evidence", "/evidence-upload"],
+                ["Partners", "/partner-sources"],
             ],
         },
         investigator: {
@@ -156,6 +161,10 @@ function Dashboard() {
         };
     }, [role]);
 
+    useEffect(() => subscribeToReadState(() => {
+        setReadStateVersion((current) => current + 1);
+    }), []);
+
     const metricLinks = {
         Cases: "/cases",
         Alerts: "/alerts",
@@ -224,6 +233,7 @@ function Dashboard() {
         ];
     const actionRequiredItems = [
         {
+            id: "high-risk-missing-persons",
             title: "High-risk missing person cases",
             count: summary?.high_priority_cases ?? 3,
             severity: "high",
@@ -231,6 +241,7 @@ function Dashboard() {
             path: "/missing?risk=high",
         },
         {
+            id: "overdue-investigations",
             title: "Investigations at risk of stalling",
             count: summary?.stalled_cases ?? stallRiskSummary.inactive_7_days ?? 0,
             severity: "high",
@@ -238,6 +249,7 @@ function Dashboard() {
             path: "/cases?filter=stalled",
         },
         {
+            id: "unassigned-leads",
             title: "Unassigned leads",
             count: summary?.unassigned_leads ?? leadSummary.unassigned ?? 0,
             severity: "medium",
@@ -245,6 +257,7 @@ function Dashboard() {
             path: "/intelligence",
         },
         {
+            id: "unreviewed-evidence",
             title: "Unreviewed evidence",
             count: summary?.evidence_awaiting_review ?? 4,
             severity: "medium",
@@ -252,6 +265,7 @@ function Dashboard() {
             path: "/evidence-upload?status=overdue_review",
         },
         {
+            id: "new-critical-sightings",
             title: "Critical sightings",
             count: summary?.critical_sightings ?? (timelineSummary.recent_sightings || []).length,
             severity: "high",
@@ -259,13 +273,14 @@ function Dashboard() {
             path: "/sightings?filter=critical",
         },
         {
+            id: "escalated-alerts",
             title: "Escalated alerts",
             count: summary?.new_alerts ?? 0,
             severity: "high",
             detail: "Review BOLOs, potential matches, and investigator escalations.",
             path: "/alerts",
         },
-    ];
+    ].map((item) => ({ ...item, count: getVisibleCount("tasks", item) }));
     const visibleActionItems = showAllActionItems ? actionRequiredItems : actionRequiredItems.slice(0, 4);
     const riskScore = Math.min(
         99,
@@ -359,7 +374,13 @@ function Dashboard() {
                                                 <strong>{item.title}</strong>
                                                 <p>{item.detail}</p>
                                             </div>
-                                            <Link to={item.path}>{item.count}</Link>
+                                            <Link
+                                                to={item.path}
+                                                onClick={() => markItemViewed("tasks", item.id)}
+                                                aria-label={`Open ${item.title}`}
+                                            >
+                                                {item.count}
+                                            </Link>
                                         </article>
                                     ))}
                                 </div>
@@ -468,7 +489,7 @@ function Dashboard() {
                             <section className="dashboard-panel agency-coordination-panel">
                                 <div className="dashboard-panel-header">
                                     <span>Inter-Agency Coordination</span>
-                                    <Link to="/partner-sources">Partners</Link>
+                                    <Link to="/supervisor/community">Review</Link>
                                 </div>
                                 {agencyCoordination.map(([label, value]) => (
                                     <div key={label} className="agency-coordination-row">
