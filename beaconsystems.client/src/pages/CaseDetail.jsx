@@ -20,6 +20,7 @@ function CaseDetail() {
     const [agencyExchanges, setAgencyExchanges] = useState([]);
     const [selectedExternalRequest, setSelectedExternalRequest] = useState(null);
     const [activeTab, setActiveTab] = useState("overview");
+    const [escapeRouteAnalysis, setEscapeRouteAnalysis] = useState(null);
     const [associateForm, setAssociateForm] = useState({
         name: "",
         relationship: "",
@@ -173,13 +174,33 @@ function CaseDetail() {
                 body: JSON.stringify(payload),
             });
 
+            if (response.status === 401) {
+                setSightingMessage("Your session expired. Please log in again before adding a sighting.");
+                return;
+            }
+
+            if (response.status === 403) {
+                setSightingMessage("Your role does not have permission to add sightings to this case.");
+                return;
+            }
+
             if (!response.ok) throw new Error("Failed to add sighting");
 
             const data = await response.json();
+            const createdSightingResponse = data.sighting_id
+                ? await fetch(`http://127.0.0.1:8000/sightings/${data.sighting_id}`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                })
+                : null;
+            const createdSighting = createdSightingResponse?.ok
+                ? await createdSightingResponse.json()
+                : null;
 
             setSightings([
                 ...sightings,
-                {
+                createdSighting || {
                     sighting_id: data.sighting_id,
                     ...payload,
                     created_at: new Date().toISOString(),
@@ -232,12 +253,32 @@ function CaseDetail() {
                 }),
             });
 
+            if (response.status === 401) {
+                setAssociateMessage("Your session expired. Please log in again before adding associates.");
+                return;
+            }
+
+            if (response.status === 403) {
+                setAssociateMessage("Your role does not have permission to update associates for this case.");
+                return;
+            }
+
             if (!response.ok) throw new Error("Failed to save associate");
 
-            setPerson({
-                ...person,
-                known_associates: JSON.stringify(nextAssociates),
+            const refreshedPersonResponse = await fetch(`http://127.0.0.1:8000/persons/${person.person_id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
             });
+
+            setPerson(
+                refreshedPersonResponse.ok
+                    ? await refreshedPersonResponse.json()
+                    : {
+                        ...person,
+                        known_associates: JSON.stringify(nextAssociates),
+                    }
+            );
             setAssociateForm({
                 name: "",
                 relationship: "",
@@ -389,6 +430,60 @@ function CaseDetail() {
         : "Missing Person";
     const associates = parseAssociates();
     const associateLocations = associates.filter((entry) => entry.latitude && entry.longitude);
+    const mappedCaseLocations = [
+        person?.primary_address_latitude && person?.primary_address_longitude
+            ? {
+                id: "person-primary-address",
+                type: "Missing person address",
+                label: "Primary Address",
+                address: person.primary_address,
+                latitude: person.primary_address_latitude,
+                longitude: person.primary_address_longitude,
+            }
+            : null,
+        person?.school_address_latitude && person?.school_address_longitude
+            ? {
+                id: "person-school-address",
+                type: "School",
+                label: person.school_name || "School Address",
+                address: person.school_address,
+                latitude: person.school_address_latitude,
+                longitude: person.school_address_longitude,
+            }
+            : null,
+        person?.work_address_latitude && person?.work_address_longitude
+            ? {
+                id: "person-work-address",
+                type: "Work",
+                label: person.employer_name || "Work Address",
+                address: person.work_address,
+                latitude: person.work_address_latitude,
+                longitude: person.work_address_longitude,
+            }
+            : null,
+        person?.last_seen_latitude && person?.last_seen_longitude
+            ? {
+                id: "person-last-seen",
+                type: "Last seen",
+                label: "Last Seen Location",
+                address: person.last_seen_location,
+                latitude: person.last_seen_latitude,
+                longitude: person.last_seen_longitude,
+            }
+            : null,
+        ...evidence.map((item) =>
+            item.evidence_latitude && item.evidence_longitude
+                ? {
+                    id: `evidence-${item.evidence_id}`,
+                    type: "Evidence",
+                    label: item.evidence_type || "Evidence Location",
+                    address: item.evidence_location,
+                    latitude: item.evidence_latitude,
+                    longitude: item.evidence_longitude,
+                }
+                : null
+        ),
+    ].filter(Boolean);
     const caseTabs = [
         ["overview", "Overview"],
         ["timeline", "Timeline"],
@@ -633,11 +728,13 @@ function CaseDetail() {
                 <div className="case-section case-tab-panel">
                     <EscapeRouteAnalysis
                         embedded
+                        onAnalysisRun={setEscapeRouteAnalysis}
                         caseContext={{
                             caseNumber: caseItem.case_number || `Case ${caseItem.case_id}`,
                             lastSeenLocation: person?.last_seen_location || "",
                             sightings: sortedSightings,
                             associateLocations,
+                            mappedLocations: mappedCaseLocations,
                         }}
                     />
                 </div>
@@ -649,6 +746,9 @@ function CaseDetail() {
                     <SightingMap
                         sightings={sortedSightings}
                         associateLocations={associateLocations}
+                        mappedLocations={mappedCaseLocations}
+                        escapeAnalysis={escapeRouteAnalysis}
+                        analysisOrigin={escapeRouteAnalysis?.origin}
                     />
                 </div>
             )}

@@ -4,6 +4,8 @@ import IntelligenceMap3D from "./IntelligenceMap3D.jsx";
 function IntelligenceCenter() {
     const [sightings, setSightings] = useState([]);
     const [externalRecords, setExternalRecords] = useState([]);
+    const [evidence, setEvidence] = useState([]);
+    const [persons, setPersons] = useState([]);
     const [visibleRecordCount, setVisibleRecordCount] = useState(2);
     const [lastUpdated, setLastUpdated] = useState(null);
 
@@ -14,21 +16,27 @@ function IntelligenceCenter() {
 
         const loadIntelligence = async () => {
             try {
-                const [sightingsResponse, recordsResponse] =
+                const [sightingsResponse, recordsResponse, evidenceResponse, personsResponse] =
                     await Promise.all([
                         fetch("http://127.0.0.1:8000/sightings/", { headers }),
                         fetch("http://127.0.0.1:8000/external-records/", { headers }),
+                        fetch("http://127.0.0.1:8000/evidence/", { headers }),
+                        fetch("http://127.0.0.1:8000/persons/?limit=100", { headers }),
                     ]);
 
-                const [sightingsData, recordsData] = await Promise.all([
+                const [sightingsData, recordsData, evidenceData, personsData] = await Promise.all([
                     sightingsResponse.ok ? sightingsResponse.json() : [],
                     recordsResponse.ok ? recordsResponse.json() : [],
+                    evidenceResponse.ok ? evidenceResponse.json() : [],
+                    personsResponse.ok ? personsResponse.json() : [],
                 ]);
 
                 if (!isMounted) return;
 
                 setSightings(Array.isArray(sightingsData) ? sightingsData : []);
                 setExternalRecords(Array.isArray(recordsData) ? recordsData : []);
+                setEvidence(Array.isArray(evidenceData) ? evidenceData : []);
+                setPersons(Array.isArray(personsData) ? personsData : []);
                 setLastUpdated(new Date());
             } catch (err) {
                 console.error(err);
@@ -43,6 +51,82 @@ function IntelligenceCenter() {
             clearInterval(interval);
         };
     }, []);
+
+    const mappedLocations = [
+        ...evidence
+            .filter((item) =>
+                Number.isFinite(Number(item.evidence_latitude)) &&
+                Number.isFinite(Number(item.evidence_longitude))
+            )
+            .map((item) => ({
+                id: `evidence-${item.evidence_id}`,
+                type: "evidence",
+                label: item.evidence_type || "Evidence",
+                address: item.evidence_location,
+                detail: item.description || item.custody_status || "Evidence location",
+                caseId: item.case_id,
+                latitude: item.evidence_latitude,
+                longitude: item.evidence_longitude,
+                confidence: 0.72,
+            })),
+        ...persons.flatMap((person) => {
+            const personName = `${person.first_name || ""} ${person.last_name || ""}`.trim() || "Missing person";
+            return [
+                person.primary_address_latitude && person.primary_address_longitude
+                    ? {
+                        id: `person-${person.person_id}-primary`,
+                        type: "address",
+                        label: `${personName} primary address`,
+                        address: person.primary_address,
+                        detail: "Missing person address",
+                        caseId: person.case_id,
+                        latitude: person.primary_address_latitude,
+                        longitude: person.primary_address_longitude,
+                        confidence: 0.64,
+                    }
+                    : null,
+                person.last_seen_latitude && person.last_seen_longitude
+                    ? {
+                        id: `person-${person.person_id}-last-seen`,
+                        type: "last_seen",
+                        label: `${personName} last seen`,
+                        address: person.last_seen_location,
+                        detail: "Last seen location",
+                        caseId: person.case_id,
+                        latitude: person.last_seen_latitude,
+                        longitude: person.last_seen_longitude,
+                        confidence: 0.82,
+                    }
+                    : null,
+                person.school_address_latitude && person.school_address_longitude
+                    ? {
+                        id: `person-${person.person_id}-school`,
+                        type: "school",
+                        label: person.school_name || `${personName} school`,
+                        address: person.school_address,
+                        detail: "School address",
+                        caseId: person.case_id,
+                        latitude: person.school_address_latitude,
+                        longitude: person.school_address_longitude,
+                        confidence: 0.58,
+                    }
+                    : null,
+                person.work_address_latitude && person.work_address_longitude
+                    ? {
+                        id: `person-${person.person_id}-work`,
+                        type: "work",
+                        label: person.employer_name || `${personName} work`,
+                        address: person.work_address,
+                        detail: "Work address",
+                        caseId: person.case_id,
+                        latitude: person.work_address_latitude,
+                        longitude: person.work_address_longitude,
+                        confidence: 0.58,
+                    }
+                    : null,
+            ].filter(Boolean);
+        }),
+    ];
 
     return (
         <div className="intelligence-page">
@@ -68,6 +152,7 @@ function IntelligenceCenter() {
                     <IntelligenceMap3D
                         sightings={sightings}
                         records={externalRecords}
+                        mappedLocations={mappedLocations}
                     />
                 </section>
 

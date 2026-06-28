@@ -27,16 +27,22 @@ class PersonCreate(BaseModel):
     medical_conditions: Optional[str] = None
 
     primary_address: Optional[str] = None
+    primary_address_latitude: Optional[float] = None
+    primary_address_longitude: Optional[float] = None
 
     housing_status: Optional[str] = None
 
     school_name: Optional[str] = None
 
     school_address: Optional[str] = None
+    school_address_latitude: Optional[float] = None
+    school_address_longitude: Optional[float] = None
 
     employer_name: Optional[str] = None
 
     work_address: Optional[str] = None
+    work_address_latitude: Optional[float] = None
+    work_address_longitude: Optional[float] = None
 
     employment_status: Optional[str] = None
 
@@ -83,6 +89,8 @@ class PersonCreate(BaseModel):
     photo_url: Optional[str] = None
 
     last_seen_location: Optional[str] = None
+    last_seen_latitude: Optional[float] = None
+    last_seen_longitude: Optional[float] = None
 
     last_seen_date: Optional[datetime] = None
 
@@ -116,16 +124,22 @@ class PersonUpdate(BaseModel):
     medical_conditions: Optional[str] = None
 
     primary_address: Optional[str] = None
+    primary_address_latitude: Optional[float] = None
+    primary_address_longitude: Optional[float] = None
 
     housing_status: Optional[str] = None
 
     school_name: Optional[str] = None
 
     school_address: Optional[str] = None
+    school_address_latitude: Optional[float] = None
+    school_address_longitude: Optional[float] = None
 
     employer_name: Optional[str] = None
 
     work_address: Optional[str] = None
+    work_address_latitude: Optional[float] = None
+    work_address_longitude: Optional[float] = None
 
     employment_status: Optional[str] = None
 
@@ -172,6 +186,8 @@ class PersonUpdate(BaseModel):
     photo_url: Optional[str] = None
 
     last_seen_location: Optional[str] = None
+    last_seen_latitude: Optional[float] = None
+    last_seen_longitude: Optional[float] = None
 
     last_seen_date: Optional[datetime] = None
 
@@ -207,16 +223,22 @@ class PersonResponse(BaseModel):
     medical_conditions: Optional[str] = None
 
     primary_address: Optional[str] = None
+    primary_address_latitude: Optional[float] = None
+    primary_address_longitude: Optional[float] = None
 
     housing_status: Optional[str] = None
 
     school_name: Optional[str] = None
 
     school_address: Optional[str] = None
+    school_address_latitude: Optional[float] = None
+    school_address_longitude: Optional[float] = None
 
     employer_name: Optional[str] = None
 
     work_address: Optional[str] = None
+    work_address_latitude: Optional[float] = None
+    work_address_longitude: Optional[float] = None
 
     employment_status: Optional[str] = None
 
@@ -263,6 +285,8 @@ class PersonResponse(BaseModel):
     photo_url: Optional[str] = None
 
     last_seen_location: Optional[str] = None
+    last_seen_latitude: Optional[float] = None
+    last_seen_longitude: Optional[float] = None
 
     last_seen_date: Optional[datetime] = None
 

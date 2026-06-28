@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { geocodeLocal } from "../geoUtils.js";
 
 const SOURCE_COLORS = {
     sighting: 0x60a5fa,
@@ -10,6 +11,11 @@ const SOURCE_COLORS = {
     toll: 0xa78bfa,
     cell_provider: 0x38bdf8,
     social_media: 0xf472b6,
+    evidence: 0x14b8a6,
+    address: 0x67e8f9,
+    school: 0x818cf8,
+    work: 0xfbbf24,
+    last_seen: 0xef4444,
     other: 0xcbd5e1,
 };
 
@@ -115,29 +121,75 @@ function createMapTexture() {
     return texture;
 }
 
-function buildMapPoints(sightings, records) {
-    const validSightings = sightings.filter(
-        (sighting) =>
-            Number.isFinite(Number(sighting.latitude)) &&
-            Number.isFinite(Number(sighting.longitude))
-    );
+function buildMapPoints(sightings, records, mappedLocations = []) {
+    const coordinateEntries = [
+        ...sightings
+            .filter((sighting) =>
+                Number.isFinite(Number(sighting.latitude)) &&
+                Number.isFinite(Number(sighting.longitude))
+            )
+            .map((sighting, index) => ({
+                id: `sighting-${sighting.sighting_id ?? index}`,
+                type: "sighting",
+                title: sighting.location || `Sighting ${index + 1}`,
+                detail: sighting.description || "Reported sighting",
+                caseId: sighting.case_id,
+                confidence: Number(sighting.confidence_score ?? 0.35),
+                latitude: Number(sighting.latitude),
+                longitude: Number(sighting.longitude),
+            })),
+        ...mappedLocations
+            .filter((location) =>
+                Number.isFinite(Number(location.latitude)) &&
+                Number.isFinite(Number(location.longitude))
+            )
+            .map((location, index) => ({
+                id: location.id || `mapped-${index}`,
+                type: location.type || "address",
+                title: location.title || location.label || "Mapped case location",
+                detail: location.detail || location.address || "Case geography",
+                caseId: location.caseId || location.case_id,
+                confidence: Number(location.confidence ?? 0.62),
+                latitude: Number(location.latitude),
+                longitude: Number(location.longitude),
+            })),
+        ...records
+            .map((record, index) => {
+                const geocoded = geocodeLocal(record.location);
 
-    const latitudes = validSightings.map((sighting) => Number(sighting.latitude));
-    const longitudes = validSightings.map((sighting) => Number(sighting.longitude));
+                if (!geocoded) return null;
+
+                return {
+                    id: `record-${record.id ?? index}`,
+                    type: record.record_type || "other",
+                    title: record.location || record.record_type || "External record",
+                    detail: record.notes || "Partner-provided intelligence",
+                    caseId: record.case_id,
+                    confidence: 0.55,
+                    latitude: geocoded.latitude,
+                    longitude: geocoded.longitude,
+                };
+            })
+            .filter(Boolean),
+    ];
+
+    const latitudes = coordinateEntries.map((entry) => Number(entry.latitude));
+    const longitudes = coordinateEntries.map((entry) => Number(entry.longitude));
     const minLat = Math.min(...latitudes, 0);
     const maxLat = Math.max(...latitudes, 0);
     const minLng = Math.min(...longitudes, 0);
     const maxLng = Math.max(...longitudes, 0);
+    const bounds = {
+        minLat: minLat === maxLat ? minLat - 0.02 : minLat,
+        maxLat: minLat === maxLat ? maxLat + 0.02 : maxLat,
+        minLng: minLng === maxLng ? minLng - 0.02 : minLng,
+        maxLng: minLng === maxLng ? maxLng + 0.02 : maxLng,
+    };
 
-    const sightingPoints = validSightings.map((sighting, index) => ({
-        id: `sighting-${sighting.sighting_id ?? index}`,
-        type: "sighting",
-        title: sighting.location || `Sighting ${index + 1}`,
-        detail: sighting.description || "Reported sighting",
-        caseId: sighting.case_id,
-        confidence: Number(sighting.confidence_score ?? 0.35),
-        x: normalizeCoordinate(sighting.longitude, minLng, maxLng, -12 + index * 3),
-        z: normalizeCoordinate(sighting.latitude, minLat, maxLat, -6 + index * 2),
+    const coordinatePoints = coordinateEntries.map((entry, index) => ({
+        ...entry,
+        x: normalizeCoordinate(entry.longitude, bounds.minLng, bounds.maxLng, -12 + index * 3),
+        z: normalizeCoordinate(entry.latitude, bounds.minLat, bounds.maxLat, -6 + index * 2),
     }));
 
     const recordPoints = records.slice(0, 24).map((record, index) => {
@@ -154,10 +206,15 @@ function buildMapPoints(sightings, records) {
         };
     });
 
-    return [...sightingPoints, ...recordPoints];
+    const coordinatePointIds = new Set(coordinatePoints.map((point) => point.id));
+
+    return [
+        ...coordinatePoints,
+        ...recordPoints.filter((point) => !coordinatePointIds.has(point.id)),
+    ];
 }
 
-function IntelligenceMap3D({ sightings, records }) {
+function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
     const mountRef = useRef(null);
     const markerRefs = useRef([]);
     const raycasterRef = useRef(new THREE.Raycaster());
@@ -165,8 +222,8 @@ function IntelligenceMap3D({ sightings, records }) {
     const [selectedPoint, setSelectedPoint] = useState(null);
 
     const points = useMemo(
-        () => buildMapPoints(sightings, records),
-        [sightings, records]
+        () => buildMapPoints(sightings, records, mappedLocations),
+        [sightings, records, mappedLocations]
     );
 
     useEffect(() => {

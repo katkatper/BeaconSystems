@@ -20,6 +20,7 @@ from security.case_access import (
 )
 from services.activity_service import create_activity_log
 from config.settings import EVIDENCE_ENCRYPTION_ENABLED, EVIDENCE_ENCRYPTION_KEY_ID
+from services.geocoding_service import geocode_address
 
 router = APIRouter(
     prefix="/evidence",
@@ -120,6 +121,8 @@ def serialize_evidence_items(items: list[Evidence], db: Session):
             "collected_by": item.collected_by,
             "collected_by_name": users.get(item.collected_by),
             "evidence_location": item.evidence_location,
+            "evidence_latitude": item.evidence_latitude,
+            "evidence_longitude": item.evidence_longitude,
             "custody_status": item.custody_status,
             "current_holder": item.current_holder,
             "lab_reference": item.lab_reference,
@@ -169,6 +172,7 @@ def upload_evidence(
     case_id: int = Form(...),
     evidence_type: str = Form(...),
     description: str = Form(None),
+    evidence_location: str = Form(None),
     file: UploadFile = File(...),
     request: Request = None,
     db: Session = Depends(get_db),
@@ -184,12 +188,16 @@ def upload_evidence(
         shutil.copyfileobj(file.file, buffer)
 
     content_sha256 = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    geocoded_location = geocode_address(evidence_location)
 
     evidence = Evidence(
         case_id=case_id,
         description=description,
         evidence_type=evidence_type,
         collected_by=current_user.user_id,
+        evidence_location=evidence_location,
+        evidence_latitude=geocoded_location["latitude"] if geocoded_location else None,
+        evidence_longitude=geocoded_location["longitude"] if geocoded_location else None,
         current_holder=current_user.username,
         custody_status="collected",
         file_name=original_file_name,
@@ -315,6 +323,15 @@ def add_evidence_custody_event(
     evidence.custody_status = CUSTODY_STATUS_BY_ACTION[action]
     evidence.current_holder = to_holder
     evidence.evidence_location = data.location or evidence.evidence_location
+    geocoded_location = geocode_address(data.location) if data.location else None
+
+    if geocoded_location:
+        evidence.evidence_latitude = geocoded_location["latitude"]
+        evidence.evidence_longitude = geocoded_location["longitude"]
+    elif data.location:
+        evidence.evidence_latitude = None
+        evidence.evidence_longitude = None
+
     evidence.lab_reference = data.lab_reference or evidence.lab_reference
     evidence.available_at = data.available_at or evidence.available_at
 

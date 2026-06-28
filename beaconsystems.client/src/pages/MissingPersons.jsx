@@ -209,8 +209,8 @@ function MissingPersonsList() {
                             value={formData.primary_address}
                             onChange={handleChange}
                         />
-                        <input name="school_name" placeholder="School Name (if child)" value={formData.school_name} onChange={handleChange} />
-                        <input name="school_address" placeholder="School Address (if child)" value={formData.school_address} onChange={handleChange} />
+                        <input name="school_name" placeholder="School Name (if student)" value={formData.school_name} onChange={handleChange} />
+                        <input name="school_address" placeholder="School Address (if student)" value={formData.school_address} onChange={handleChange} />
                         <input name="employer_name" placeholder="Employer / Retired / Not employed" value={formData.employer_name} onChange={handleChange} />
                         <input name="work_address" placeholder="Work Address (if adult)" value={formData.work_address} onChange={handleChange} />
                         <input name="employment_status" placeholder="Employment status, retired, student, or unknown" value={formData.employment_status} onChange={handleChange} />

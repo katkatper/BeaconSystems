@@ -7539,8 +7539,40 @@ a.case-health-row:hover {
     box-shadow: 0 0 18px rgba(251, 191, 36, 0.28);
 }
 
+.mapped-location-pin {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    color: #e0f2fe;
+    font-size: 12px;
+    font-weight: 900;
+    background: rgba(14, 116, 144, 0.92);
+    border: 2px solid rgba(125, 211, 252, 0.9);
+    border-radius: 8px;
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.3);
+}
+
+.incident-origin-pin {
+    display: grid;
+    place-items: center;
+    min-width: 60px;
+    height: 30px;
+    padding: 0 10px;
+    color: #fff7ed;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    background: rgba(220, 38, 38, 0.92);
+    border: 2px solid rgba(254, 202, 202, 0.95);
+    border-radius: 999px;
+    box-shadow: 0 0 22px rgba(248, 113, 113, 0.42);
+}
+
 .legend-escape,
-.legend-associate {
+.legend-associate,
+.legend-address,
+.legend-origin {
     display: inline-block;
     width: 26px;
     height: 8px;
@@ -7557,6 +7589,22 @@ a.case-health-row:hover {
     height: 14px;
     background: rgba(124, 45, 18, 0.92);
     border: 2px solid rgba(251, 191, 36, 0.86);
+    border-radius: 999px;
+}
+
+.legend-address {
+    width: 14px;
+    height: 14px;
+    background: rgba(14, 116, 144, 0.92);
+    border: 2px solid rgba(125, 211, 252, 0.9);
+    border-radius: 4px;
+}
+
+.legend-origin {
+    width: 24px;
+    height: 12px;
+    background: rgba(220, 38, 38, 0.92);
+    border: 2px solid rgba(254, 202, 202, 0.95);
     border-radius: 999px;
 }
 
@@ -7681,6 +7729,10 @@ a.case-health-row:hover {
     min-height: 88px;
 }
 
+.escape-route-embedded .escape-clearable-field:has(textarea) {
+    grid-column: span 2;
+}
+
 .escape-route-embedded .escape-form-grid input,
 .escape-route-embedded .escape-form-grid select,
 .escape-route-embedded .escape-form-grid textarea {
@@ -7748,10 +7800,48 @@ a.case-health-row:hover {
     resize: vertical;
 }
 
+.escape-clearable-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    align-items: stretch;
+    min-width: 0;
+}
+
+.escape-clearable-field:has(textarea) {
+    grid-column: span 3;
+}
+
+.escape-clearable-field input,
+.escape-clearable-field textarea {
+    min-width: 0;
+    width: 100%;
+}
+
+.escape-route-form .escape-field-clear {
+    width: auto;
+    min-width: 58px;
+    min-height: 0;
+    margin-top: 0;
+    padding: 0 10px;
+    font-size: 12px;
+}
+
+.escape-form-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(160px, 0.75fr);
+    gap: 10px;
+    margin-top: 14px;
+}
+
 .escape-route-form button {
     width: 100%;
     min-height: 54px;
     margin-top: 14px;
+}
+
+.escape-route-form .escape-form-actions button {
+    margin-top: 0;
 }
 
 .escape-radius-map {
@@ -7904,8 +7994,14 @@ a.case-health-row:hover {
     }
 
     .escape-form-grid textarea,
-    .escape-route-embedded .escape-form-grid textarea {
+    .escape-route-embedded .escape-form-grid textarea,
+    .escape-clearable-field:has(textarea),
+    .escape-route-embedded .escape-clearable-field:has(textarea) {
         grid-column: auto;
+    }
+
+    .escape-form-actions {
+        grid-template-columns: 1fr;
     }
 
     .escape-radius-list {

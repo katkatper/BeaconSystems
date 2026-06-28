@@ -16,6 +16,7 @@ from services.activity_service import create_activity_log
 from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
 from models.timeline_events import Timeline_Event
 from services.alert_service import create_alert
+from services.geocoding_service import geocode_address
 
 # CREATE APIRouter INSTANCE WITH PREFIX AND TAGS
 
@@ -103,10 +104,17 @@ def create_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "investigator", "supervisor")),
 ):
 
     assert_case_write_access(db, data.case_id, current_user)
+    latitude = data.latitude
+    longitude = data.longitude
+    geocoded = geocode_address(data.location) if latitude is None or longitude is None else None
+
+    if geocoded:
+        latitude = geocoded["latitude"]
+        longitude = geocoded["longitude"]
 
     new_sighting = Sighting(
 
@@ -116,9 +124,9 @@ def create_sighting(
 
         location=data.location,
 
-        latitude=data.latitude,
+        latitude=latitude,
 
-        longitude=data.longitude,
+        longitude=longitude,
 
         description=data.description,
 
@@ -221,6 +229,18 @@ def update_sighting(
     previous_confidence = sighting.confidence_score
 
     update_data = data.model_dump(exclude_unset=True)
+
+    if "location" in update_data and (
+        update_data.get("latitude") is None or update_data.get("longitude") is None
+    ):
+        geocoded = geocode_address(update_data.get("location"))
+
+        if geocoded:
+            update_data["latitude"] = geocoded["latitude"]
+            update_data["longitude"] = geocoded["longitude"]
+        else:
+            update_data["latitude"] = None
+            update_data["longitude"] = None
 
     for field, value in update_data.items():
         setattr(sighting, field, value)

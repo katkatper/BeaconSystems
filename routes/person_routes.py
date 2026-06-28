@@ -1,4 +1,5 @@
 from datetime import datetime, time
+import json
 import shutil
 from pathlib import Path
 from uuid import uuid4
@@ -16,6 +17,7 @@ from models.user import User
 from security.auth import get_current_user, require_role
 from schemas.person_schema import PersonCreate, PersonUpdate, PersonResponse, MessageResponse
 from services.activity_service import create_activity_log
+from services.geocoding_service import geocode_address
 
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
@@ -100,6 +102,66 @@ def build_missing_person_case_number(db: Session, person_id: int) -> str:
         suffix += 1
 
     return f"{base_number}-{suffix}"
+
+
+def enrich_person_coordinates(person_data: dict) -> dict:
+    address_fields = [
+        ("primary_address", "primary_address_latitude", "primary_address_longitude"),
+        ("school_address", "school_address_latitude", "school_address_longitude"),
+        ("work_address", "work_address_latitude", "work_address_longitude"),
+        ("last_seen_location", "last_seen_latitude", "last_seen_longitude"),
+    ]
+
+    for source_field, latitude_field, longitude_field in address_fields:
+        if person_data.get(latitude_field) and person_data.get(longitude_field):
+            continue
+
+        geocoded = geocode_address(person_data.get(source_field))
+
+        if geocoded:
+            person_data[latitude_field] = geocoded["latitude"]
+            person_data[longitude_field] = geocoded["longitude"]
+        elif source_field in person_data:
+            person_data[latitude_field] = None
+            person_data[longitude_field] = None
+
+    return person_data
+
+
+def enrich_associate_coordinates(update_data: dict) -> dict:
+    raw_associates = update_data.get("known_associates")
+
+    if not raw_associates:
+        return update_data
+
+    try:
+        associates = json.loads(raw_associates)
+    except (TypeError, ValueError):
+        return update_data
+
+    if not isinstance(associates, list):
+        return update_data
+
+    changed = False
+
+    for associate in associates:
+        if not isinstance(associate, dict):
+            continue
+
+        if associate.get("latitude") and associate.get("longitude"):
+            continue
+
+        geocoded = geocode_address(associate.get("address") or associate.get("location"))
+
+        if geocoded:
+            associate["latitude"] = geocoded["latitude"]
+            associate["longitude"] = geocoded["longitude"]
+            changed = True
+
+    if changed:
+        update_data["known_associates"] = json.dumps(associates)
+
+    return update_data
 
 
 @router.get("/test")
@@ -222,6 +284,7 @@ def create_person(
 ):
     person_data = data.model_dump()
     person_data["risk_level"] = infer_missing_person_risk(person_data)
+    person_data = enrich_person_coordinates(person_data)
     new_person = Person(**person_data)
 
     db.add(new_person)
@@ -272,7 +335,7 @@ def update_person(
     person_id: int,
     data: PersonUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "investigator", "supervisor")),
 ):
     person = db.query(Person).filter(Person.person_id == person_id).first()
 
@@ -280,6 +343,8 @@ def update_person(
         raise HTTPException(status_code=404, detail="Person not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    update_data = enrich_person_coordinates(update_data)
+    update_data = enrich_associate_coordinates(update_data)
 
     for field, value in update_data.items():
         setattr(person, field, value)

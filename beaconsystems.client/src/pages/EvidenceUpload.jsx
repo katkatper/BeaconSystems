@@ -52,6 +52,7 @@ function EvidenceUpload() {
     const [caseId, setCaseId] = useState("");
     const [filterCaseId, setFilterCaseId] = useState("");
     const [evidenceType, setEvidenceType] = useState("");
+    const [evidenceLocation, setEvidenceLocation] = useState("");
     const [description, setDescription] = useState("");
     const [file, setFile] = useState(null);
     const [evidence, setEvidence] = useState([]);
@@ -166,6 +167,7 @@ function EvidenceUpload() {
 
         formData.append("case_id", caseId);
         formData.append("evidence_type", evidenceType);
+        formData.append("evidence_location", evidenceLocation);
         formData.append("description", description);
         formData.append("file", file);
 
@@ -174,6 +176,7 @@ function EvidenceUpload() {
 
             setMessage(data.message);
             setEvidenceType("");
+            setEvidenceLocation("");
             setDescription("");
             setFile(null);
             await loadEvidence(filterCaseId);
@@ -381,6 +384,13 @@ function EvidenceUpload() {
                             value={evidenceType}
                             onChange={(e) => setEvidenceType(e.target.value)}
                             required
+                        />
+
+                        <input
+                            type="text"
+                            placeholder="Collection address or location"
+                            value={evidenceLocation}
+                            onChange={(e) => setEvidenceLocation(e.target.value)}
                         />
 
                         <textarea

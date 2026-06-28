@@ -13,21 +13,27 @@ class Person(Base):
 
     age = Column(Integer, nullable=True)
 
-    eye_color = Column(String(20), nullable=True)
-    hair_color = Column(String(20), nullable=True)
+    eye_color = Column(String(100), nullable=True)
+    hair_color = Column(String(150), nullable=True)
 
-    height = Column(String(20), nullable=True)
+    height = Column(String(50), nullable=True)
     weight = Column(Float, nullable=True)
 
     scars = Column(Text, nullable=True)
     tattoos = Column(Text, nullable=True)
     medical_conditions = Column(Text, nullable=True)
     primary_address = Column(Text, nullable=True)
+    primary_address_latitude = Column(Float, nullable=True)
+    primary_address_longitude = Column(Float, nullable=True)
     housing_status = Column(String(50), nullable=True)
     school_name = Column(String(255), nullable=True)
     school_address = Column(Text, nullable=True)
+    school_address_latitude = Column(Float, nullable=True)
+    school_address_longitude = Column(Float, nullable=True)
     employer_name = Column(String(255), nullable=True)
     work_address = Column(Text, nullable=True)
+    work_address_latitude = Column(Float, nullable=True)
+    work_address_longitude = Column(Float, nullable=True)
     employment_status = Column(String(100), nullable=True)
     criminal_arrests_count = Column(Integer, default=0, nullable=True)
     felony_convictions_count = Column(Integer, default=0, nullable=True)
@@ -53,6 +59,8 @@ class Person(Base):
     photo_url = Column(Text, nullable=True)
 
     last_seen_location = Column(Text, nullable=True)
+    last_seen_latitude = Column(Float, nullable=True)
+    last_seen_longitude = Column(Float, nullable=True)
     last_seen_date = Column(DateTime, nullable=True)
 
     risk_level = Column(String(20), default="medium")

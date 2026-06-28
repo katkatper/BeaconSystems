@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Float
 from database.connection import Base
 from datetime import datetime
 
@@ -23,6 +23,8 @@ class Evidence(Base):
 
     collected_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     evidence_location = Column(String(200), nullable=True)
+    evidence_latitude = Column(Float, nullable=True)
+    evidence_longitude = Column(Float, nullable=True)
     custody_status = Column(String(100), default="collected")
     current_holder = Column(String(200), nullable=True)
     lab_reference = Column(String(200), nullable=True)

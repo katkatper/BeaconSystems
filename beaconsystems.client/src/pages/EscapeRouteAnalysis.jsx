@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import SightingMap from "./SightingMap.jsx";
+import { geocodeLocal } from "../geoUtils.js";
 
 const directionProfiles = {
     unknown: {
@@ -83,12 +84,13 @@ function scoreRoute(index, form, elapsedMinutes) {
     return Math.max(18, Math.min(96, base + directionScore + plateScore + sightingScore + witnessScore + elapsedScore));
 }
 
-function EscapeRouteAnalysis({ embedded = false, caseContext = null }) {
+function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisRun = null }) {
     const [form, setForm] = useState({
         ...initialForm,
         abductionLocation: caseContext?.lastSeenLocation || "",
     });
     const [analysisStarted, setAnalysisStarted] = useState(false);
+    const [submittedAnalysis, setSubmittedAnalysis] = useState(null);
 
     const analysis = useMemo(() => {
         const elapsedMinutes = minutesSinceIncident(form);
@@ -165,10 +167,63 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null }) {
         setForm((current) => ({ ...current, [name]: value }));
     };
 
+    const clearField = (fieldName) => {
+        setForm((current) => ({ ...current, [fieldName]: "" }));
+    };
+
+    const clearAllFields = () => {
+        setForm(initialForm);
+        setAnalysisStarted(false);
+        setSubmittedAnalysis(null);
+        onAnalysisRun?.(null);
+    };
+
+    const renderClearableField = (fieldName, field) => (
+        <div className="escape-clearable-field">
+            {field}
+            {form[fieldName] && (
+                <button
+                    type="button"
+                    className="escape-field-clear"
+                    onClick={() => clearField(fieldName)}
+                >
+                    Clear
+                </button>
+            )}
+        </div>
+    );
+
     const handleSubmit = (event) => {
         event.preventDefault();
+        const geocodedOrigin = geocodeLocal(form.abductionLocation);
+        const nextAnalysis = {
+            ...analysis,
+            generatedAt: new Date().toISOString(),
+            origin: geocodedOrigin
+                ? {
+                    ...geocodedOrigin,
+                    label: "Incident Origin",
+                    address: form.abductionLocation,
+                }
+                : null,
+        };
+
         setAnalysisStarted(true);
+        setSubmittedAnalysis(nextAnalysis);
+        onAnalysisRun?.(nextAnalysis);
     };
+
+    const draftOrigin = geocodeLocal(form.abductionLocation);
+    const displayedAnalysis = submittedAnalysis || (analysisStarted ? analysis : null);
+    const displayedOrigin = displayedAnalysis?.origin || (
+        draftOrigin
+            ? {
+                ...draftOrigin,
+                label: "Incident Origin",
+                address: form.abductionLocation,
+            }
+            : null
+    );
 
     return (
         <div className={embedded ? "escape-route-page escape-route-embedded" : "escape-route-page beacon-page"}>
@@ -193,26 +248,32 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null }) {
                     </div>
 
                     <div className="escape-form-grid">
-                        <input
-                            name="abductionLocation"
-                            value={form.abductionLocation}
-                            onChange={handleChange}
-                            placeholder="Abduction location"
-                        />
-                        <input
-                            name="incidentTime"
-                            type="datetime-local"
-                            value={form.incidentTime}
-                            onChange={handleChange}
-                            aria-label="Incident time"
-                        />
-                        <input
-                            name="currentTime"
-                            type="datetime-local"
-                            value={form.currentTime}
-                            onChange={handleChange}
-                            aria-label="Current analysis time"
-                        />
+                        {renderClearableField("abductionLocation", (
+                            <input
+                                name="abductionLocation"
+                                value={form.abductionLocation}
+                                onChange={handleChange}
+                                placeholder="Abduction location"
+                            />
+                        ))}
+                        {renderClearableField("incidentTime", (
+                            <input
+                                name="incidentTime"
+                                type="datetime-local"
+                                value={form.incidentTime}
+                                onChange={handleChange}
+                                aria-label="Incident time"
+                            />
+                        ))}
+                        {renderClearableField("currentTime", (
+                            <input
+                                name="currentTime"
+                                type="datetime-local"
+                                value={form.currentTime}
+                                onChange={handleChange}
+                                aria-label="Current analysis time"
+                            />
+                        ))}
                         <select name="direction" value={form.direction} onChange={handleChange}>
                             <option value="unknown">Direction unknown</option>
                             <option value="north">Northbound</option>
@@ -230,39 +291,52 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null }) {
                                 <option value={value} key={value}>{profile.label}</option>
                             ))}
                         </select>
-                        <input
-                            name="vehicleDescription"
-                            value={form.vehicleDescription}
-                            onChange={handleChange}
-                            placeholder="Vehicle description"
-                        />
-                        <input
-                            name="licensePlate"
-                            value={form.licensePlate}
-                            onChange={handleChange}
-                            placeholder="License plate"
-                        />
-                        <input
-                            name="occupants"
-                            value={form.occupants}
-                            onChange={handleChange}
-                            placeholder="Number of occupants"
-                        />
-                        <textarea
-                            name="witnessStatement"
-                            value={form.witnessStatement}
-                            onChange={handleChange}
-                            placeholder="Witness statements"
-                        />
-                        <textarea
-                            name="knownSightings"
-                            value={form.knownSightings}
-                            onChange={handleChange}
-                            placeholder="New sightings, LPR hits, CCTV detections, road closures, or weather context"
-                        />
+                        {renderClearableField("vehicleDescription", (
+                            <input
+                                name="vehicleDescription"
+                                value={form.vehicleDescription}
+                                onChange={handleChange}
+                                placeholder="Vehicle description"
+                            />
+                        ))}
+                        {renderClearableField("licensePlate", (
+                            <input
+                                name="licensePlate"
+                                value={form.licensePlate}
+                                onChange={handleChange}
+                                placeholder="License plate"
+                            />
+                        ))}
+                        {renderClearableField("occupants", (
+                            <input
+                                name="occupants"
+                                value={form.occupants}
+                                onChange={handleChange}
+                                placeholder="Number of occupants"
+                            />
+                        ))}
+                        {renderClearableField("witnessStatement", (
+                            <textarea
+                                name="witnessStatement"
+                                value={form.witnessStatement}
+                                onChange={handleChange}
+                                placeholder="Witness statements"
+                            />
+                        ))}
+                        {renderClearableField("knownSightings", (
+                            <textarea
+                                name="knownSightings"
+                                value={form.knownSightings}
+                                onChange={handleChange}
+                                placeholder="New sightings, LPR hits, CCTV detections, road closures, or weather context"
+                            />
+                        ))}
                     </div>
 
-                    <button type="submit">Run Escape Route Analysis</button>
+                    <div className="escape-form-actions">
+                        <button type="submit">Run Escape Route Analysis</button>
+                        <button type="button" onClick={clearAllFields}>Clear All Fields</button>
+                    </div>
                 </form>
 
                 <section className="beacon-panel escape-route-map-panel">
@@ -274,11 +348,13 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null }) {
                     <SightingMap
                         sightings={caseContext?.sightings || []}
                         associateLocations={caseContext?.associateLocations || []}
-                        escapeAnalysis={analysis}
+                        mappedLocations={caseContext?.mappedLocations || []}
+                        escapeAnalysis={displayedAnalysis}
+                        analysisOrigin={displayedOrigin}
                     />
 
                     <div className="escape-radius-list">
-                        {analysis.reachableBands.map((band) => (
+                        {(displayedAnalysis || analysis).reachableBands.map((band) => (
                             <div key={band.minutes}>
                                 <span>{band.minutes} minutes</span>
                                 <strong>{band.miles} mi</strong>

@@ -20,6 +20,8 @@ def ensure_local_schema(engine) -> None:
             "current_holder": "ALTER TABLE evidence ADD COLUMN current_holder VARCHAR(200)",
             "lab_reference": "ALTER TABLE evidence ADD COLUMN lab_reference VARCHAR(200)",
             "available_at": "ALTER TABLE evidence ADD COLUMN available_at TIMESTAMP",
+            "evidence_latitude": "ALTER TABLE evidence ADD COLUMN evidence_latitude FLOAT",
+            "evidence_longitude": "ALTER TABLE evidence ADD COLUMN evidence_longitude FLOAT",
             "is_encrypted": "ALTER TABLE evidence ADD COLUMN is_encrypted BOOLEAN DEFAULT FALSE",
             "encryption_key_id": "ALTER TABLE evidence ADD COLUMN encryption_key_id VARCHAR(120)",
             "content_sha256": "ALTER TABLE evidence ADD COLUMN content_sha256 VARCHAR(64)",
@@ -107,11 +109,17 @@ def ensure_local_schema(engine) -> None:
             "convictions": "ALTER TABLE persons ADD COLUMN convictions TEXT",
             "corrections_history": "ALTER TABLE persons ADD COLUMN corrections_history TEXT",
             "primary_address": "ALTER TABLE persons ADD COLUMN primary_address TEXT",
+            "primary_address_latitude": "ALTER TABLE persons ADD COLUMN primary_address_latitude FLOAT",
+            "primary_address_longitude": "ALTER TABLE persons ADD COLUMN primary_address_longitude FLOAT",
             "housing_status": "ALTER TABLE persons ADD COLUMN housing_status VARCHAR(50)",
             "school_name": "ALTER TABLE persons ADD COLUMN school_name VARCHAR(255)",
             "school_address": "ALTER TABLE persons ADD COLUMN school_address TEXT",
+            "school_address_latitude": "ALTER TABLE persons ADD COLUMN school_address_latitude FLOAT",
+            "school_address_longitude": "ALTER TABLE persons ADD COLUMN school_address_longitude FLOAT",
             "employer_name": "ALTER TABLE persons ADD COLUMN employer_name VARCHAR(255)",
             "work_address": "ALTER TABLE persons ADD COLUMN work_address TEXT",
+            "work_address_latitude": "ALTER TABLE persons ADD COLUMN work_address_latitude FLOAT",
+            "work_address_longitude": "ALTER TABLE persons ADD COLUMN work_address_longitude FLOAT",
             "employment_status": "ALTER TABLE persons ADD COLUMN employment_status VARCHAR(100)",
             "known_associates": "ALTER TABLE persons ADD COLUMN known_associates TEXT",
             "gang_affiliations": "ALTER TABLE persons ADD COLUMN gang_affiliations TEXT",
@@ -120,6 +128,8 @@ def ensure_local_schema(engine) -> None:
             "tips": "ALTER TABLE persons ADD COLUMN tips TEXT",
             "patterns": "ALTER TABLE persons ADD COLUMN patterns TEXT",
             "intelligence_notes": "ALTER TABLE persons ADD COLUMN intelligence_notes TEXT",
+            "last_seen_latitude": "ALTER TABLE persons ADD COLUMN last_seen_latitude FLOAT",
+            "last_seen_longitude": "ALTER TABLE persons ADD COLUMN last_seen_longitude FLOAT",
         }
 
         for column_name, statement in person_columns.items():
@@ -138,12 +148,19 @@ def ensure_local_schema(engine) -> None:
             if not _has_column(inspector, "users", column_name):
                 statements.append(statement)
 
-    if not statements:
+    has_person_type_maintenance = "persons" in table_names
+
+    if not statements and not has_person_type_maintenance:
         return
 
     with engine.begin() as connection:
         for statement in statements:
             connection.execute(text(statement))
+
+        if has_person_type_maintenance:
+            connection.execute(text("ALTER TABLE persons ALTER COLUMN eye_color TYPE VARCHAR(100)"))
+            connection.execute(text("ALTER TABLE persons ALTER COLUMN hair_color TYPE VARCHAR(150)"))
+            connection.execute(text("ALTER TABLE persons ALTER COLUMN height TYPE VARCHAR(50)"))
 
         if "evidence" in table_names:
             connection.execute(

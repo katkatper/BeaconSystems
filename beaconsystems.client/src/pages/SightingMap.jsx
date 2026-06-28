@@ -55,6 +55,24 @@ function createAssociateIcon(index) {
     });
 }
 
+function createMappedLocationIcon(index) {
+    return L.divIcon({
+        className: "custom-marker mapped-location-marker",
+        html: `<div class="mapped-location-pin">M${index + 1}</div>`,
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+    });
+}
+
+function createOriginIcon() {
+    return L.divIcon({
+        className: "custom-marker incident-origin-marker",
+        html: `<div class="incident-origin-pin">Origin</div>`,
+        iconSize: [64, 34],
+        iconAnchor: [32, 17],
+    });
+}
+
 function createArrowIcon(angle) {
     return L.divIcon({
         className: "direction-arrow",
@@ -68,9 +86,17 @@ function FitMapToSightings({ positions }) {
     const map = useMap();
 
     useEffect(() => {
-        if (positions.length > 0) {
-            map.fitBounds(positions, { padding: [40, 40] });
+        const refreshMap = () => map.invalidateSize();
+        refreshMap();
+        const resizeTimer = window.setTimeout(refreshMap, 160);
+
+        if (positions.length === 1) {
+            map.setView(positions[0], 15, { animate: false });
+        } else if (positions.length > 1) {
+            map.fitBounds(positions, { padding: [60, 60], maxZoom: 15 });
         }
+
+        return () => window.clearTimeout(resizeTimer);
     }, [positions, map]);
 
     return null;
@@ -111,7 +137,7 @@ function buildRouteCorridors(origin, routeCount = 3) {
     });
 }
 
-function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations = [] }) {
+function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations = [], mappedLocations = [], analysisOrigin = null }) {
     const validSightings = sightings
         .filter(
             (s) =>
@@ -141,6 +167,27 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
             longitude: Number(location.longitude),
         }));
 
+    const validMappedLocations = mappedLocations
+        .filter(
+            (location) =>
+                Number.isFinite(Number(location.latitude)) &&
+                Number.isFinite(Number(location.longitude))
+        )
+        .map((location) => ({
+            ...location,
+            latitude: Number(location.latitude),
+            longitude: Number(location.longitude),
+        }));
+    const validAnalysisOrigin = analysisOrigin &&
+        Number.isFinite(Number(analysisOrigin.latitude)) &&
+        Number.isFinite(Number(analysisOrigin.longitude))
+        ? {
+            ...analysisOrigin,
+            latitude: Number(analysisOrigin.latitude),
+            longitude: Number(analysisOrigin.longitude),
+        }
+        : null;
+
     const pathPositions = validSightings.map((s) => [
         s.latitude,
         s.longitude,
@@ -149,8 +196,15 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
         location.latitude,
         location.longitude,
     ]);
-    const originPosition = pathPositions[0] || associatePositions[0] || [32.7767, -96.797];
-    const fitPositions = [...pathPositions, ...associatePositions];
+    const mappedPositions = validMappedLocations.map((location) => [
+        location.latitude,
+        location.longitude,
+    ]);
+    const analysisOriginPosition = validAnalysisOrigin
+        ? [validAnalysisOrigin.latitude, validAnalysisOrigin.longitude]
+        : null;
+    const originPosition = analysisOriginPosition || pathPositions[0] || associatePositions[0] || mappedPositions[0] || [32.7767, -96.797];
+    const fitPositions = [...pathPositions, ...associatePositions, ...mappedPositions, ...(analysisOriginPosition ? [analysisOriginPosition] : [])];
     const routeCorridors = escapeAnalysis ? buildRouteCorridors(originPosition, escapeAnalysis.likelyRoutes?.length || 3) : [];
 
     const arrowPositions = [];
@@ -170,8 +224,8 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
         });
     }
 
-    if (validSightings.length === 0 && validAssociateLocations.length === 0 && !escapeAnalysis) {
-        return <p>No mapped sightings, route analysis, or associate locations yet.</p>;
+    if (validSightings.length === 0 && validAssociateLocations.length === 0 && validMappedLocations.length === 0 && !validAnalysisOrigin && !escapeAnalysis) {
+        return <p>No mapped sightings, route analysis, addresses, evidence, or associate locations yet.</p>;
     }
 
     const searchedArea = buildSearchedArea(validSightings);
@@ -239,6 +293,21 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
                             }}
                         />
                     ))}
+
+                    {validAnalysisOrigin && (
+                        <Marker
+                            position={[validAnalysisOrigin.latitude, validAnalysisOrigin.longitude]}
+                            icon={createOriginIcon()}
+                        >
+                            <Popup>
+                                <strong>{validAnalysisOrigin.label || "Incident origin"}</strong>
+                                <br />
+                                {validAnalysisOrigin.address || "Analysis location"}
+                                <br />
+                                Accuracy: {validAnalysisOrigin.accuracy || "mapped"}
+                            </Popup>
+                        </Marker>
+                    )}
 
                     {validSightings.map((sighting, index) => (
                         <Circle
@@ -316,6 +385,22 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
                             </Popup>
                         </Marker>
                     ))}
+
+                    {validMappedLocations.map((location, index) => (
+                        <Marker
+                            key={location.id || `mapped-location-${index}`}
+                            position={[location.latitude, location.longitude]}
+                            icon={createMappedLocationIcon(index)}
+                        >
+                            <Popup>
+                                <strong>{location.label || `Mapped location ${index + 1}`}</strong>
+                                <br />
+                                {location.address || "Address recorded"}
+                                <br />
+                                Type: {location.type || "Case address"}
+                            </Popup>
+                        </Marker>
+                    ))}
                 </MapContainer>
             </div>
 
@@ -351,6 +436,14 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
                 <span>
                     <i className="legend-associate"></i>
                     Associate address
+                </span>
+                <span>
+                    <i className="legend-address"></i>
+                    Case address or evidence
+                </span>
+                <span>
+                    <i className="legend-origin"></i>
+                    Incident origin
                 </span>
             </div>
         </div>
