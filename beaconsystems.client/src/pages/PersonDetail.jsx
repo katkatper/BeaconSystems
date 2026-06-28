@@ -18,6 +18,9 @@ const formatDate = (value) => {
 function SubjectProfile({ person }) {
     const sections = [
         ["Demographics", `Age ${person.age || "unknown"} | ${person.eye_color || "unknown"} eyes | ${person.hair_color || "unknown"} hair`],
+        ["Residence", `${person.housing_status || "Housing unknown"} | ${person.primary_address || "No address recorded."}`],
+        ["School", `${person.school_name || "No school recorded."}${person.school_address ? ` | ${person.school_address}` : ""}`],
+        ["Work / Retirement", `${person.employer_name || person.employment_status || "No work status recorded."}${person.work_address ? ` | ${person.work_address}` : ""}`],
         ["Criminal History", person.criminal_history || "No criminal history notes recorded."],
         ["Warrants", person.warrants || "No warrant notes recorded."],
         ["Arrests", person.arrests || "No arrest notes recorded."],
@@ -127,6 +130,10 @@ function PersonDetail() {
                         <p>Weight: {person.weight || "Not recorded"}</p>
                         <p>Risk Level: {person.risk_level || "Unknown"}</p>
                         <p>Status: {person.status || "Unknown"}</p>
+                        <p>Housing: {person.housing_status || "Unknown"}</p>
+                        <p>Address: {person.primary_address || "Not recorded"}</p>
+                        <p>School: {person.school_name || "Not recorded"}</p>
+                        <p>Work / Retirement: {person.employer_name || person.employment_status || "Not recorded"}</p>
                         <p>Last Seen: {person.last_seen_location || "Not recorded"}</p>
                         <p>{person.description || "No description recorded."}</p>
                     </div>

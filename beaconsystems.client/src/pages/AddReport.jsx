@@ -13,6 +13,13 @@ function AddPerson() {
         risk_level: "high",
         status: "missing",
         medical_conditions: "",
+        primary_address: "",
+        housing_status: "unknown",
+        school_name: "",
+        school_address: "",
+        employer_name: "",
+        work_address: "",
+        employment_status: "",
         description: "",
     });
 
@@ -53,7 +60,7 @@ function AddPerson() {
             const data = await response.json();
             console.log("Person created:", data);
 
-            setMessage("Report submitted and added to the Missing Persons registry.");
+            setMessage(`Report submitted and case ${data.case_number || ""} opened.`.trim());
 
             setFormData({
                 first_name: "",
@@ -67,6 +74,13 @@ function AddPerson() {
                 risk_level: "high",
                 status: "missing",
                 medical_conditions: "",
+                primary_address: "",
+                housing_status: "unknown",
+                school_name: "",
+                school_address: "",
+                employer_name: "",
+                work_address: "",
+                employment_status: "",
                 description: "",
             });
         } catch (err) {
@@ -88,6 +102,23 @@ function AddPerson() {
                 <input name="height" placeholder="Height" value={formData.height} onChange={handleChange} />
                 <input name="weight" placeholder="Weight" value={formData.weight} onChange={handleChange} />
                 <input name="last_seen_location" placeholder="Last Seen Location" value={formData.last_seen_location} onChange={handleChange} />
+                <select name="housing_status" value={formData.housing_status} onChange={handleChange}>
+                    <option value="unknown">Housing Status Unknown</option>
+                    <option value="housed">Has Address</option>
+                    <option value="homeless">Homeless / Unhoused</option>
+                    <option value="transient">Transient</option>
+                </select>
+                <input
+                    name="primary_address"
+                    placeholder="Home address, last known residence, or homeless location"
+                    value={formData.primary_address}
+                    onChange={handleChange}
+                />
+                <input name="school_name" placeholder="School Name (if child)" value={formData.school_name} onChange={handleChange} />
+                <input name="school_address" placeholder="School Address (if child)" value={formData.school_address} onChange={handleChange} />
+                <input name="employer_name" placeholder="Employer / Retired / Not employed" value={formData.employer_name} onChange={handleChange} />
+                <input name="work_address" placeholder="Work Address (if adult)" value={formData.work_address} onChange={handleChange} />
+                <input name="employment_status" placeholder="Employment status, retired, student, or unknown" value={formData.employment_status} onChange={handleChange} />
 
                 <select name="risk_level" value={formData.risk_level} onChange={handleChange}>
                     <option value="low">Low</option>

@@ -26,6 +26,20 @@ class PersonCreate(BaseModel):
 
     medical_conditions: Optional[str] = None
 
+    primary_address: Optional[str] = None
+
+    housing_status: Optional[str] = None
+
+    school_name: Optional[str] = None
+
+    school_address: Optional[str] = None
+
+    employer_name: Optional[str] = None
+
+    work_address: Optional[str] = None
+
+    employment_status: Optional[str] = None
+
     criminal_arrests_count: Optional[int] = 0
 
     felony_convictions_count: Optional[int] = 0
@@ -100,6 +114,20 @@ class PersonUpdate(BaseModel):
     tattoos: Optional[str] = None
 
     medical_conditions: Optional[str] = None
+
+    primary_address: Optional[str] = None
+
+    housing_status: Optional[str] = None
+
+    school_name: Optional[str] = None
+
+    school_address: Optional[str] = None
+
+    employer_name: Optional[str] = None
+
+    work_address: Optional[str] = None
+
+    employment_status: Optional[str] = None
 
     criminal_arrests_count: Optional[int] = None
 
@@ -178,6 +206,20 @@ class PersonResponse(BaseModel):
 
     medical_conditions: Optional[str] = None
 
+    primary_address: Optional[str] = None
+
+    housing_status: Optional[str] = None
+
+    school_name: Optional[str] = None
+
+    school_address: Optional[str] = None
+
+    employer_name: Optional[str] = None
+
+    work_address: Optional[str] = None
+
+    employment_status: Optional[str] = None
+
     criminal_arrests_count: Optional[int] = None
 
     felony_convictions_count: Optional[int] = None
@@ -239,3 +281,5 @@ class PersonResponse(BaseModel):
 class MessageResponse(BaseModel):
     message: str
     person_id: Optional[int] = None
+    case_id: Optional[int] = None
+    case_number: Optional[str] = None

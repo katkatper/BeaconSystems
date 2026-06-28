@@ -180,6 +180,7 @@ def get_supervisor_queue(
         })
 
     lead_status_counts = {
+        "total": 0,
         "new": 0,
         "assigned": 0,
         "pending": 0,
@@ -189,6 +190,7 @@ def get_supervisor_queue(
     }
 
     for lead in leads_query.all():
+        lead_status_counts["total"] += 1
         status = (lead.status or "new").strip().lower()
 
         if status in lead_status_counts:

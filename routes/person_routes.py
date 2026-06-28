@@ -10,10 +10,12 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from database.connection import get_db
+from models.case import Cases
 from models.person import Person
 from models.user import User
 from security.auth import get_current_user, require_role
 from schemas.person_schema import PersonCreate, PersonUpdate, PersonResponse, MessageResponse
+from services.activity_service import create_activity_log
 
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
@@ -26,6 +28,7 @@ ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 def infer_missing_person_risk(data: dict) -> str:
     current_risk = (data.get("risk_level") or "medium").lower()
     age = data.get("age")
+    housing_status = (data.get("housing_status") or "").lower()
     risk_text = " ".join(
         str(data.get(field) or "")
         for field in [
@@ -76,10 +79,27 @@ def infer_missing_person_risk(data: dict) -> str:
     if age is not None and age < 18:
         return "high"
 
+    if housing_status in {"homeless", "unhoused", "transient"}:
+        return "high" if current_risk != "critical" else current_risk
+
     if any(term in risk_text for term in high_terms):
         return "high" if current_risk not in {"critical"} else current_risk
 
     return current_risk
+
+
+def build_missing_person_case_number(db: Session, person_id: int) -> str:
+    year = datetime.utcnow().year
+    base_number = f"MP-{year}-{person_id:06d}"
+
+    if not db.query(Cases).filter(Cases.case_number == base_number).first():
+        return base_number
+
+    suffix = 2
+    while db.query(Cases).filter(Cases.case_number == f"{base_number}-{suffix}").first():
+        suffix += 1
+
+    return f"{base_number}-{suffix}"
 
 
 @router.get("/test")
@@ -153,6 +173,13 @@ def get_persons(
                 Person.status.ilike(search),
                 Person.risk_level.ilike(search),
                 Person.last_seen_location.ilike(search),
+                Person.primary_address.ilike(search),
+                Person.housing_status.ilike(search),
+                Person.school_name.ilike(search),
+                Person.school_address.ilike(search),
+                Person.employer_name.ilike(search),
+                Person.work_address.ilike(search),
+                Person.employment_status.ilike(search),
                 Person.medical_conditions.ilike(search),
                 Person.description.ilike(search),
             )
@@ -189,6 +216,7 @@ def get_person_by_id(
 @router.post("/", response_model=MessageResponse)
 def create_person(
     data: PersonCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
@@ -200,9 +228,42 @@ def create_person(
     db.commit()
     db.refresh(new_person)
 
+    case_number = build_missing_person_case_number(db, new_person.person_id)
+    person_name = f"{new_person.first_name} {new_person.last_name}".strip()
+    new_case = Cases(
+        case_number=case_number,
+        title=f"Missing Person: {person_name}",
+        person_id=new_person.person_id,
+        agency_id=current_user.agency_id,
+        investigator_id=current_user.user_id,
+        last_seen_location=new_person.last_seen_location,
+        priority_level=new_person.risk_level,
+        description=new_person.description,
+        notes="Automatically created from missing person intake.",
+        case_status="open",
+        date_opened=datetime.utcnow(),
+    )
+
+    db.add(new_case)
+    db.commit()
+    db.refresh(new_case)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="CREATE_MISSING_PERSON_CASE",
+        entity="case",
+        entity_id=new_case.case_id,
+        details=f"Missing person intake created case {new_case.case_number} for {person_name}",
+        ip_address=request.client.host if request.client else None,
+    )
+
     return {
-        "message": "Person created",
+        "message": "Person created and case opened",
         "person_id": new_person.person_id,
+        "case_id": new_case.case_id,
+        "case_number": new_case.case_number,
     }
 
 

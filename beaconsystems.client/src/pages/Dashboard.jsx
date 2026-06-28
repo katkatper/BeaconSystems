@@ -171,14 +171,6 @@ function Dashboard() {
         Leads: "/intelligence",
         Evidence: "/evidence-upload",
     };
-    const metrics = summary
-        ? [
-            ["Cases", summary.open_cases],
-            ["Alerts", summary.new_alerts],
-            ["Leads", summary.external_records ?? 39],
-            ["Evidence", summary.total_evidence ?? summary.evidence_uploaded_today],
-        ]
-        : [];
     const fallbackSightings = [
         {
             sighting_id: "demo-austin",
@@ -206,6 +198,16 @@ function Dashboard() {
     const leadSummary = supervisorQueue?.lead_summary || {};
     const timelineSummary = supervisorQueue?.timeline_summary || {};
     const agencySummary = supervisorQueue?.agency_coordination || {};
+    const totalLeadCount = Object.entries(leadSummary).reduce(
+        (total, [key, value]) => key === "total" ? total : total + (Number(value) || 0),
+        0
+    );
+    const metrics = [
+        ["Cases", summary?.open_cases ?? commandDashboard.active_cases ?? 0],
+        ["Alerts", summary?.new_alerts ?? commandDashboard.active_alerts ?? 0],
+        ["Leads", summary?.lead_count ?? summary?.leads ?? leadSummary.total ?? totalLeadCount],
+        ["Evidence", summary?.total_evidence ?? summary?.evidence_uploaded_today ?? 0],
+    ];
     const fallbackWorkload = [
         ["Jones", 12],
         ["Smith", 5],
@@ -347,12 +349,7 @@ function Dashboard() {
                 <>
                     <div className="dashboard-board supervisor-command-dashboard">
                         <div className="command-grid">
-                            {(metrics.length > 0 ? metrics : [
-                                ["Cases", 248],
-                                ["Alerts", 14],
-                                ["Leads", 39],
-                                ["Evidence", 1320],
-                            ]).map(([label, value]) => (
+                            {metrics.map(([label, value]) => (
                                 <Link className="command-card" to={metricLinks[label] || "/"} key={label}>
                                     <span>{label}</span>
                                     <strong>{value ?? 0}</strong>

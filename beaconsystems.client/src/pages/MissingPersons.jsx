@@ -30,6 +30,13 @@ function MissingPersonsList() {
         status: "missing",
         description: "",
         medical_conditions: "",
+        primary_address: "",
+        housing_status: "unknown",
+        school_name: "",
+        school_address: "",
+        employer_name: "",
+        work_address: "",
+        employment_status: "",
         photo_url: "",
     });
 
@@ -90,6 +97,13 @@ function MissingPersonsList() {
             status: "missing",
             description: "",
             medical_conditions: "",
+            primary_address: "",
+            housing_status: "unknown",
+            school_name: "",
+            school_address: "",
+            employer_name: "",
+            work_address: "",
+            employment_status: "",
             photo_url: "",
         });
         setPhotoFile(null);
@@ -117,9 +131,9 @@ function MissingPersonsList() {
                 photo_url: uploadedPhotoUrl,
             };
 
-            await apiPost("/persons/", payload);
+            const created = await apiPost("/persons/", payload);
 
-            setMessage("Missing person added to the registry.");
+            setMessage(`Missing person added and case ${created.case_number || ""} opened.`.trim());
             resetForm();
             setVisiblePersonCount(6);
             await loadPersons();
@@ -183,6 +197,23 @@ function MissingPersonsList() {
                         <input name="hair_color" placeholder="Hair Color" value={formData.hair_color} onChange={handleChange} />
                         <input name="height" placeholder="Height" value={formData.height} onChange={handleChange} />
                         <input name="weight" placeholder="Weight" value={formData.weight} onChange={handleChange} />
+                        <select name="housing_status" value={formData.housing_status} onChange={handleChange}>
+                            <option value="unknown">Housing Status Unknown</option>
+                            <option value="housed">Has Address</option>
+                            <option value="homeless">Homeless / Unhoused</option>
+                            <option value="transient">Transient</option>
+                        </select>
+                        <input
+                            name="primary_address"
+                            placeholder="Home address, last known residence, or homeless location"
+                            value={formData.primary_address}
+                            onChange={handleChange}
+                        />
+                        <input name="school_name" placeholder="School Name (if child)" value={formData.school_name} onChange={handleChange} />
+                        <input name="school_address" placeholder="School Address (if child)" value={formData.school_address} onChange={handleChange} />
+                        <input name="employer_name" placeholder="Employer / Retired / Not employed" value={formData.employer_name} onChange={handleChange} />
+                        <input name="work_address" placeholder="Work Address (if adult)" value={formData.work_address} onChange={handleChange} />
+                        <input name="employment_status" placeholder="Employment status, retired, student, or unknown" value={formData.employment_status} onChange={handleChange} />
                         <label className="missing-person-photo-upload full-width-field">
                             <span>Upload Photo</span>
                             <input
@@ -331,6 +362,12 @@ function MissingPersonsList() {
                                     <p>Report Date: {formatReportDate(selectedPerson.created_at)}</p>
                                     <p>Status: {selectedPerson.status || "Unknown"}</p>
                                     <p>Risk Level: {selectedPerson.risk_level || "Unknown"}</p>
+                                    <p>Housing: {selectedPerson.housing_status || "Unknown"}</p>
+                                    <p className="full-width-field">Address: {selectedPerson.primary_address || "Not recorded"}</p>
+                                    <p className="full-width-field">School: {selectedPerson.school_name || "Not recorded"}</p>
+                                    <p className="full-width-field">School Address: {selectedPerson.school_address || "Not recorded"}</p>
+                                    <p className="full-width-field">Employer / Status: {selectedPerson.employer_name || selectedPerson.employment_status || "Not recorded"}</p>
+                                    <p className="full-width-field">Work Address: {selectedPerson.work_address || "Not recorded"}</p>
                                     <p className="full-width-field">Medical Needs: {selectedPerson.medical_conditions || "Not recorded"}</p>
                                     <p className="full-width-field">Last Seen: {selectedPerson.last_seen_location || "Not recorded"}</p>
                                     <p className="full-width-field">{selectedPerson.description || "No description recorded."}</p>
