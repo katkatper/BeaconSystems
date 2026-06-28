@@ -104,6 +104,10 @@ def build_missing_person_case_number(db: Session, person_id: int) -> str:
     return f"{base_number}-{suffix}"
 
 
+def has_coordinate_pair(latitude, longitude) -> bool:
+    return latitude is not None and longitude is not None
+
+
 def enrich_person_coordinates(person_data: dict) -> dict:
     address_fields = [
         ("primary_address", "primary_address_latitude", "primary_address_longitude"),
@@ -113,7 +117,7 @@ def enrich_person_coordinates(person_data: dict) -> dict:
     ]
 
     for source_field, latitude_field, longitude_field in address_fields:
-        if person_data.get(latitude_field) and person_data.get(longitude_field):
+        if has_coordinate_pair(person_data.get(latitude_field), person_data.get(longitude_field)):
             continue
 
         geocoded = geocode_address(person_data.get(source_field))
@@ -148,7 +152,7 @@ def enrich_associate_coordinates(update_data: dict) -> dict:
         if not isinstance(associate, dict):
             continue
 
-        if associate.get("latitude") and associate.get("longitude"):
+        if has_coordinate_pair(associate.get("latitude"), associate.get("longitude")):
             continue
 
         geocoded = geocode_address(associate.get("address") or associate.get("location"))

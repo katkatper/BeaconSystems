@@ -22,6 +22,11 @@ def ensure_local_schema(engine) -> None:
             "available_at": "ALTER TABLE evidence ADD COLUMN available_at TIMESTAMP",
             "evidence_latitude": "ALTER TABLE evidence ADD COLUMN evidence_latitude FLOAT",
             "evidence_longitude": "ALTER TABLE evidence ADD COLUMN evidence_longitude FLOAT",
+            "geocode_provider": "ALTER TABLE evidence ADD COLUMN geocode_provider VARCHAR(50)",
+            "geocode_accuracy": "ALTER TABLE evidence ADD COLUMN geocode_accuracy VARCHAR(50)",
+            "geocode_score": "ALTER TABLE evidence ADD COLUMN geocode_score FLOAT",
+            "geocoded_address": "ALTER TABLE evidence ADD COLUMN geocoded_address VARCHAR(500)",
+            "geocoded_at": "ALTER TABLE evidence ADD COLUMN geocoded_at TIMESTAMP",
             "is_encrypted": "ALTER TABLE evidence ADD COLUMN is_encrypted BOOLEAN DEFAULT FALSE",
             "encryption_key_id": "ALTER TABLE evidence ADD COLUMN encryption_key_id VARCHAR(120)",
             "content_sha256": "ALTER TABLE evidence ADD COLUMN content_sha256 VARCHAR(64)",
@@ -40,6 +45,19 @@ def ensure_local_schema(engine) -> None:
 
         for column_name, statement in alert_columns.items():
             if not _has_column(inspector, "alerts", column_name):
+                statements.append(statement)
+
+    if "sightings" in table_names:
+        sighting_columns = {
+            "geocode_provider": "ALTER TABLE sightings ADD COLUMN geocode_provider VARCHAR(50)",
+            "geocode_accuracy": "ALTER TABLE sightings ADD COLUMN geocode_accuracy VARCHAR(50)",
+            "geocode_score": "ALTER TABLE sightings ADD COLUMN geocode_score FLOAT",
+            "geocoded_address": "ALTER TABLE sightings ADD COLUMN geocoded_address VARCHAR(500)",
+            "geocoded_at": "ALTER TABLE sightings ADD COLUMN geocoded_at TIMESTAMP",
+        }
+
+        for column_name, statement in sighting_columns.items():
+            if not _has_column(inspector, "sightings", column_name):
                 statements.append(statement)
 
     if "evidence_chain" in table_names:

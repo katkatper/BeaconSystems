@@ -414,6 +414,37 @@
     margin: 8px 0;
 }
 
+.case-sighting-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.case-sighting-list .queue-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: start;
+}
+
+.case-sighting-list .queue-item div {
+    display: block;
+}
+
+.small-danger-button {
+    min-height: 38px;
+    padding: 8px 12px;
+    color: #fee2e2;
+    font-weight: 800;
+    background: rgba(127, 29, 29, 0.78);
+    border: 1px solid rgba(248, 113, 113, 0.54);
+    border-radius: 8px;
+}
+
+.small-danger-button:hover {
+    background: rgba(153, 27, 27, 0.9);
+}
+
 .compliance-list {
     display: grid;
     gap: 10px;

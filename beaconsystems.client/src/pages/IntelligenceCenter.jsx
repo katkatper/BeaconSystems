@@ -52,12 +52,12 @@ function IntelligenceCenter() {
         };
     }, []);
 
+    const hasMapCoordinates = (latitude, longitude) =>
+        Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
+
     const mappedLocations = [
         ...evidence
-            .filter((item) =>
-                Number.isFinite(Number(item.evidence_latitude)) &&
-                Number.isFinite(Number(item.evidence_longitude))
-            )
+            .filter((item) => hasMapCoordinates(item.evidence_latitude, item.evidence_longitude))
             .map((item) => ({
                 id: `evidence-${item.evidence_id}`,
                 type: "evidence",
@@ -72,7 +72,7 @@ function IntelligenceCenter() {
         ...persons.flatMap((person) => {
             const personName = `${person.first_name || ""} ${person.last_name || ""}`.trim() || "Missing person";
             return [
-                person.primary_address_latitude && person.primary_address_longitude
+                hasMapCoordinates(person.primary_address_latitude, person.primary_address_longitude)
                     ? {
                         id: `person-${person.person_id}-primary`,
                         type: "address",
@@ -85,7 +85,7 @@ function IntelligenceCenter() {
                         confidence: 0.64,
                     }
                     : null,
-                person.last_seen_latitude && person.last_seen_longitude
+                hasMapCoordinates(person.last_seen_latitude, person.last_seen_longitude)
                     ? {
                         id: `person-${person.person_id}-last-seen`,
                         type: "last_seen",
@@ -98,7 +98,7 @@ function IntelligenceCenter() {
                         confidence: 0.82,
                     }
                     : null,
-                person.school_address_latitude && person.school_address_longitude
+                hasMapCoordinates(person.school_address_latitude, person.school_address_longitude)
                     ? {
                         id: `person-${person.person_id}-school`,
                         type: "school",
@@ -111,7 +111,7 @@ function IntelligenceCenter() {
                         confidence: 0.58,
                     }
                     : null,
-                person.work_address_latitude && person.work_address_longitude
+                hasMapCoordinates(person.work_address_latitude, person.work_address_longitude)
                     ? {
                         id: `person-${person.person_id}-work`,
                         type: "work",

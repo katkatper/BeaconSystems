@@ -11,6 +11,8 @@ const knownLocations = {
     "5700 east northwest highway dallas tx 75231": [32.8648, -96.7676],
     "bayside market place": [25.7783, -80.186],
     "bayside marketplace": [25.7783, -80.186],
+    "1015 n america way miami fl 33132": [25.7778, -80.1799],
+    "1015 north america way miami fl 33132": [25.7778, -80.1799],
 };
 
 const cityCenters = {

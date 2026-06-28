@@ -53,6 +53,16 @@ class SightingResponse(BaseModel):
     latitude: Optional[float] = None
 
     longitude: Optional[float] = None
+
+    geocode_provider: Optional[str] = None
+
+    geocode_accuracy: Optional[str] = None
+
+    geocode_score: Optional[float] = None
+
+    geocoded_address: Optional[str] = None
+
+    geocoded_at: Optional[datetime] = None
     
     sighting_time: Optional[datetime] = None
 

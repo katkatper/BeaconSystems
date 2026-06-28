@@ -221,6 +221,53 @@ function CaseDetail() {
         }
     };
 
+    const deleteSighting = async (sighting) => {
+        if (!sighting?.sighting_id) {
+            setSightingMessage("This sighting cannot be removed because it has not been saved yet.");
+            return;
+        }
+
+        const shouldDelete = window.confirm(
+            `Remove sighting at ${sighting.location || "this location"}?`
+        );
+
+        if (!shouldDelete) return;
+
+        const token = localStorage.getItem("token");
+
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:8000/sightings/${sighting.sighting_id}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (response.status === 401) {
+                setSightingMessage("Your session expired. Please log in again before removing a sighting.");
+                return;
+            }
+
+            if (response.status === 403) {
+                setSightingMessage("Your role does not have permission to remove sightings from this case.");
+                return;
+            }
+
+            if (!response.ok) throw new Error("Failed to remove sighting");
+
+            setSightings((currentSightings) =>
+                currentSightings.filter((entry) => entry.sighting_id !== sighting.sighting_id)
+            );
+            setSightingMessage("Sighting removed.");
+        } catch (err) {
+            console.error(err);
+            setSightingMessage("Could not remove sighting.");
+        }
+    };
+
     const submitAssociate = async (e) => {
         e.preventDefault();
 
@@ -428,10 +475,14 @@ function CaseDetail() {
     const personName = person
         ? `${person.first_name || ""} ${person.last_name || ""}`.trim()
         : "Missing Person";
+    const hasMapCoordinates = (latitude, longitude) =>
+        Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
     const associates = parseAssociates();
-    const associateLocations = associates.filter((entry) => entry.latitude && entry.longitude);
+    const associateLocations = associates.filter((entry) =>
+        hasMapCoordinates(entry.latitude, entry.longitude)
+    );
     const mappedCaseLocations = [
-        person?.primary_address_latitude && person?.primary_address_longitude
+        hasMapCoordinates(person?.primary_address_latitude, person?.primary_address_longitude)
             ? {
                 id: "person-primary-address",
                 type: "Missing person address",
@@ -441,7 +492,7 @@ function CaseDetail() {
                 longitude: person.primary_address_longitude,
             }
             : null,
-        person?.school_address_latitude && person?.school_address_longitude
+        hasMapCoordinates(person?.school_address_latitude, person?.school_address_longitude)
             ? {
                 id: "person-school-address",
                 type: "School",
@@ -451,7 +502,7 @@ function CaseDetail() {
                 longitude: person.school_address_longitude,
             }
             : null,
-        person?.work_address_latitude && person?.work_address_longitude
+        hasMapCoordinates(person?.work_address_latitude, person?.work_address_longitude)
             ? {
                 id: "person-work-address",
                 type: "Work",
@@ -461,7 +512,7 @@ function CaseDetail() {
                 longitude: person.work_address_longitude,
             }
             : null,
-        person?.last_seen_latitude && person?.last_seen_longitude
+        hasMapCoordinates(person?.last_seen_latitude, person?.last_seen_longitude)
             ? {
                 id: "person-last-seen",
                 type: "Last seen",
@@ -472,7 +523,7 @@ function CaseDetail() {
             }
             : null,
         ...evidence.map((item) =>
-            item.evidence_latitude && item.evidence_longitude
+            hasMapCoordinates(item.evidence_latitude, item.evidence_longitude)
                 ? {
                     id: `evidence-${item.evidence_id}`,
                     type: "Evidence",
@@ -718,6 +769,13 @@ function CaseDetail() {
                                 <strong>{sighting.sighting_time || sighting.created_at || `Sighting ${index + 1}`}</strong>
                                 <p>Sighting reported at {sighting.location}</p>
                                 <small>{sighting.description}</small>
+                                <button
+                                    type="button"
+                                    className="small-danger-button"
+                                    onClick={() => deleteSighting(sighting)}
+                                >
+                                    Remove Sighting
+                                </button>
                             </article>
                         ))}
                     </div>
@@ -750,6 +808,36 @@ function CaseDetail() {
                         escapeAnalysis={escapeRouteAnalysis}
                         analysisOrigin={escapeRouteAnalysis?.origin}
                     />
+                    <div className="case-sighting-list">
+                        <h3>Recorded Sightings</h3>
+                        {sortedSightings.length === 0 ? (
+                            <p>No sightings recorded for this case.</p>
+                        ) : (
+                            sortedSightings.map((sighting, index) => (
+                                <article key={sighting.sighting_id || `sighting-${index}`} className="queue-item">
+                                    <div>
+                                        <strong>{sighting.location || `Sighting ${index + 1}`}</strong>
+                                        <span>
+                                            Confidence: {sighting.confidence_score ?? "Not set"}
+                                        </span>
+                                        <p>{sighting.description || "No description recorded."}</p>
+                                        {hasMapCoordinates(sighting.latitude, sighting.longitude) ? (
+                                            <small>Mapped at {sighting.latitude}, {sighting.longitude}</small>
+                                        ) : (
+                                            <small>No map coordinates recorded.</small>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="small-danger-button"
+                                        onClick={() => deleteSighting(sighting)}
+                                    >
+                                        Remove
+                                    </button>
+                                </article>
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -810,7 +898,7 @@ function CaseDetail() {
                                             <strong>{associate.name}</strong>
                                             <span>{associate.relationship}</span>
                                             <p>{associate.address}</p>
-                                            {associate.latitude && associate.longitude ? (
+                                            {hasMapCoordinates(associate.latitude, associate.longitude) ? (
                                                 <small>Mapped at {associate.latitude}, {associate.longitude}</small>
                                             ) : (
                                                 <small>No map coordinates recorded.</small>

@@ -19,6 +19,11 @@ class Sighting(Base):
     longitude= Column(Float)
 
     latitude= Column(Float)
+    geocode_provider= Column(String(50), nullable=True)
+    geocode_accuracy= Column(String(50), nullable=True)
+    geocode_score= Column(Float, nullable=True)
+    geocoded_address= Column(String(500), nullable=True)
+    geocoded_at= Column(DateTime, nullable=True)
 
     sighting_time= Column(DateTime)
 

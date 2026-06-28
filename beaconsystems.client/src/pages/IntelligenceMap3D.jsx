@@ -175,10 +175,10 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
 
     const latitudes = coordinateEntries.map((entry) => Number(entry.latitude));
     const longitudes = coordinateEntries.map((entry) => Number(entry.longitude));
-    const minLat = Math.min(...latitudes, 0);
-    const maxLat = Math.max(...latitudes, 0);
-    const minLng = Math.min(...longitudes, 0);
-    const maxLng = Math.max(...longitudes, 0);
+    const minLat = Math.min(...latitudes);
+    const maxLat = Math.max(...latitudes);
+    const minLng = Math.min(...longitudes);
+    const maxLng = Math.max(...longitudes);
     const bounds = {
         minLat: minLat === maxLat ? minLat - 0.02 : minLat,
         maxLat: minLat === maxLat ? maxLat + 0.02 : maxLat,

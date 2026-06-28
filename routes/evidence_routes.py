@@ -123,6 +123,11 @@ def serialize_evidence_items(items: list[Evidence], db: Session):
             "evidence_location": item.evidence_location,
             "evidence_latitude": item.evidence_latitude,
             "evidence_longitude": item.evidence_longitude,
+            "geocode_provider": item.geocode_provider,
+            "geocode_accuracy": item.geocode_accuracy,
+            "geocode_score": item.geocode_score,
+            "geocoded_address": item.geocoded_address,
+            "geocoded_at": item.geocoded_at,
             "custody_status": item.custody_status,
             "current_holder": item.current_holder,
             "lab_reference": item.lab_reference,
@@ -198,6 +203,11 @@ def upload_evidence(
         evidence_location=evidence_location,
         evidence_latitude=geocoded_location["latitude"] if geocoded_location else None,
         evidence_longitude=geocoded_location["longitude"] if geocoded_location else None,
+        geocode_provider=geocoded_location.get("provider") if geocoded_location else None,
+        geocode_accuracy=geocoded_location.get("accuracy") if geocoded_location else None,
+        geocode_score=geocoded_location.get("score") if geocoded_location else None,
+        geocoded_address=geocoded_location.get("formatted_address") if geocoded_location else None,
+        geocoded_at=datetime.utcnow() if geocoded_location else None,
         current_holder=current_user.username,
         custody_status="collected",
         file_name=original_file_name,
@@ -328,9 +338,19 @@ def add_evidence_custody_event(
     if geocoded_location:
         evidence.evidence_latitude = geocoded_location["latitude"]
         evidence.evidence_longitude = geocoded_location["longitude"]
+        evidence.geocode_provider = geocoded_location.get("provider")
+        evidence.geocode_accuracy = geocoded_location.get("accuracy")
+        evidence.geocode_score = geocoded_location.get("score")
+        evidence.geocoded_address = geocoded_location.get("formatted_address")
+        evidence.geocoded_at = datetime.utcnow()
     elif data.location:
         evidence.evidence_latitude = None
         evidence.evidence_longitude = None
+        evidence.geocode_provider = None
+        evidence.geocode_accuracy = None
+        evidence.geocode_score = None
+        evidence.geocoded_address = None
+        evidence.geocoded_at = None
 
     evidence.lab_reference = data.lab_reference or evidence.lab_reference
     evidence.available_at = data.available_at or evidence.available_at

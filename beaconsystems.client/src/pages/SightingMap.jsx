@@ -204,8 +204,15 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
         ? [validAnalysisOrigin.latitude, validAnalysisOrigin.longitude]
         : null;
     const originPosition = analysisOriginPosition || pathPositions[0] || associatePositions[0] || mappedPositions[0] || [32.7767, -96.797];
-    const fitPositions = [...pathPositions, ...associatePositions, ...mappedPositions, ...(analysisOriginPosition ? [analysisOriginPosition] : [])];
     const routeCorridors = escapeAnalysis ? buildRouteCorridors(originPosition, escapeAnalysis.likelyRoutes?.length || 3) : [];
+    const routeCorridorPositions = routeCorridors.flat();
+    const fitPositions = [
+        ...pathPositions,
+        ...associatePositions,
+        ...mappedPositions,
+        ...routeCorridorPositions,
+        ...(analysisOriginPosition ? [analysisOriginPosition] : []),
+    ];
 
     const arrowPositions = [];
 

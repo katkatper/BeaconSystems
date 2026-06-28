@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/clean-vite-output.mjs",
     "build": "vite build --configLoader runner",
     "lint": "eslint .",
     "preview": "vite preview"

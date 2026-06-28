@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 from database.connection import get_db
 from models import timeline_events
 from models.sighting import Sighting
@@ -21,6 +22,14 @@ from services.geocoding_service import geocode_address
 # CREATE APIRouter INSTANCE WITH PREFIX AND TAGS
 
 router = APIRouter(prefix="/sightings", tags=["Sightings"])
+
+
+def apply_geocode_metadata(target, geocoded):
+    target.geocode_provider = geocoded.get("provider") if geocoded else None
+    target.geocode_accuracy = geocoded.get("accuracy") if geocoded else None
+    target.geocode_score = geocoded.get("score") if geocoded else None
+    target.geocoded_address = geocoded.get("formatted_address") if geocoded else None
+    target.geocoded_at = datetime.utcnow() if geocoded else None
 
 
 @router.get("/test")
@@ -135,6 +144,8 @@ def create_sighting(
         image_url=data.image_url,
     )
 
+    apply_geocode_metadata(new_sighting, geocoded)
+
     db.add(new_sighting)
     db.commit()
     db.refresh(new_sighting)
@@ -216,7 +227,7 @@ def update_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "investigator", "supervisor")),
 ):
 
     sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
@@ -238,9 +249,19 @@ def update_sighting(
         if geocoded:
             update_data["latitude"] = geocoded["latitude"]
             update_data["longitude"] = geocoded["longitude"]
+            update_data["geocode_provider"] = geocoded.get("provider")
+            update_data["geocode_accuracy"] = geocoded.get("accuracy")
+            update_data["geocode_score"] = geocoded.get("score")
+            update_data["geocoded_address"] = geocoded.get("formatted_address")
+            update_data["geocoded_at"] = datetime.utcnow()
         else:
             update_data["latitude"] = None
             update_data["longitude"] = None
+            update_data["geocode_provider"] = None
+            update_data["geocode_accuracy"] = None
+            update_data["geocode_score"] = None
+            update_data["geocoded_address"] = None
+            update_data["geocoded_at"] = None
 
     for field, value in update_data.items():
         setattr(sighting, field, value)
@@ -299,7 +320,7 @@ def delete_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("admin", "agency_admin", "investigator", "supervisor")),
 ):
 
     sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
