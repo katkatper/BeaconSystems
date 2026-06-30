@@ -33,10 +33,7 @@ function CaseDetail() {
 
     const [sightingForm, setSightingForm] = useState({
         location: "",
-        latitude: "",
-        longitude: "",
         description: "",
-        confidence_score: "",
     });
 
     useEffect(() => {
@@ -156,12 +153,7 @@ function CaseDetail() {
                 case_id: Number(id),
                 person_id: caseItem.person_id,
                 location: sightingForm.location,
-                latitude: sightingForm.latitude ? Number(sightingForm.latitude) : null,
-                longitude: sightingForm.longitude ? Number(sightingForm.longitude) : null,
                 description: sightingForm.description,
-                confidence_score: sightingForm.confidence_score
-                    ? Number(sightingForm.confidence_score)
-                    : null,
                 image_url: null,
             };
 
@@ -210,10 +202,7 @@ function CaseDetail() {
             setSightingMessage("Sighting added successfully.");
             setSightingForm({
                 location: "",
-                latitude: "",
-                longitude: "",
                 description: "",
-                confidence_score: "",
             });
         } catch (err) {
             console.error(err);
@@ -643,13 +632,6 @@ function CaseDetail() {
                         <h1 className="case-title">Case #{caseItem.case_number}</h1>
                         <p>{personName}</p>
                     </div>
-
-                    <button
-                        className="case-action-button"
-                        onClick={() => setShowSightingForm(!showSightingForm)}
-                    >
-                        {showSightingForm ? "Close Sighting" : "Add Sighting"}
-                    </button>
                 </div>
 
                 <div className="case-card-header case-status-row">
@@ -662,49 +644,6 @@ function CaseDetail() {
                         Investigator ID: {caseItem.investigator_id}
                     </span>
                 </div>
-
-                {showSightingForm && (
-                    <form className="case-sighting-form" onSubmit={submitSighting}>
-                        <input
-                            name="location"
-                            placeholder="Location"
-                            value={sightingForm.location}
-                            onChange={handleSightingChange}
-                        />
-
-                        <input
-                            name="latitude"
-                            placeholder="Latitude"
-                            value={sightingForm.latitude}
-                            onChange={handleSightingChange}
-                        />
-
-                        <input
-                            name="longitude"
-                            placeholder="Longitude"
-                            value={sightingForm.longitude}
-                            onChange={handleSightingChange}
-                        />
-
-                        <input
-                            name="confidence_score"
-                            placeholder="Confidence Score 0-1"
-                            value={sightingForm.confidence_score}
-                            onChange={handleSightingChange}
-                        />
-
-                        <textarea
-                            name="description"
-                            placeholder="Description"
-                            value={sightingForm.description}
-                            onChange={handleSightingChange}
-                        />
-
-                        <button type="submit">Add Sighting</button>
-                    </form>
-                )}
-
-                {sightingMessage && <p>{sightingMessage}</p>}
             </div>
 
             <div className="case-tabs" role="tablist" aria-label="Case information tabs">
@@ -800,7 +739,42 @@ function CaseDetail() {
 
             {activeTab === "sightings" && (
                 <div className="case-section case-tab-panel">
-                    <h2>Case Geography</h2>
+                    <div className="case-card-header">
+                        <div>
+                            <h2>Case Geography</h2>
+                            <p>Sightings, mapped case locations, associates, and escape route analysis.</p>
+                        </div>
+                        <button
+                            type="button"
+                            className="case-action-button"
+                            onClick={() => setShowSightingForm(!showSightingForm)}
+                        >
+                            {showSightingForm ? "Close Sighting" : "Add Sighting"}
+                        </button>
+                    </div>
+
+                    {showSightingForm && (
+                        <form className="case-sighting-form" onSubmit={submitSighting}>
+                            <input
+                                name="location"
+                                placeholder="Location"
+                                value={sightingForm.location}
+                                onChange={handleSightingChange}
+                            />
+
+                            <textarea
+                                name="description"
+                                placeholder="Description"
+                                value={sightingForm.description}
+                                onChange={handleSightingChange}
+                            />
+
+                            <button type="submit">Add Sighting</button>
+                        </form>
+                    )}
+
+                    {sightingMessage && <p>{sightingMessage}</p>}
+
                     <SightingMap
                         sightings={sortedSightings}
                         associateLocations={associateLocations}

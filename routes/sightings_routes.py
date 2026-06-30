@@ -32,6 +32,79 @@ def apply_geocode_metadata(target, geocoded):
     target.geocoded_at = datetime.utcnow() if geocoded else None
 
 
+def calculate_sighting_confidence(description: str | None, location: str | None, geocoded=None) -> float:
+    text = f"{description or ''} {location or ''}".lower()
+    score = 0.35
+
+    high_confidence_terms = [
+        "confirmed",
+        "identified",
+        "license plate",
+        "plate",
+        "photo",
+        "video",
+        "cctv",
+        "camera",
+        "lpr",
+        "facial recognition",
+        "positive id",
+        "same clothes",
+    ]
+    medium_confidence_terms = [
+        "witness",
+        "saw",
+        "seen",
+        "reported",
+        "vehicle",
+        "direction",
+        "walking",
+        "running",
+        "near",
+        "matching description",
+    ]
+    low_confidence_terms = [
+        "possible",
+        "maybe",
+        "unknown",
+        "unclear",
+        "unconfirmed",
+        "similar",
+        "rumor",
+    ]
+
+    for term in high_confidence_terms:
+        if term in text:
+            score += 0.12
+
+    for term in medium_confidence_terms:
+        if term in text:
+            score += 0.06
+
+    for term in low_confidence_terms:
+        if term in text:
+            score -= 0.07
+
+    if geocoded:
+        accuracy = geocoded.get("accuracy")
+
+        if accuracy in {"rooftop", "known_address", "provided_coordinates"}:
+            score += 0.14
+        elif accuracy in {"street", "known_place", "place"}:
+            score += 0.1
+        elif accuracy in {"city_estimate", "area"}:
+            score -= 0.06
+
+        geocode_score = geocoded.get("score")
+
+        if geocode_score is not None:
+            score += max(-0.05, min(0.1, (float(geocode_score) - 80) / 200))
+
+    if len(text.strip()) < 24:
+        score -= 0.08
+
+    return round(max(0.1, min(0.95, score)), 2)
+
+
 @router.get("/test")
 
 def sightings_test():
@@ -125,6 +198,15 @@ def create_sighting(
         latitude = geocoded["latitude"]
         longitude = geocoded["longitude"]
 
+    confidence_score = data.confidence_score
+
+    if confidence_score is None:
+        confidence_score = calculate_sighting_confidence(
+            data.description,
+            data.location,
+            geocoded,
+        )
+
     new_sighting = Sighting(
 
         case_id=data.case_id,
@@ -139,7 +221,7 @@ def create_sighting(
 
         description=data.description,
 
-        confidence_score=data.confidence_score,
+        confidence_score=confidence_score,
 
         image_url=data.image_url,
     )
@@ -240,19 +322,20 @@ def update_sighting(
     previous_confidence = sighting.confidence_score
 
     update_data = data.model_dump(exclude_unset=True)
+    next_geocoded = None
 
     if "location" in update_data and (
         update_data.get("latitude") is None or update_data.get("longitude") is None
     ):
-        geocoded = geocode_address(update_data.get("location"))
+        next_geocoded = geocode_address(update_data.get("location"))
 
-        if geocoded:
-            update_data["latitude"] = geocoded["latitude"]
-            update_data["longitude"] = geocoded["longitude"]
-            update_data["geocode_provider"] = geocoded.get("provider")
-            update_data["geocode_accuracy"] = geocoded.get("accuracy")
-            update_data["geocode_score"] = geocoded.get("score")
-            update_data["geocoded_address"] = geocoded.get("formatted_address")
+        if next_geocoded:
+            update_data["latitude"] = next_geocoded["latitude"]
+            update_data["longitude"] = next_geocoded["longitude"]
+            update_data["geocode_provider"] = next_geocoded.get("provider")
+            update_data["geocode_accuracy"] = next_geocoded.get("accuracy")
+            update_data["geocode_score"] = next_geocoded.get("score")
+            update_data["geocoded_address"] = next_geocoded.get("formatted_address")
             update_data["geocoded_at"] = datetime.utcnow()
         else:
             update_data["latitude"] = None
@@ -262,6 +345,15 @@ def update_sighting(
             update_data["geocode_score"] = None
             update_data["geocoded_address"] = None
             update_data["geocoded_at"] = None
+
+    if "confidence_score" not in update_data and (
+        "description" in update_data or "location" in update_data
+    ):
+        update_data["confidence_score"] = calculate_sighting_confidence(
+            update_data.get("description", sighting.description),
+            update_data.get("location", sighting.location),
+            next_geocoded,
+        )
 
     for field, value in update_data.items():
         setattr(sighting, field, value)

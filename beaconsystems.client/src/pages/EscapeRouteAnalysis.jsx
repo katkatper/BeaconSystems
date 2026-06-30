@@ -171,6 +171,31 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
         setForm((current) => ({ ...current, [fieldName]: "" }));
     };
 
+    const geocodeAnalysisOrigin = async (value) => {
+        const token = localStorage.getItem("token");
+
+        if (token && value.trim()) {
+            try {
+                const response = await fetch(
+                    `http://127.0.0.1:8000/geocoding/address?address=${encodeURIComponent(value)}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+
+                if (response.ok) {
+                    return response.json();
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        return geocodeLocal(value);
+    };
+
     const clearAllFields = () => {
         setForm(initialForm);
         setAnalysisStarted(false);
@@ -193,9 +218,9 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
         </div>
     );
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
-        const geocodedOrigin = geocodeLocal(form.abductionLocation);
+        const geocodedOrigin = await geocodeAnalysisOrigin(form.abductionLocation);
         const nextAnalysis = {
             ...analysis,
             generatedAt: new Date().toISOString(),
@@ -215,6 +240,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
 
     const draftOrigin = geocodeLocal(form.abductionLocation);
     const displayedAnalysis = submittedAnalysis || (analysisStarted ? analysis : null);
+    const renderedAnalysis = displayedAnalysis || analysis;
     const displayedOrigin = displayedAnalysis?.origin || (
         draftOrigin
             ? {
@@ -354,7 +380,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                     />
 
                     <div className="escape-radius-list">
-                        {(displayedAnalysis || analysis).reachableBands.map((band) => (
+                        {renderedAnalysis.reachableBands.map((band) => (
                             <div key={band.minutes}>
                                 <span>{band.minutes} minutes</span>
                                 <strong>{band.miles} mi</strong>
@@ -370,7 +396,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                         <span>Dynamic Probability Scoring</span>
                         <strong>Likely routes</strong>
                     </div>
-                    {analysis.likelyRoutes.map((route) => (
+                    {renderedAnalysis.likelyRoutes.map((route) => (
                         <article className="route-score-card" key={route.route}>
                             <div>
                                 <h2>{route.route}</h2>
@@ -387,7 +413,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                         <span>Road Network Analysis</span>
                         <strong>Priority choke points</strong>
                     </div>
-                    {analysis.chokePoints.map((point) => (
+                    {renderedAnalysis.chokePoints.map((point) => (
                         <article className="choke-point-card" key={point.name}>
                             <span>{point.priority}</span>
                             <strong>{point.name}</strong>
@@ -401,7 +427,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                         <span>Resource Allocation</span>
                         <strong>Suggested attention areas</strong>
                     </div>
-                    {analysis.resourceSuggestions.map((suggestion) => (
+                    {renderedAnalysis.resourceSuggestions.map((suggestion) => (
                         <p key={suggestion}>{suggestion}</p>
                     ))}
                 </div>
@@ -417,9 +443,9 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                         investigator judgment.
                     </p>
                     <div className="beacon-status-list">
-                        <span>Vehicle model: {analysis.vehicle.label}</span>
-                        <span>Road context: {analysis.roadContext.label}</span>
-                        <span>Analysis status: {analysisStarted ? "Generated" : "Ready for input"}</span>
+                        <span>Vehicle model: {renderedAnalysis.vehicle.label}</span>
+                        <span>Road context: {renderedAnalysis.roadContext.label}</span>
+                        <span>Analysis status: {displayedAnalysis ? "Generated" : "Ready for input"}</span>
                     </div>
                 </div>
             </section>
