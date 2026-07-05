@@ -17,6 +17,7 @@ from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import assert_case_write_access
 from services.activity_service import create_activity_log
+from services.geocoding_service import geocode_address
 
 
 router = APIRouter(prefix="/partner-intake", tags=["Partner Intake"])
@@ -87,6 +88,29 @@ def split_subject_name(subject_name: str | None):
         return parts[0], None
 
     return parts[0], " ".join(parts[1:])
+
+
+def apply_geocode_fields(target, geocoded: dict[str, Any] | None) -> None:
+    if not geocoded:
+        return
+
+    target.latitude = geocoded.get("latitude")
+    target.longitude = geocoded.get("longitude")
+    target.geocode_provider = geocoded.get("provider")
+    target.geocode_accuracy = geocoded.get("accuracy")
+    target.geocode_score = geocoded.get("score")
+    target.geocoded_address = geocoded.get("formatted_address")
+    target.geocoded_at = datetime.utcnow()
+
+
+def copy_intake_geocode_fields(external_record: ExternalRecord, intake: PartnerIntakeRecord) -> None:
+    external_record.latitude = intake.latitude
+    external_record.longitude = intake.longitude
+    external_record.geocode_provider = intake.geocode_provider
+    external_record.geocode_accuracy = intake.geocode_accuracy
+    external_record.geocode_score = intake.geocode_score
+    external_record.geocoded_address = intake.geocoded_address
+    external_record.geocoded_at = intake.geocoded_at
 
 
 def score_case_match(case: Cases, data: PartnerIntakeCreate) -> tuple[int, list[str]]:
@@ -198,6 +222,7 @@ def create_intake_record(
 ):
     matched_case, match_score, match_reason = find_best_case_match(db, data)
     status = "matched_pending_review" if matched_case else "pending_review"
+    geocoded = geocode_address(data.location)
 
     intake = PartnerIntakeRecord(
         integration_source_id=data.integration_source_id,
@@ -216,6 +241,7 @@ def create_intake_record(
         intake_channel=intake_channel,
         status=status,
     )
+    apply_geocode_fields(intake, geocoded)
 
     db.add(intake)
     db.commit()
@@ -254,6 +280,13 @@ def serialize_partner_intake(intake: PartnerIntakeRecord) -> dict[str, Any]:
         "external_id": intake.external_id,
         "subject_name": intake.subject_name,
         "location": intake.location,
+        "latitude": intake.latitude,
+        "longitude": intake.longitude,
+        "geocode_provider": intake.geocode_provider,
+        "geocode_accuracy": intake.geocode_accuracy,
+        "geocode_score": intake.geocode_score,
+        "geocoded_address": intake.geocoded_address,
+        "geocoded_at": intake.geocoded_at,
         "summary": intake.summary,
         "raw_data": intake.raw_data,
         "match_score": intake.match_score,
@@ -410,6 +443,9 @@ def attach_partner_intake_to_case(
         person_id=data.person_id,
         case_id=data.case_id,
     )
+    copy_intake_geocode_fields(external_record, intake)
+    if intake.location and (external_record.latitude is None or external_record.longitude is None):
+        apply_geocode_fields(external_record, geocode_address(intake.location))
 
     db.add(external_record)
     db.commit()

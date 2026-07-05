@@ -12,6 +12,7 @@ const SOURCE_COLORS = {
     cell_provider: 0x38bdf8,
     social_media: 0xf472b6,
     evidence: 0x14b8a6,
+    bolo: 0xef4444,
     address: 0x67e8f9,
     school: 0x818cf8,
     work: 0xfbbf24,
@@ -155,7 +156,14 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
             })),
         ...records
             .map((record, index) => {
-                const geocoded = geocodeLocal(record.location);
+                const geocoded =
+                    Number.isFinite(Number(record.latitude)) &&
+                    Number.isFinite(Number(record.longitude))
+                        ? {
+                            latitude: Number(record.latitude),
+                            longitude: Number(record.longitude),
+                        }
+                        : geocodeLocal(record.location);
 
                 if (!geocoded) return null;
 
@@ -165,7 +173,9 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
                     title: record.location || record.record_type || "External record",
                     detail: record.notes || "Partner-provided intelligence",
                     caseId: record.case_id,
-                    confidence: 0.55,
+                    confidence: record.geocode_score
+                        ? Math.max(0.35, Math.min(Number(record.geocode_score) / 100, 0.95))
+                        : 0.55,
                     latitude: geocoded.latitude,
                     longitude: geocoded.longitude,
                 };

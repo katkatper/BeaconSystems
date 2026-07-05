@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,6 +17,7 @@ from security.case_access import (
     assert_case_write_access,
     get_authorized_case,
 )
+from services.geocoding_service import geocode_address
 
 
 
@@ -27,6 +29,20 @@ router = APIRouter(
 
     tags=["External Records"]
 )
+
+
+def apply_geocode_fields(record: ExternalRecord, location: str | None) -> None:
+    geocoded = geocode_address(location)
+    if not geocoded:
+        return
+
+    record.latitude = geocoded.get("latitude")
+    record.longitude = geocoded.get("longitude")
+    record.geocode_provider = geocoded.get("provider")
+    record.geocode_accuracy = geocoded.get("accuracy")
+    record.geocode_score = geocoded.get("score")
+    record.geocoded_address = geocoded.get("formatted_address")
+    record.geocoded_at = datetime.utcnow()
 
 
 @router.post("/")
@@ -84,6 +100,7 @@ def create_external_record(
 
         case_id=case_id,
     )
+    apply_geocode_fields(record, location)
 
     db.add(record)
     db.commit()

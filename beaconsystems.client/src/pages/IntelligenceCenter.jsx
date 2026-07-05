@@ -4,6 +4,7 @@ import IntelligenceMap3D from "./IntelligenceMap3D.jsx";
 function IntelligenceCenter() {
     const [sightings, setSightings] = useState([]);
     const [externalRecords, setExternalRecords] = useState([]);
+    const [bolos, setBolos] = useState([]);
     const [evidence, setEvidence] = useState([]);
     const [persons, setPersons] = useState([]);
     const [visibleRecordCount, setVisibleRecordCount] = useState(2);
@@ -16,17 +17,19 @@ function IntelligenceCenter() {
 
         const loadIntelligence = async () => {
             try {
-                const [sightingsResponse, recordsResponse, evidenceResponse, personsResponse] =
+                const [sightingsResponse, recordsResponse, bolosResponse, evidenceResponse, personsResponse] =
                     await Promise.all([
                         fetch("http://127.0.0.1:8000/sightings/", { headers }),
                         fetch("http://127.0.0.1:8000/external-records/", { headers }),
+                        fetch("http://127.0.0.1:8000/bolos/", { headers }),
                         fetch("http://127.0.0.1:8000/evidence/", { headers }),
                         fetch("http://127.0.0.1:8000/persons/?limit=100", { headers }),
                     ]);
 
-                const [sightingsData, recordsData, evidenceData, personsData] = await Promise.all([
+                const [sightingsData, recordsData, bolosData, evidenceData, personsData] = await Promise.all([
                     sightingsResponse.ok ? sightingsResponse.json() : [],
                     recordsResponse.ok ? recordsResponse.json() : [],
+                    bolosResponse.ok ? bolosResponse.json() : [],
                     evidenceResponse.ok ? evidenceResponse.json() : [],
                     personsResponse.ok ? personsResponse.json() : [],
                 ]);
@@ -35,6 +38,7 @@ function IntelligenceCenter() {
 
                 setSightings(Array.isArray(sightingsData) ? sightingsData : []);
                 setExternalRecords(Array.isArray(recordsData) ? recordsData : []);
+                setBolos(Array.isArray(bolosData) ? bolosData : []);
                 setEvidence(Array.isArray(evidenceData) ? evidenceData : []);
                 setPersons(Array.isArray(personsData) ? personsData : []);
                 setLastUpdated(new Date());
@@ -68,6 +72,21 @@ function IntelligenceCenter() {
                 latitude: item.evidence_latitude,
                 longitude: item.evidence_longitude,
                 confidence: 0.72,
+            })),
+        ...bolos
+            .filter((bolo) => hasMapCoordinates(bolo.latitude, bolo.longitude))
+            .map((bolo) => ({
+                id: `bolo-${bolo.bolo_id}`,
+                type: "bolo",
+                label: bolo.title || "BOLO",
+                address: bolo.geocoded_address || bolo.last_known_location,
+                detail: bolo.description || "Active BOLO alert",
+                caseId: bolo.case_id,
+                latitude: bolo.latitude,
+                longitude: bolo.longitude,
+                confidence: bolo.geocode_score
+                    ? Math.max(0.35, Math.min(Number(bolo.geocode_score) / 100, 0.95))
+                    : 0.74,
             })),
         ...persons.flatMap((person) => {
             const personName = `${person.first_name || ""} ${person.last_name || ""}`.trim() || "Missing person";

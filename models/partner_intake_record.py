@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 
 from database.connection import Base
 
@@ -20,6 +20,13 @@ class PartnerIntakeRecord(Base):
     external_id = Column(String(255), nullable=True)
     subject_name = Column(String(255), nullable=True)
     location = Column(String(255), nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    geocode_provider = Column(String(50), nullable=True)
+    geocode_accuracy = Column(String(50), nullable=True)
+    geocode_score = Column(Float, nullable=True)
+    geocoded_address = Column(String(500), nullable=True)
+    geocoded_at = Column(DateTime, nullable=True)
     summary = Column(Text, nullable=False)
     raw_data = Column(JSON, nullable=True)
     match_score = Column(Integer, nullable=True)

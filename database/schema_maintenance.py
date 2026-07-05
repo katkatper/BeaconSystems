@@ -47,6 +47,21 @@ def ensure_local_schema(engine) -> None:
             if not _has_column(inspector, "alerts", column_name):
                 statements.append(statement)
 
+    if "bolo_alerts" in table_names:
+        bolo_columns = {
+            "latitude": "ALTER TABLE bolo_alerts ADD COLUMN latitude FLOAT",
+            "longitude": "ALTER TABLE bolo_alerts ADD COLUMN longitude FLOAT",
+            "geocode_provider": "ALTER TABLE bolo_alerts ADD COLUMN geocode_provider VARCHAR(50)",
+            "geocode_accuracy": "ALTER TABLE bolo_alerts ADD COLUMN geocode_accuracy VARCHAR(50)",
+            "geocode_score": "ALTER TABLE bolo_alerts ADD COLUMN geocode_score FLOAT",
+            "geocoded_address": "ALTER TABLE bolo_alerts ADD COLUMN geocoded_address VARCHAR(500)",
+            "geocoded_at": "ALTER TABLE bolo_alerts ADD COLUMN geocoded_at TIMESTAMP",
+        }
+
+        for column_name, statement in bolo_columns.items():
+            if not _has_column(inspector, "bolo_alerts", column_name):
+                statements.append(statement)
+
     if "sightings" in table_names:
         sighting_columns = {
             "geocode_provider": "ALTER TABLE sightings ADD COLUMN geocode_provider VARCHAR(50)",
@@ -59,6 +74,24 @@ def ensure_local_schema(engine) -> None:
         for column_name, statement in sighting_columns.items():
             if not _has_column(inspector, "sightings", column_name):
                 statements.append(statement)
+
+    geocode_columns = {
+        "latitude": "FLOAT",
+        "longitude": "FLOAT",
+        "geocode_provider": "VARCHAR(50)",
+        "geocode_accuracy": "VARCHAR(50)",
+        "geocode_score": "FLOAT",
+        "geocoded_address": "VARCHAR(500)",
+        "geocoded_at": "TIMESTAMP",
+    }
+
+    for table_name in ["external_records", "partner_intake_records"]:
+        if table_name in table_names:
+            for column_name, column_type in geocode_columns.items():
+                if not _has_column(inspector, table_name, column_name):
+                    statements.append(
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"
+                    )
 
     if "evidence_chain" in table_names:
         chain_columns = {

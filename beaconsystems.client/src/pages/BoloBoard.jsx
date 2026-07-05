@@ -73,7 +73,7 @@ function BoloBoard() {
 
         const payload = {
             ...form,
-            case_id: Number(form.case_id),
+            case_id: form.case_id.trim(),
             expires_at: form.expires_at || null,
         };
 
@@ -88,7 +88,10 @@ function BoloBoard() {
 
         if (!response.ok) {
             const error = await response.json();
-            setMessage(error.detail || "Could not create BOLO alert");
+            const detail = Array.isArray(error.detail)
+                ? error.detail.map((item) => item.msg).join("; ")
+                : error.detail;
+            setMessage(detail || "Could not create BOLO alert");
             return;
         }
 

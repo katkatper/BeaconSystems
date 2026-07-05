@@ -175,7 +175,7 @@ function Alerts() {
         const token = localStorage.getItem("token");
         const payload = {
             ...boloForm,
-            case_id: Number(boloForm.case_id),
+            case_id: boloForm.case_id.trim(),
             expires_at: boloForm.expires_at || null,
         };
 
@@ -191,7 +191,11 @@ function Alerts() {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Failed to create BOLO");
+                const detail = Array.isArray(errorData.detail)
+                    ? errorData.detail.map((item) => item.msg).join("; ")
+                    : errorData.detail;
+
+                throw new Error(detail || "Failed to create BOLO");
             }
 
             setMessage("BOLO created and added to operational alerts.");

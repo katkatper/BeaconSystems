@@ -78,7 +78,7 @@ function CaseDetail() {
                         headers: authHeaders,
                     }),
                     fetch(
-                        `http://127.0.0.1:8000/external-records/?person_id=${caseData.person_id}`,
+                        `http://127.0.0.1:8000/external-records/?case_id=${id}`,
                         { headers: authHeaders }
                     ),
                     fetch(`http://127.0.0.1:8000/agency-exchanges/?case_id=${id}`, {
@@ -520,6 +520,22 @@ function CaseDetail() {
                     address: item.evidence_location,
                     latitude: item.evidence_latitude,
                     longitude: item.evidence_longitude,
+                }
+                : null
+        ),
+        ...externalRecords.map((record) =>
+            hasMapCoordinates(record.latitude, record.longitude)
+                ? {
+                    id: `external-record-${record.id}`,
+                    type: "Partner tip",
+                    label: record.record_type || "Partner Tip",
+                    address: record.geocoded_address || record.location,
+                    detail: record.notes || "Partner-provided intelligence",
+                    latitude: record.latitude,
+                    longitude: record.longitude,
+                    confidence: record.geocode_score
+                        ? Math.max(0.35, Math.min(Number(record.geocode_score) / 100, 0.95))
+                        : 0.68,
                 }
                 : null
         ),
