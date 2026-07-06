@@ -32,6 +32,20 @@ export function normalizeLocation(value) {
         .trim();
 }
 
+export function isUsCoordinate(latitude, longitude) {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
+    const continentalUs = lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66;
+    const alaska = lat >= 51 && lat <= 72 && lng >= -180 && lng <= -129;
+    const hawaii = lat >= 18 && lat <= 23 && lng >= -161 && lng <= -154;
+    const puertoRicoAndUsvi = lat >= 17 && lat <= 19 && lng >= -68 && lng <= -64;
+
+    return continentalUs || alaska || hawaii || puertoRicoAndUsvi;
+}
+
 function parseCoordinatePair(value) {
     const match = String(value || "").match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
 

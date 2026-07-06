@@ -10,6 +10,7 @@ import {
     useMap,
 } from "react-leaflet";
 import L from "leaflet";
+import { isUsCoordinate } from "../geoUtils.js";
 
 function getConfidenceLevel(confidence) {
     const score = Number(confidence);
@@ -121,18 +122,36 @@ function buildSearchedArea(validSightings) {
     ];
 }
 
-function buildRouteCorridors(origin, routeCount = 3) {
-    const bearings = [-25, 0, 28];
-    const distance = 0.16;
+function buildRouteCorridors(origin, escapeAnalysis = null) {
+    const routeCount = escapeAnalysis?.likelyRoutes?.length || 3;
+    const directionBearings = {
+        north: 0,
+        east: 90,
+        south: 180,
+        west: 270,
+        unknown: 0,
+    };
+    const centerBearing = directionBearings[escapeAnalysis?.directionKey] ?? 0;
+    const offsets = escapeAnalysis?.directionKey === "unknown" ? [-140, -25, 100] : [-24, 0, 24];
+    const activeBand = (escapeAnalysis?.reachableBands || [])
+        .filter((band) => band.active)
+        .at(-1);
+    const distance = Math.min(0.42, Math.max(0.08, Number(activeBand?.miles || 8) / 95));
 
-    return bearings.slice(0, routeCount).map((bearing) => {
-        const radians = (bearing - 90) * (Math.PI / 180);
+    return offsets.slice(0, routeCount).map((offset, index) => {
+        const bearing = centerBearing + offset;
+        const radians = bearing * (Math.PI / 180);
         return [
             origin,
             [
-                origin[0] + Math.sin(radians) * distance,
-                origin[1] + Math.cos(radians) * distance,
+                origin[0] + Math.cos(radians) * distance,
+                origin[1] + Math.sin(radians) * distance,
             ],
+            {
+                label: escapeAnalysis?.likelyRoutes?.[index]?.route || `Route corridor ${index + 1}`,
+                score: escapeAnalysis?.likelyRoutes?.[index]?.score,
+                likelihood: escapeAnalysis?.likelyRoutes?.[index]?.likelihood,
+            },
         ];
     });
 }
@@ -142,7 +161,8 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
         .filter(
             (s) =>
                 Number.isFinite(Number(s.latitude)) &&
-                Number.isFinite(Number(s.longitude))
+                Number.isFinite(Number(s.longitude)) &&
+                isUsCoordinate(s.latitude, s.longitude)
         )
         .map((s) => ({
             ...s,
@@ -159,7 +179,8 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
         .filter(
             (location) =>
                 Number.isFinite(Number(location.latitude)) &&
-                Number.isFinite(Number(location.longitude))
+                Number.isFinite(Number(location.longitude)) &&
+                isUsCoordinate(location.latitude, location.longitude)
         )
         .map((location) => ({
             ...location,
@@ -171,7 +192,8 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
         .filter(
             (location) =>
                 Number.isFinite(Number(location.latitude)) &&
-                Number.isFinite(Number(location.longitude))
+                Number.isFinite(Number(location.longitude)) &&
+                isUsCoordinate(location.latitude, location.longitude)
         )
         .map((location) => ({
             ...location,
@@ -180,7 +202,8 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
         }));
     const validAnalysisOrigin = analysisOrigin &&
         Number.isFinite(Number(analysisOrigin.latitude)) &&
-        Number.isFinite(Number(analysisOrigin.longitude))
+        Number.isFinite(Number(analysisOrigin.longitude)) &&
+        isUsCoordinate(analysisOrigin.latitude, analysisOrigin.longitude)
         ? {
             ...analysisOrigin,
             latitude: Number(analysisOrigin.latitude),
@@ -204,8 +227,8 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
         ? [validAnalysisOrigin.latitude, validAnalysisOrigin.longitude]
         : null;
     const originPosition = analysisOriginPosition || pathPositions[0] || associatePositions[0] || mappedPositions[0] || [32.7767, -96.797];
-    const routeCorridors = escapeAnalysis ? buildRouteCorridors(originPosition, escapeAnalysis.likelyRoutes?.length || 3) : [];
-    const routeCorridorPositions = routeCorridors.flat();
+    const routeCorridors = escapeAnalysis ? buildRouteCorridors(originPosition, escapeAnalysis) : [];
+    const routeCorridorPositions = routeCorridors.flatMap((corridor) => corridor.slice(0, 2));
     const fitPositions = [
         ...pathPositions,
         ...associatePositions,
@@ -239,7 +262,7 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
 
     return (
         <div className="sighting-map-workspace">
-            <div className="sighting-map-3d-shell">
+            <div className={`sighting-map-3d-shell ${escapeAnalysis ? "escape-analysis-active" : ""}`}>
                 <MapContainer
                     center={[32.78, -96.79]}
                     zoom={11}
@@ -291,14 +314,21 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
                     {routeCorridors.map((corridor, index) => (
                         <Polyline
                             key={`escape-corridor-${index}`}
-                            positions={corridor}
+                            positions={corridor.slice(0, 2)}
                             pathOptions={{
                                 color: ["#f97316", "#facc15", "#38bdf8"][index] || "#93c5fd",
                                 dashArray: "12 8",
-                                weight: 5,
-                                opacity: 0.82,
+                                weight: index === 0 ? 7 : 5,
+                                opacity: index === 0 ? 0.94 : 0.76,
                             }}
-                        />
+                        >
+                            <Popup>
+                                <strong>{corridor[2]?.label || `Route corridor ${index + 1}`}</strong>
+                                <br />
+                                Likelihood: {corridor[2]?.likelihood || "Estimated"}
+                                {corridor[2]?.score ? ` (${corridor[2].score}%)` : ""}
+                            </Popup>
+                        </Polyline>
                     ))}
 
                     {validAnalysisOrigin && (

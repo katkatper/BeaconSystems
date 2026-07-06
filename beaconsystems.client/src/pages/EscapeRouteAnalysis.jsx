@@ -5,26 +5,31 @@ import { geocodeLocal } from "../geoUtils.js";
 const directionProfiles = {
     unknown: {
         label: "Unknown direction",
+        bearing: 0,
         routes: ["Nearest interstate access", "Major arterial grid", "Secondary rural connector"],
         factors: ["Direction not confirmed", "Prioritize converging routes", "Keep search area balanced"],
     },
     north: {
         label: "Northbound",
+        bearing: 0,
         routes: ["Northbound interstate corridor", "Northern arterial feeder", "Airport or county-line route"],
         factors: ["Witness direction favors north", "Fastest movement toward regional exits", "Multiple feeder streets converge northbound"],
     },
     south: {
         label: "Southbound",
+        bearing: 180,
         routes: ["Southbound interstate corridor", "Southern arterial feeder", "Industrial or port access route"],
         factors: ["Witness direction favors south", "Direct route away from origin", "Limited-access roads become priority"],
     },
     east: {
         label: "Eastbound",
+        bearing: 90,
         routes: ["Eastbound highway corridor", "Eastern arterial feeder", "Bridge or river-crossing route"],
         factors: ["Witness direction favors east", "Likely connection to major highway", "Check crossings and interchanges"],
     },
     west: {
         label: "Westbound",
+        bearing: 270,
         routes: ["Westbound highway corridor", "Western arterial feeder", "Outer-loop connector"],
         factors: ["Witness direction favors west", "Likely escape toward outer-loop access", "Surface routes may avoid cameras"],
     },
@@ -84,13 +89,38 @@ function scoreRoute(index, form, elapsedMinutes) {
     return Math.max(18, Math.min(96, base + directionScore + plateScore + sightingScore + witnessScore + elapsedScore));
 }
 
-function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisRun = null }) {
+function getRouteSummary(route, likelihood, form) {
+    const vehicleContext = vehicleProfiles[form.travelMode]?.label || "Unknown vehicle";
+    const routeTone = likelihood === "Higher"
+        ? "Primary corridor for immediate review"
+        : likelihood === "Moderate"
+            ? "Secondary corridor to monitor"
+            : "Lower-priority route unless new information supports it";
+
+    return `${routeTone}. ${vehicleContext}; ${directionProfiles[form.direction]?.label || "direction unknown"}.`;
+}
+
+function getRouteAction(likelihood) {
+    if (likelihood === "Higher") {
+        return "Check cameras, LPRs, and patrol availability first.";
+    }
+
+    if (likelihood === "Moderate") {
+        return "Hold for follow-up if sightings, plate hits, or witness updates support this path.";
+    }
+
+    return "Keep visible for context; avoid overcommitting resources without more support.";
+}
+
+function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisRun = null, onTimelineEventSaved = null }) {
     const [form, setForm] = useState({
         ...initialForm,
         abductionLocation: caseContext?.lastSeenLocation || "",
     });
     const [analysisStarted, setAnalysisStarted] = useState(false);
     const [submittedAnalysis, setSubmittedAnalysis] = useState(null);
+    const [saveStatus, setSaveStatus] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
 
     const analysis = useMemo(() => {
         const elapsedMinutes = minutesSinceIncident(form);
@@ -113,6 +143,8 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                 route,
                 score,
                 likelihood,
+                summary: getRouteSummary(route, likelihood, form),
+                recommendedAction: getRouteAction(likelihood),
                 factors: [
                     direction.factors[index] || direction.factors[0],
                     roadContext.factors[index] || roadContext.factors[0],
@@ -151,13 +183,41 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
             "Update the analysis after each sighting, LPR hit, or confirmed road closure.",
         ];
 
+        const recommendedAttentionAreas = [
+            {
+                label: "First 20-minute travel band",
+                priority: elapsedMinutes <= 20 ? "Immediate" : "Review",
+                detail: "Focus on routes the suspect could plausibly reach before leaving the initial response area.",
+            },
+            {
+                label: direction.routes[0],
+                priority: likelyRoutes[0]?.likelihood || "Moderate",
+                detail: likelyRoutes[0]?.recommendedAction || "Review available route intelligence.",
+            },
+            {
+                label: "Transportation choke points",
+                priority: form.direction === "unknown" ? "High" : "Immediate",
+                detail: "Prioritize highway entrances, interchanges, bridges, toll plazas, and constrained crossings.",
+            },
+            {
+                label: "New incoming observations",
+                priority: form.knownSightings.trim() ? "Immediate" : "Pending",
+                detail: form.knownSightings.trim()
+                    ? "Use the new sighting/context notes to update likely corridors."
+                    : "Add sightings, LPR hits, CCTV detections, closures, or weather to refine the analysis.",
+            },
+        ];
+
         return {
             elapsedMinutes,
             vehicle,
             roadContext,
+            direction,
+            directionKey: form.direction,
             reachableBands,
             likelyRoutes,
             chokePoints,
+            recommendedAttentionAreas,
             resourceSuggestions,
         };
     }, [form]);
@@ -169,6 +229,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
 
     const clearField = (fieldName) => {
         setForm((current) => ({ ...current, [fieldName]: "" }));
+        setSaveStatus("");
     };
 
     const geocodeAnalysisOrigin = async (value) => {
@@ -200,6 +261,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
         setForm(initialForm);
         setAnalysisStarted(false);
         setSubmittedAnalysis(null);
+        setSaveStatus("");
         onAnalysisRun?.(null);
     };
 
@@ -235,7 +297,67 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
 
         setAnalysisStarted(true);
         setSubmittedAnalysis(nextAnalysis);
+        setSaveStatus("");
         onAnalysisRun?.(nextAnalysis);
+    };
+
+    const buildTimelineDescription = () => {
+        const topRoute = renderedAnalysis.likelyRoutes[0];
+        const activeBand = renderedAnalysis.reachableBands
+            .filter((band) => band.active)
+            .at(-1);
+
+        return [
+            `Escape Route Analysis generated for ${caseContext?.caseNumber || "case"}.`,
+            `Incident origin: ${form.abductionLocation || "not recorded"}.`,
+            `Elapsed time estimate: ${renderedAnalysis.elapsedMinutes} minutes.`,
+            activeBand ? `Active travel band: ${activeBand.minutes} minutes / ${activeBand.miles} miles.` : null,
+            topRoute ? `Top route: ${topRoute.route} (${topRoute.likelihood}, ${topRoute.score}%).` : null,
+            topRoute ? `Recommended action: ${topRoute.recommendedAction}` : null,
+        ].filter(Boolean).join(" ");
+    };
+
+    const saveAnalysisToTimeline = async () => {
+        if (!submittedAnalysis || !caseContext?.caseId) {
+            setSaveStatus("Run the analysis before saving it to the timeline.");
+            return;
+        }
+
+        setIsSaving(true);
+        setSaveStatus("");
+
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch("http://127.0.0.1:8000/timeline-events/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    case_id: caseContext.caseId,
+                    person_id: caseContext.personId || null,
+                    event_type: "escape_route_analysis",
+                    source_type: "beacon_escape_route",
+                    location: form.abductionLocation || null,
+                    description: buildTimelineDescription(),
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Could not save analysis to timeline.");
+            }
+
+            const savedEvent = await response.json();
+            onTimelineEventSaved?.(savedEvent);
+            setSaveStatus("Escape route analysis saved to the case timeline.");
+        } catch (error) {
+            console.error(error);
+            setSaveStatus(error.message || "Could not save analysis to timeline.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const draftOrigin = geocodeLocal(form.abductionLocation);
@@ -365,7 +487,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                     </div>
                 </form>
 
-                <section className="beacon-panel escape-route-map-panel">
+                <section className={`beacon-panel escape-route-map-panel ${displayedAnalysis ? "analysis-active" : ""}`}>
                     <div className="audit-panel-heading">
                         <span>Unified Case Geography</span>
                         <strong>Sightings, route bands, and associate addresses</strong>
@@ -381,12 +503,19 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
 
                     <div className="escape-radius-list">
                         {renderedAnalysis.reachableBands.map((band) => (
-                            <div key={band.minutes}>
+                            <div key={band.minutes} className={band.active ? "active" : ""}>
                                 <span>{band.minutes} minutes</span>
                                 <strong>{band.miles} mi</strong>
                             </div>
                         ))}
                     </div>
+
+                    {displayedAnalysis && (
+                        <div className="escape-map-status">
+                            <strong>Analysis overlays active</strong>
+                            <span>{renderedAnalysis.direction.label} | {renderedAnalysis.elapsedMinutes} minute elapsed estimate</span>
+                        </div>
+                    )}
                 </section>
             </section>
 
@@ -400,10 +529,12 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                         <article className="route-score-card" key={route.route}>
                             <div>
                                 <h2>{route.route}</h2>
-                                <span>{route.likelihood}</span>
+                                <span>{route.likelihood} | {route.score}%</span>
                             </div>
                             <meter min="0" max="100" value={route.score}>{route.score}</meter>
+                            <strong>{route.summary}</strong>
                             <p>{route.factors.join(" | ")}</p>
+                            <small>{route.recommendedAction}</small>
                         </article>
                     ))}
                 </div>
@@ -425,10 +556,17 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                 <div className="beacon-panel resource-allocation-panel">
                     <div className="audit-panel-heading">
                         <span>Resource Allocation</span>
-                        <strong>Suggested attention areas</strong>
+                        <strong>Recommended attention areas</strong>
                     </div>
+                    {renderedAnalysis.recommendedAttentionAreas.map((area) => (
+                        <article className="attention-area-card" key={area.label}>
+                            <span>{area.priority}</span>
+                            <strong>{area.label}</strong>
+                            <p>{area.detail}</p>
+                        </article>
+                    ))}
                     {renderedAnalysis.resourceSuggestions.map((suggestion) => (
-                        <p key={suggestion}>{suggestion}</p>
+                        <p key={suggestion} className="resource-followup">{suggestion}</p>
                     ))}
                 </div>
 
@@ -447,6 +585,18 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
                         <span>Road context: {renderedAnalysis.roadContext.label}</span>
                         <span>Analysis status: {displayedAnalysis ? "Generated" : "Ready for input"}</span>
                     </div>
+                    {embedded && (
+                        <div className="escape-timeline-save">
+                            <button
+                                type="button"
+                                onClick={saveAnalysisToTimeline}
+                                disabled={!submittedAnalysis || isSaving}
+                            >
+                                {isSaving ? "Saving Analysis" : "Save Analysis to Timeline"}
+                            </button>
+                            {saveStatus && <p>{saveStatus}</p>}
+                        </div>
+                    )}
                 </div>
             </section>
         </div>

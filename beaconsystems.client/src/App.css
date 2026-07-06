@@ -445,6 +445,21 @@
     background: rgba(153, 27, 27, 0.9);
 }
 
+.small-secondary-button {
+    min-height: 38px;
+    margin-top: 10px;
+    padding: 8px 12px;
+    color: #dbeafe;
+    font-weight: 800;
+    background: rgba(30, 41, 59, 0.78);
+    border: 1px solid rgba(147, 197, 253, 0.3);
+    border-radius: 8px;
+}
+
+.small-secondary-button:hover {
+    background: rgba(51, 65, 85, 0.92);
+}
+
 .compliance-list {
     display: grid;
     gap: 10px;
@@ -803,6 +818,27 @@
     border-radius: 8px;
     background: linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.72));
     box-shadow: 0 28px 44px rgba(2, 6, 23, 0.36);
+}
+
+.sighting-map-3d-shell.escape-analysis-active {
+    border-color: rgba(251, 191, 36, 0.72);
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.18), 0 28px 48px rgba(2, 6, 23, 0.42);
+}
+
+.sighting-map-3d-shell.escape-analysis-active::after {
+    content: "Escape route analysis active";
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 500;
+    padding: 8px 12px;
+    color: #fef3c7;
+    background: rgba(120, 53, 15, 0.82);
+    border: 1px solid rgba(251, 191, 36, 0.42);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
 }
 
 .sighting-map-3d-shell::before {
@@ -4965,6 +5001,37 @@ button,
     margin-top: 12px;
 }
 
+.inline-edit-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.inline-edit-form textarea,
+.inline-edit-form .archive-toggle,
+.inline-edit-actions {
+    grid-column: 1 / -1;
+}
+
+.inline-edit-form textarea {
+    min-height: 86px;
+    resize: vertical;
+}
+
+.inline-edit-form input,
+.inline-edit-form select,
+.inline-edit-form textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.inline-edit-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
 .alert-card span {
     color: #bfdbfe;
     font-size: 12px;
@@ -5564,6 +5631,16 @@ button:hover,
     min-width: 0;
     max-width: none;
     box-sizing: border-box;
+}
+
+.cases-page .case-geography-panel {
+    width: min(100%, 1460px);
+    max-width: 1460px;
+    margin: 22px auto 0;
+}
+
+.cases-page .case-geography-panel .sighting-map-3d {
+    min-height: 430px;
 }
 
 .cases-page .case-summary-title {
@@ -7928,16 +8005,23 @@ a.case-health-row:hover {
 
 .escape-radius-list div,
 .choke-point-card,
-.route-score-card {
+.route-score-card,
+.attention-area-card {
     padding: 12px;
     background: rgba(30, 41, 59, 0.66);
     border: 1px solid rgba(147, 197, 253, 0.18);
     border-radius: 8px;
 }
 
+.escape-radius-list div.active {
+    border-color: rgba(96, 165, 250, 0.62);
+    background: rgba(30, 64, 175, 0.34);
+}
+
 .escape-radius-list span,
 .route-score-card span,
-.choke-point-card span {
+.choke-point-card span,
+.attention-area-card span {
     display: block;
     color: #93c5fd;
     font-size: 12px;
@@ -7984,6 +8068,7 @@ a.case-health-row:hover {
 }
 
 .route-score-card p,
+.route-score-card small,
 .choke-point-card p,
 .resource-allocation-panel p,
 .transparency-panel p {
@@ -7997,15 +8082,60 @@ a.case-health-row:hover {
     gap: 8px;
 }
 
-.choke-point-card strong {
+.route-score-card > strong,
+.choke-point-card strong,
+.attention-area-card strong {
     color: #eef4ff;
     font-size: 18px;
 }
 
-.resource-allocation-panel p {
+.attention-area-card {
+    display: grid;
+    gap: 8px;
+}
+
+.attention-area-card span {
+    color: #fbbf24;
+}
+
+.resource-allocation-panel .resource-followup {
     padding: 12px;
     background: rgba(15, 23, 42, 0.46);
     border: 1px solid rgba(147, 197, 253, 0.14);
+    border-radius: 8px;
+}
+
+.escape-map-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    align-items: center;
+    margin-top: 12px;
+    padding: 10px 12px;
+    color: #cbd5e1;
+    background: rgba(120, 53, 15, 0.32);
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    border-radius: 8px;
+}
+
+.escape-map-status strong {
+    color: #fef3c7;
+}
+
+.escape-timeline-save {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.escape-timeline-save button {
+    min-height: 50px;
+}
+
+.escape-timeline-save p {
+    padding: 10px 12px;
+    background: rgba(15, 23, 42, 0.52);
+    border: 1px solid rgba(147, 197, 253, 0.18);
     border-radius: 8px;
 }
 

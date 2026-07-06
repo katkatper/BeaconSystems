@@ -2,9 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiGet } from "../api.jsx";
 import ActiveFilterBanner from "../components/ActiveFilterBanner.jsx";
+import SightingMap from "./SightingMap.jsx";
 
 const fetchCases = async (includeArchived) => {
     return apiGet(`/cases/?include_archived=${includeArchived}&limit=100`);
+};
+
+const fetchCaseSightings = async () => {
+    return apiGet("/sightings/?limit=100");
 };
 
 function Cases() {
@@ -13,7 +18,9 @@ function Cases() {
     const includeArchived = activeFilter === "archived";
     const [referenceNow] = useState(() => Date.now());
     const [cases, setCases] = useState([]);
+    const [caseSightings, setCaseSightings] = useState([]);
     const [message, setMessage] = useState("");
+    const [mapMessage, setMapMessage] = useState("");
 
     useEffect(() => {
         let isMounted = true;
@@ -39,6 +46,32 @@ function Cases() {
             isMounted = false;
         };
     }, [includeArchived]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        fetchCaseSightings()
+            .then((data) => {
+                if (!isMounted) {
+                    return;
+                }
+
+                setCaseSightings(Array.isArray(data) ? data : []);
+                setMapMessage("");
+            })
+            .catch((err) => {
+                console.error(err);
+
+                if (isMounted) {
+                    setCaseSightings([]);
+                    setMapMessage("Could not load case geography.");
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     const isInactive = (caseItem) => {
         const lastUpdated = new Date(caseItem.updated_at || caseItem.created_at);
@@ -173,6 +206,22 @@ function Cases() {
                     {renderCaseRows(closedCases, "No closed cases available.")}
                 </section>
             </div>
+
+            <section className="case-summary-panel case-geography-panel activity-map-panel">
+                <div className="dashboard-panel-header">
+                    <span>Geographic Activity Map</span>
+                    <Link to="/intelligence">Open Intelligence</Link>
+                </div>
+                {mapMessage && <p className="alert-banner">{mapMessage}</p>}
+                <SightingMap sightings={caseSightings} />
+                <div className="map-legend-row">
+                    <span>Sightings</span>
+                    <span>Cases</span>
+                    <span>Agencies</span>
+                    <span>Resource locations</span>
+                    <span>Heat maps</span>
+                </div>
+            </section>
         </div>
     );
 }

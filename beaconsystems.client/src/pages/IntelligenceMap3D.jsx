@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { geocodeLocal } from "../geoUtils.js";
+import { geocodeLocal, isUsCoordinate } from "../geoUtils.js";
 
 const SOURCE_COLORS = {
     sighting: 0x60a5fa,
@@ -127,7 +127,8 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
         ...sightings
             .filter((sighting) =>
                 Number.isFinite(Number(sighting.latitude)) &&
-                Number.isFinite(Number(sighting.longitude))
+                Number.isFinite(Number(sighting.longitude)) &&
+                isUsCoordinate(sighting.latitude, sighting.longitude)
             )
             .map((sighting, index) => ({
                 id: `sighting-${sighting.sighting_id ?? index}`,
@@ -142,7 +143,8 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
         ...mappedLocations
             .filter((location) =>
                 Number.isFinite(Number(location.latitude)) &&
-                Number.isFinite(Number(location.longitude))
+                Number.isFinite(Number(location.longitude)) &&
+                isUsCoordinate(location.latitude, location.longitude)
             )
             .map((location, index) => ({
                 id: location.id || `mapped-${index}`,
@@ -165,7 +167,7 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
                         }
                         : geocodeLocal(record.location);
 
-                if (!geocoded) return null;
+                if (!geocoded || !isUsCoordinate(geocoded.latitude, geocoded.longitude)) return null;
 
                 return {
                     id: `record-${record.id ?? index}`,

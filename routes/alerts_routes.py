@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from models.alerts import Alerts
 from  database.connection import get_db
@@ -17,6 +18,19 @@ router = APIRouter(
 
     tags=["Alerts"]
 )
+
+
+class AlertUpdate(BaseModel):
+    case_id: int | None = None
+    person_id: int | None = None
+    alert_type: str | None = None
+    alert_source: str | None = None
+    source_detail: str | None = None
+    confidence_score: float | None = None
+    title: str | None = None
+    description: str | None = None
+    severity: str | None = None
+    alert_status: str | None = None
 
 
 @router.post("/")
@@ -66,6 +80,8 @@ def create_alerts(
         description=description,
 
         severity=severity,
+
+        alert_status="active",
     )
     
     db.add(alerts)
@@ -92,3 +108,32 @@ def get_alerts(
         Alerts.created_at.desc()
 
     ).all()
+
+
+@router.put("/{alert_id}")
+def update_alert(
+    alert_id: int,
+    data: AlertUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+):
+    alert = db.query(Alerts).filter(Alerts.alert_id == alert_id).first()
+
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    assert_case_write_access(db, alert.case_id, current_user)
+
+    update_data = data.model_dump(exclude_unset=True)
+    next_case_id = update_data.get("case_id")
+
+    if next_case_id is not None and next_case_id != alert.case_id:
+        assert_case_write_access(db, next_case_id, current_user)
+
+    for field, value in update_data.items():
+        setattr(alert, field, value)
+
+    db.commit()
+    db.refresh(alert)
+
+    return alert

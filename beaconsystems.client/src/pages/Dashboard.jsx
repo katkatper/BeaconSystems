@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiGet } from "../api.jsx";
-import SightingMap from "./SightingMap.jsx";
 import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
 
 
@@ -171,28 +170,6 @@ function Dashboard() {
         Leads: "/intelligence",
         Evidence: "/evidence-upload",
     };
-    const fallbackSightings = [
-        {
-            sighting_id: "demo-austin",
-            case_id: "MP-2026-1024",
-            location: "Austin, TX",
-            description: "Recent field sighting under review.",
-            latitude: 30.2672,
-            longitude: -97.7431,
-            confidence_score: 0.82,
-            created_at: new Date().toISOString(),
-        },
-        {
-            sighting_id: "demo-dallas",
-            case_id: "MP-2026-1091",
-            location: "Dallas, TX",
-            description: "Potential hospital match.",
-            latitude: 32.7767,
-            longitude: -96.797,
-            confidence_score: 0.95,
-            created_at: new Date().toISOString(),
-        },
-    ];
     const commandDashboard = supervisorQueue?.command_dashboard || {};
     const stallRiskSummary = supervisorQueue?.stall_risk_summary || {};
     const leadSummary = supervisorQueue?.lead_summary || {};
@@ -408,21 +385,6 @@ function Dashboard() {
                                         <small>{detail}</small>
                                     </div>
                                 ))}
-                            </section>
-
-                            <section className="dashboard-panel dashboard-panel-wide activity-map-panel">
-                                <div className="dashboard-panel-header">
-                                    <span>Geographic Activity Map</span>
-                                    <Link to="/intelligence">Open Intelligence</Link>
-                                </div>
-                                <SightingMap sightings={summary?.recent_sightings || fallbackSightings} />
-                                <div className="map-legend-row">
-                                    <span>Sightings</span>
-                                    <span>Cases</span>
-                                    <span>Agencies</span>
-                                    <span>Resource locations</span>
-                                    <span>Heat maps</span>
-                                </div>
                             </section>
 
                             <section className="dashboard-panel critical-alerts-panel">

@@ -742,7 +742,12 @@ function CaseDetail() {
                     <EscapeRouteAnalysis
                         embedded
                         onAnalysisRun={setEscapeRouteAnalysis}
+                        onTimelineEventSaved={(event) =>
+                            setTimelineEvents((current) => [event, ...current])
+                        }
                         caseContext={{
+                            caseId: caseItem.case_id,
+                            personId: caseItem.person_id,
                             caseNumber: caseItem.case_number || `Case ${caseItem.case_id}`,
                             lastSeenLocation: person?.last_seen_location || "",
                             sightings: sortedSightings,
