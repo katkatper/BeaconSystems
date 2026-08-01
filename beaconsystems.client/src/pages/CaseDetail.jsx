@@ -267,7 +267,7 @@ function CaseDetail() {
 
         const token = localStorage.getItem("token");
         const nextAssociate = {
-            id: `associate-${Date.now()}`,
+            id: `associate-${person.person_id}-${associates.length + 1}`,
             name: associateForm.name || "Known associate",
             relationship: associateForm.relationship || "Not recorded",
             address: associateForm.address || "Address not recorded",
@@ -465,6 +465,8 @@ function CaseDetail() {
         ? `${person.first_name || ""} ${person.last_name || ""}`.trim()
         : "Missing Person";
     const hasMapCoordinates = (latitude, longitude) =>
+        latitude !== null && latitude !== undefined && latitude !== "" &&
+        longitude !== null && longitude !== undefined && longitude !== "" &&
         Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
     const associates = parseAssociates();
     const associateLocations = associates.filter((entry) =>
@@ -702,7 +704,14 @@ function CaseDetail() {
                         <p>Assigned Investigator: {caseItem.investigator_id}</p>
                         <p>Reporting Agency: {caseItem.agency_id}</p>
                         <p>Last Seen: {person.last_seen_location}</p>
-                        <p>Description: {person.description}</p>
+                        <p className="subject-description">Description: {person.description}</p>
+                        <section className="subject-home-address" aria-labelledby="subject-home-address-heading">
+                            <h3 id="subject-home-address-heading">Home Address</h3>
+                            <address>{person.primary_address || "No home address recorded."}</address>
+                            {person.housing_status && (
+                                <small>Housing status: {person.housing_status}</small>
+                            )}
+                        </section>
                     </div>
                 </div>
             )}

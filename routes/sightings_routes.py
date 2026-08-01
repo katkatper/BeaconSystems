@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+﻿from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -424,16 +424,6 @@ def delete_sighting(
 
     sighting_id_value = sighting.sighting_id
 
-    create_alert(
-        db=db,
-        case_id=sighting.case_id,
-        person_id=sighting.person_id,
-        recipient_agency_id=current_user.agency_id,
-        alert_type="SIGHTING_DELETED_AUDIT",
-        title="Sighting Deleted",
-        description=f"Sighting at {sighting.location} was deleted.",
-        severity="medium",
-    )
 
     db.delete(sighting)
     db.commit()

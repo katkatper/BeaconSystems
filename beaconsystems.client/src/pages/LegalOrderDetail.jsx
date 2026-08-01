@@ -133,7 +133,7 @@ function LegalOrderDetail() {
                         </div>
 
                         <div className="legal-detail-grid">
-                            <DetailField label="Case ID" value={request.case_id} />
+                            <DetailField label="Case Number" value={request.case_number} />
                             <DetailField label="Person ID" value={request.person_id} />
                             <DetailField
                                 label="Requested By"

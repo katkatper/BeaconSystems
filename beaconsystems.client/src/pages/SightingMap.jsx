@@ -157,11 +157,14 @@ function buildRouteCorridors(origin, escapeAnalysis = null) {
 }
 
 function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations = [], mappedLocations = [], analysisOrigin = null }) {
+    const hasCoordinates = (latitude, longitude) =>
+        latitude !== null && latitude !== undefined && latitude !== "" &&
+        longitude !== null && longitude !== undefined && longitude !== "" &&
+        Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
     const validSightings = sightings
         .filter(
             (s) =>
-                Number.isFinite(Number(s.latitude)) &&
-                Number.isFinite(Number(s.longitude)) &&
+                hasCoordinates(s.latitude, s.longitude) &&
                 isUsCoordinate(s.latitude, s.longitude)
         )
         .map((s) => ({
@@ -178,8 +181,7 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
     const validAssociateLocations = associateLocations
         .filter(
             (location) =>
-                Number.isFinite(Number(location.latitude)) &&
-                Number.isFinite(Number(location.longitude)) &&
+                hasCoordinates(location.latitude, location.longitude) &&
                 isUsCoordinate(location.latitude, location.longitude)
         )
         .map((location) => ({
@@ -191,8 +193,7 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
     const validMappedLocations = mappedLocations
         .filter(
             (location) =>
-                Number.isFinite(Number(location.latitude)) &&
-                Number.isFinite(Number(location.longitude)) &&
+                hasCoordinates(location.latitude, location.longitude) &&
                 isUsCoordinate(location.latitude, location.longitude)
         )
         .map((location) => ({
@@ -201,8 +202,7 @@ function SightingMap({ sightings = [], escapeAnalysis = null, associateLocations
             longitude: Number(location.longitude),
         }));
     const validAnalysisOrigin = analysisOrigin &&
-        Number.isFinite(Number(analysisOrigin.latitude)) &&
-        Number.isFinite(Number(analysisOrigin.longitude)) &&
+        hasCoordinates(analysisOrigin.latitude, analysisOrigin.longitude) &&
         isUsCoordinate(analysisOrigin.latitude, analysisOrigin.longitude)
         ? {
             ...analysisOrigin,

@@ -5952,13 +5952,11 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     border-radius: 8px;
 }
 
-.critical-alerts-panel,
 .workload-panel {
     position: sticky;
     top: 88px;
 }
 
-.critical-alert-item,
 .workload-row,
 .analytics-card {
     display: flex;
@@ -5971,21 +5969,8 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     border-radius: 8px;
 }
 
-.critical-alert-item + .critical-alert-item,
 .workload-row + .workload-row {
     margin-top: 10px;
-}
-
-.critical-alert-item strong {
-    color: #fecaca;
-}
-
-.critical-alert-item span {
-    min-width: 34px;
-    text-align: center;
-    color: #f8fafc;
-    background: rgba(127, 29, 29, 0.72);
-    border-radius: 999px;
 }
 
 .workload-row.available {
@@ -6191,8 +6176,39 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
 }
 
 .case-overview-grid h2,
-.case-overview-grid p:last-child {
+.case-overview-grid .subject-description {
     grid-column: 1 / -1;
+}
+
+.subject-home-address {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 14px 16px;
+    background: rgba(30, 41, 59, 0.62);
+    border: 1px solid rgba(147, 197, 253, 0.2);
+    border-radius: 8px;
+}
+
+.subject-home-address h3,
+.subject-home-address address {
+    margin: 0;
+}
+
+.subject-home-address h3 {
+    color: #eef4ff;
+    font-size: 16px;
+}
+
+.subject-home-address address {
+    color: #dbeafe;
+    font-style: normal;
+    line-height: 1.45;
+}
+
+.subject-home-address small {
+    color: #9fb0ca;
 }
 
 .case-external-request-layout {
@@ -6505,7 +6521,6 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
         margin-right: 0;
     }
 
-    .critical-alerts-panel,
     .workload-panel {
         position: static;
     }
@@ -6569,14 +6584,12 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
 }
 
 .action-required-item strong,
-.intelligence-signal-item strong,
 .timeline-signal-row strong {
     color: #eef4ff;
     font-size: 17px;
 }
 
 .action-required-item p,
-.intelligence-signal-item p,
 .timeline-signal-row p {
     margin: 6px 0 0;
     color: #b8c4d8;
@@ -6606,6 +6619,34 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     padding: 8px 14px;
 }
 
+.dashboard-panel-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.command-health-summary {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.8fr) minmax(170px, 1.2fr);
+    gap: 10px;
+}
+
+.command-health-signals,
+.command-health-cases {
+    display: grid;
+    gap: 8px;
+}
+
+.command-health-cases {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.command-health-cases .case-health-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 58px;
+}
+
 .risk-score-meter {
     display: grid;
     place-items: center;
@@ -6615,6 +6656,18 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
         rgba(15, 23, 42, 0.74);
     border: 1px solid rgba(147, 197, 253, 0.22);
     border-radius: 8px;
+}
+
+.command-health-panel .risk-score-meter {
+    min-height: 0;
+}
+
+.command-health-panel .risk-score-meter strong {
+    font-size: 48px;
+}
+
+.command-health-panel .risk-signal-row {
+    min-height: 52px;
 }
 
 .risk-score-meter strong {
@@ -6671,7 +6724,6 @@ a.case-health-row:hover {
     font-size: 20px;
 }
 
-.intelligence-signal-item,
 .timeline-signal-row {
     min-height: 76px;
     padding: 12px;
@@ -7136,7 +7188,6 @@ a.case-health-row:hover {
     height: auto;
 }
 
-.supervisor-command-dashboard .critical-alerts-panel,
 .supervisor-command-dashboard .workload-panel {
     position: relative !important;
     top: auto !important;
@@ -7349,7 +7400,7 @@ a.case-health-row:hover {
 .legal-request-table-head,
 .legal-request-table-row {
     display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr;
     gap: 14px;
     align-items: center;
 }
@@ -7585,6 +7636,71 @@ a.case-health-row:hover {
 
 .command-tool-card > div {
     position: relative;
+}
+
+/* Supervisor dashboard hierarchy: high-priority work first, operational
+   context second, and supporting coordination/actions last. */
+.supervisor-command-dashboard .supervisor-home-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+        "required required health"
+        "workload timeline timeline"
+        "coordination quick quick";
+    gap: 26px 24px;
+    align-items: stretch !important;
+}
+
+.supervisor-command-dashboard .dashboard-panel {
+    height: 100%;
+}
+
+.supervisor-command-dashboard .action-required-panel {
+    grid-area: required;
+}
+
+.supervisor-command-dashboard .command-health-panel {
+    grid-area: health;
+}
+
+.supervisor-command-dashboard .unified-timeline-panel {
+    grid-area: timeline;
+}
+
+.supervisor-command-dashboard .workload-panel {
+    grid-area: workload;
+}
+
+.supervisor-command-dashboard .agency-coordination-panel {
+    grid-area: coordination;
+}
+
+.supervisor-command-dashboard .dashboard-actions-panel {
+    grid-area: quick;
+}
+
+@media (max-width: 1200px) {
+    .supervisor-command-dashboard .supervisor-home-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+            "required required"
+            "health workload"
+            "timeline timeline"
+            "coordination quick";
+    }
+}
+
+@media (max-width: 760px) {
+    .supervisor-command-dashboard .supervisor-home-grid {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "required"
+            "health"
+            "workload"
+            "timeline"
+            "coordination"
+            "quick";
+        gap: 18px;
+    }
 }
 
 .task-count {

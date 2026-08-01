@@ -123,11 +123,14 @@ function createMapTexture() {
 }
 
 function buildMapPoints(sightings, records, mappedLocations = []) {
+    const hasCoordinates = (latitude, longitude) =>
+        latitude !== null && latitude !== undefined && latitude !== "" &&
+        longitude !== null && longitude !== undefined && longitude !== "" &&
+        Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
     const coordinateEntries = [
         ...sightings
             .filter((sighting) =>
-                Number.isFinite(Number(sighting.latitude)) &&
-                Number.isFinite(Number(sighting.longitude)) &&
+                hasCoordinates(sighting.latitude, sighting.longitude) &&
                 isUsCoordinate(sighting.latitude, sighting.longitude)
             )
             .map((sighting, index) => ({
@@ -142,8 +145,7 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
             })),
         ...mappedLocations
             .filter((location) =>
-                Number.isFinite(Number(location.latitude)) &&
-                Number.isFinite(Number(location.longitude)) &&
+                hasCoordinates(location.latitude, location.longitude) &&
                 isUsCoordinate(location.latitude, location.longitude)
             )
             .map((location, index) => ({
@@ -159,8 +161,7 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
         ...records
             .map((record, index) => {
                 const geocoded =
-                    Number.isFinite(Number(record.latitude)) &&
-                    Number.isFinite(Number(record.longitude))
+                    hasCoordinates(record.latitude, record.longitude)
                         ? {
                             latitude: Number(record.latitude),
                             longitude: Number(record.longitude),

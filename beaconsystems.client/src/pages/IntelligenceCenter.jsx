@@ -57,6 +57,8 @@ function IntelligenceCenter() {
     }, []);
 
     const hasMapCoordinates = (latitude, longitude) =>
+        latitude !== null && latitude !== undefined && latitude !== "" &&
+        longitude !== null && longitude !== undefined && longitude !== "" &&
         Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
 
     const mappedLocations = [

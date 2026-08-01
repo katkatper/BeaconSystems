@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
@@ -65,7 +65,13 @@ def get_dashboard_summary(
         evidence_query = evidence_query.filter(Evidence.case_id == -1)
         alert_query = alert_query.filter(Alerts.case_id == -1)
 
-    new_alerts = alert_query.filter(
+    dashboard_alert_query = alert_query.filter(
+        (Alerts.alert_type.is_(None))
+        | (~func.lower(Alerts.alert_type).like("%deleted%")),
+        (Alerts.title.is_(None)) | (~func.lower(Alerts.title).like("%deleted%")),
+    )
+
+    new_alerts = dashboard_alert_query.filter(
         func.lower(Alerts.alert_status) == "active"
     ).count()
 
@@ -120,7 +126,16 @@ def get_dashboard_summary(
         .all()
     )
 
-    recent_alerts = alert_query.order_by(Alerts.created_at.desc()).limit(5).all()
+    recent_alerts = (
+        dashboard_alert_query
+        .filter(
+            func.lower(Alerts.alert_status) == "active",
+            func.lower(Alerts.severity).in_(["high", "critical"]),
+        )
+        .order_by(Alerts.created_at.desc())
+        .limit(5)
+        .all()
+    )
     recent_evidence = evidence_query.order_by(Evidence.created_at.desc()).limit(5).all()
     recent_access = access_query.order_by(CaseAccessGrant.granted_at.desc()).limit(5).all()
     bolo_query = db.query(BoloAlert)
@@ -186,7 +201,6 @@ def get_dashboard_summary(
             "restricted_access_events": restricted_access_events,
         },
     }
-
     def serialize_case(case: Cases):
         return {
             "case_id": case.case_id,

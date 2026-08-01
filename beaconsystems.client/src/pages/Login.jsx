@@ -10,7 +10,9 @@ function Login({ onLogin }) {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
+    const [message, setMessage] = useState(
+        () => localStorage.getItem("session_timeout_message") || ""
+    );
     const [recoveryMode, setRecoveryMode] = useState("");
     const [pendingToken, setPendingToken] = useState("");
     const [mfaToken, setMfaToken] = useState("");
@@ -26,12 +28,7 @@ function Login({ onLogin }) {
     };
 
     useEffect(() => {
-        const timeoutMessage = localStorage.getItem("session_timeout_message");
-
-        if (timeoutMessage) {
-            setMessage(timeoutMessage);
-            localStorage.removeItem("session_timeout_message");
-        }
+        localStorage.removeItem("session_timeout_message");
     }, []);
 
     const storeSession = (data) => {

@@ -7,21 +7,30 @@ from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from models.activity_log import ActivityLog
+from models.case import Cases
 from models.legal_access_request import LegalAccessRequest
 from models.user import User
 from security.auth import get_current_user, require_role
+from security.case_access import apply_case_access_filter, get_authorized_case
 from services.activity_service import create_activity_log
 
 
 router = APIRouter(prefix="/legal-access", tags=["Legal Access Requests"])
 
 
-def serialize_legal_request(request: LegalAccessRequest):
+def serialize_legal_request(request: LegalAccessRequest, db: Session):
+    case_number = None
+    if request.case_id:
+        case_number = db.query(Cases.case_number).filter(
+            Cases.case_id == request.case_id
+        ).scalar()
+
     return {
         "request_id": request.request_id,
         "request_type": request.request_type,
         "authority_type": request.authority_type,
         "case_id": request.case_id,
+        "case_number": case_number,
         "person_id": request.person_id,
         "agency_id": request.agency_id,
         "requested_by_user_id": request.requested_by_user_id,
@@ -74,6 +83,7 @@ def get_accessible_legal_request(
 
 class LegalAccessRequestCreate(BaseModel):
     case_id: Optional[int] = None
+    case_number: Optional[str] = None
     person_id: Optional[int] = None
     assigned_investigator_id: Optional[int] = None
     approved_by_user_id: Optional[int] = None
@@ -184,8 +194,22 @@ def create_legal_access_request(
     if priority_value not in allowed_priorities:
         raise HTTPException(status_code=400, detail="Invalid priority")
 
+    linked_case = None
+    submitted_case_number = (data.case_number or "").strip()
+
+    if submitted_case_number:
+        case_query = db.query(Cases).filter(Cases.case_number == submitted_case_number)
+        linked_case = apply_case_access_filter(case_query, current_user).first()
+        if not linked_case:
+            raise HTTPException(status_code=404, detail="Case number not found or access denied")
+
+        if data.case_id is not None and data.case_id != linked_case.case_id:
+            raise HTTPException(status_code=400, detail="Case ID and case number do not match")
+    elif data.case_id is not None:
+        linked_case = get_authorized_case(db, data.case_id, current_user)
+
     request = LegalAccessRequest(
-        case_id=data.case_id,
+        case_id=linked_case.case_id if linked_case else None,
         person_id=data.person_id,
         agency_id=current_user.agency_id,
         requested_by_user_id=current_user.user_id,
@@ -232,7 +256,7 @@ def create_legal_access_request(
         ),
     )
 
-    return request
+    return serialize_legal_request(request, db)
 
 
 @router.get("/")
@@ -253,7 +277,8 @@ def get_legal_access_requests(
     if case_id is not None:
         query = query.filter(LegalAccessRequest.case_id == case_id)
 
-    return query.order_by(LegalAccessRequest.requested_at.desc()).all()
+    requests = query.order_by(LegalAccessRequest.requested_at.desc()).all()
+    return [serialize_legal_request(request, db) for request in requests]
 
 
 @router.get("/{request_id}")
@@ -292,7 +317,7 @@ def get_legal_access_request_detail(
         .all()
     )
 
-    data = serialize_legal_request(request)
+    data = serialize_legal_request(request, db)
     data.update({
         "requested_by_name": users.get(request.requested_by_user_id),
         "assigned_investigator_name": users.get(request.assigned_investigator_id),
@@ -368,4 +393,4 @@ def review_legal_access_request(
         details=f"Legal access request {request.request_id} marked {data.status}",
     )
 
-    return request
+    return serialize_legal_request(request, db)

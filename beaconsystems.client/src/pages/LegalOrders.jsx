@@ -110,7 +110,7 @@ function LegalOrders() {
     const [showMoreClosed, setShowMoreClosed] = useState(false);
     const [form, setForm] = useState({
         request_type: "da_prosecutor_request",
-        case_id: "",
+        case_number: "",
         person_id: "",
         requester_name: username,
         assigned_investigator_id: "",
@@ -200,7 +200,7 @@ function LegalOrders() {
         setMessage("");
 
         const payload = {
-            case_id: form.case_id ? Number(form.case_id) : null,
+            case_number: form.case_number.trim(),
             person_id: form.person_id ? Number(form.person_id) : null,
             assigned_investigator_id: form.assigned_investigator_id
                 ? Number(form.assigned_investigator_id)
@@ -238,7 +238,7 @@ function LegalOrders() {
             setMessage("Legal request record created and audit logged.");
             setForm((current) => ({
                 ...current,
-                case_id: "",
+                case_number: "",
                 person_id: "",
                 assigned_investigator_id: "",
                 receiving_entity: "",
@@ -283,6 +283,7 @@ function LegalOrders() {
                 request_id: "sample-search-warrant",
                 request_type: "warrant",
                 display_type: "Search Warrant",
+                case_number: "MP-2026-000001",
                 status: "sent_to_da",
                 assigned_to: "Det. Smith",
             },
@@ -290,6 +291,7 @@ function LegalOrders() {
                 request_id: "sample-phone-records",
                 request_type: "records_request",
                 display_type: "Phone Records",
+                case_number: "MP-2026-000002",
                 status: "awaiting_response",
                 assigned_to: "Analyst Garcia",
             },
@@ -297,6 +299,7 @@ function LegalOrders() {
                 request_id: "sample-rfi",
                 request_type: "interagency_request",
                 display_type: "Interagency RFI",
+                case_number: "MP-2026-000003",
                 status: "completed",
                 assigned_to: "Det. Jones",
             },
@@ -304,6 +307,7 @@ function LegalOrders() {
                 request_id: "sample-preservation",
                 request_type: "preservation_request",
                 display_type: "Preservation Req.",
+                case_number: "MP-2026-000004",
                 status: "sent",
                 assigned_to: "Det. Smith",
             },
@@ -321,8 +325,8 @@ function LegalOrders() {
             </div>
             <dl className="legal-record-details">
                 <div>
-                    <dt>Case ID</dt>
-                    <dd>{order.case_id ?? "Unlinked"}</dd>
+                    <dt>Case Number</dt>
+                    <dd>{order.case_number || "Unlinked"}</dd>
                 </div>
                 <div>
                     <dt>Person ID</dt>
@@ -410,6 +414,7 @@ function LegalOrders() {
                     <div className="legal-request-table">
                         <div className="legal-request-table-head">
                             <span>Request Type</span>
+                            <span>Case Number</span>
                             <span>Status</span>
                             <span>Assigned To</span>
                         </div>
@@ -420,6 +425,7 @@ function LegalOrders() {
                                     <span>
                                         {order.display_type || labelFor(requestTypes, order.request_type || order.authority_type)}
                                     </span>
+                                    <span>{order.case_number || "Unlinked"}</span>
                                     <span>{labelFor(statusOptions, order.status)}</span>
                                     <span>{assignedToLabel(order)}</span>
                                 </>
@@ -455,7 +461,13 @@ function LegalOrders() {
                                 <option key={value} value={value}>{label}</option>
                             ))}
                         </select>
-                        <input name="case_id" placeholder="Case ID" value={form.case_id} onChange={handleChange} />
+                        <input
+                            name="case_number"
+                            placeholder="Case Number (for example, MP-2026-000001)"
+                            value={form.case_number}
+                            onChange={handleChange}
+                            required
+                        />
                         <input name="person_id" placeholder="Person ID" value={form.person_id} onChange={handleChange} />
                         <input name="requester_name" placeholder="Requested by" value={form.requester_name} onChange={handleChange} required />
                         <input name="assigned_investigator_id" placeholder="Assigned Investigator User ID" value={form.assigned_investigator_id} onChange={handleChange} />

@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from models.alerts import Alerts
 from  database.connection import get_db
@@ -102,6 +103,12 @@ def get_alerts(
 
     query = db.query(Alerts)
     query = apply_related_case_access_filter(query, Alerts.case_id, current_user)
+    query = query.filter(
+        func.lower(Alerts.alert_status) == "active",
+        (Alerts.alert_type.is_(None))
+        | (~func.lower(Alerts.alert_type).like("%deleted%")),
+        (Alerts.title.is_(None)) | (~func.lower(Alerts.title).like("%deleted%")),
+    )
 
     return query.order_by(
 

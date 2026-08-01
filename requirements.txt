@@ -2,6 +2,7 @@ alembic
 boto3
 fastapi
 passlib[bcrypt]
+bcrypt<4.1
 psycopg2-binary
 python-jose[cryptography]
 python-dotenv

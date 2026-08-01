@@ -2,6 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
@@ -112,6 +113,10 @@ def list_bolos(
 
     if status:
         query = query.filter(BoloAlert.status == status)
+        if status == "active":
+            query = query.filter(
+                or_(BoloAlert.expires_at.is_(None), BoloAlert.expires_at > datetime.utcnow())
+            )
 
     return query.order_by(BoloAlert.created_at.desc()).all()
 
