@@ -39,8 +39,14 @@ const priorityLabels = {
     critical: "Critical",
 };
 
-const labelFor = (labels, value) =>
-    labels[value] || String(value || "Not recorded").replaceAll("_", " ");
+const labelFor = (labels, value) => {
+    if (labels[value]) return labels[value];
+
+    const templateName = String(value || "Not recorded").split("__").at(-1);
+    return templateName
+        .replaceAll("_", " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
 
 const formatDate = (value) => {
     if (!value) {

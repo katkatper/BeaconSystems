@@ -3,21 +3,162 @@ import { Link, useSearchParams } from "react-router-dom";
 import { apiGet, apiPost } from "../api.jsx";
 import ActiveFilterBanner from "../components/ActiveFilterBanner.jsx";
 
-const requestTypes = [
-    ["interagency_request", "Interagency Requests"],
-    ["da_prosecutor_request", "DA / Prosecutor Requests"],
-    ["court_order", "Court Orders"],
-    ["search_warrant", "Search Warrant"],
-    ["arrest_warrant", "Arrest Warrant"],
-    ["subpoena", "Subpoenas"],
-    ["records_request", "Records Requests"],
-    ["preservation_request", "Preservation Requests"],
-    ["emergency_disclosure_request", "Emergency Disclosure Request"],
-    ["prosecutor_filing_packet", "Prosecutor Filing Packet"],
-    ["grand_jury_request", "Grand Jury Request"],
-    ["lab_submission", "Lab Submission"],
-    ["evidence_transfer", "Evidence Transfer"],
+const slugify = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+
+const requestCategories = [
+    {
+        id: "judicial",
+        label: "Judicial",
+        description: "Warrants, probable cause filings, court orders, and subpoenas",
+        authorityType: "court_order",
+        templates: [
+            "Search Warrant Affidavit", "Search Warrant", "Arrest Warrant Affidavit / Complaint",
+            "Arrest Warrant", "Bench Warrant Request", "Capias Request", "Probable Cause Affidavit",
+            "Return and Inventory", "Sealing Order Request", "Search Warrant Extension Request",
+            "Digital Device Search Warrant", "Cell Phone Records Search Warrant",
+            "Cloud Storage Search Warrant", "Financial Records Search Warrant", "Court Order for Records",
+            "Court Order for DNA", "Court Order for Fingerprints", "Court Order for Medical Records",
+            "Court Order for School Records", "Court Order for Mental Health Records",
+            "Court Order for Financial Records", "GPS Tracking Order", "Pen Register Order",
+            "Trap and Trace Order", "Electronic Surveillance Order", "CSLI Order",
+            "Subpoena Duces Tecum", "Witness Subpoena", "Business Records Subpoena",
+            "Medical Records Subpoena", "Bank Records Subpoena", "Employment Records Subpoena",
+            "Utility Records Subpoena", "School Records Subpoena", "Pharmacy Records Subpoena",
+        ],
+    },
+    {
+        id: "prosecutor",
+        label: "Prosecutor / DA",
+        description: "Filing, referral, discovery, and charging packets",
+        authorityType: "da_prosecutor_request",
+        templates: [
+            "Case Filing Packet", "Case Referral Packet", "Felony Filing Packet", "Misdemeanor Filing Packet",
+            "Supplemental Report", "Follow-up Investigation Report", "Evidence Submission Packet",
+            "Discovery Packet", "Witness List", "Evidence Index", "Case Status Update",
+            "Charge Recommendation", "Probable Cause Summary", "Affidavit of Probable Cause",
+        ],
+    },
+    {
+        id: "emergency",
+        label: "Emergency",
+        description: "Time-sensitive disclosure, preservation, and exigent requests",
+        authorityType: "preservation_request",
+        templates: [
+            "Emergency Disclosure Request", "Emergency Preservation Request", "Exigent Circumstances Request",
+            "Emergency Cell Phone Ping Request", "Emergency Subscriber Information Request",
+            "Emergency Social Media Preservation Request",
+        ],
+    },
+    {
+        id: "records",
+        label: "Records",
+        description: "Operational, communications, video, and historical records",
+        authorityType: "records_request",
+        templates: [
+            "Criminal History Request", "CAD Records Request", "RMS Report Request", "Jail Records Request",
+            "Booking Records Request", "Body Camera Video Request", "Dash Camera Video Request",
+            "Dispatch Audio Request", "Radio Traffic Request", "Jail Call Recording Request",
+            "License Plate Reader Data Request", "Surveillance Video Request",
+        ],
+    },
+    {
+        id: "interagency",
+        label: "Interagency",
+        description: "Assistance, transfers, notifications, and regional coordination",
+        authorityType: "interagency_request",
+        templates: [
+            "Intelligence Request", "Investigative Assistance Request", "Case Transfer Request",
+            "Assistance Request", "Officer Safety Bulletin", "BOLO Request", "Regional Notification",
+            "Fugitive Assistance Request", "Task Force Referral", "Mutual Aid Request",
+        ],
+    },
+    {
+        id: "forensics",
+        label: "Forensics / Crime Lab",
+        description: "Laboratory submissions and technical examinations",
+        authorityType: "agency_agreement",
+        templates: [
+            "Laboratory Submission Form", "DNA Submission", "Fingerprint Submission",
+            "Firearms Examination Request", "Toolmark Examination Request", "Toxicology Request",
+            "Controlled Substance Analysis", "Trace Evidence Examination", "Digital Forensics Request",
+            "Latent Print Examination", "Biological Evidence Submission",
+        ],
+    },
+    {
+        id: "evidence",
+        label: "Evidence",
+        description: "Custody, transfer, release, destruction, and property workflows",
+        authorityType: "agency_agreement",
+        templates: [
+            "Property Receipt", "Evidence Submission", "Chain of Custody", "Evidence Transfer",
+            "Evidence Release", "Evidence Destruction Request", "Evidence Return Authorization",
+            "Digital Evidence Upload", "Property Inventory",
+        ],
+    },
+    {
+        id: "medical_examiner",
+        label: "Medical Examiner",
+        description: "Decedent identification, comparison, and report requests",
+        authorityType: "interagency_request",
+        templates: [
+            "Autopsy Report Request", "Identification Request", "Fingerprint Comparison Request",
+            "Dental Record Comparison", "DNA Comparison Request", "Toxicology Report Request",
+            "X-Ray Comparison Request", "Decedent Property Request", "Unidentified Remains Inquiry",
+        ],
+    },
+    {
+        id: "missing_persons",
+        label: "Missing Persons",
+        description: "National entries, alerts, updates, and identification resources",
+        authorityType: "interagency_request",
+        templates: [
+            "Missing Person Entry Request (NCIC)", "NamUs Submission", "Missing Child Notification",
+            "Endangered Missing Person Notification", "Silver Alert Request", "AMBER Alert Request",
+            "Missing Person Update", "Missing Person Cancellation", "Family DNA Collection Request",
+            "Dental Record Request", "Missing Person Poster Approval",
+        ],
+    },
+    {
+        id: "healthcare",
+        label: "Hospitals / Healthcare",
+        description: "Patient inquiries, welfare checks, and authorized medical requests",
+        authorityType: "records_request",
+        templates: [
+            "Emergency Patient Inquiry", "Welfare Check Request", "Hospital Admission Inquiry",
+            "Medical Records Request", "Unidentified Patient Inquiry",
+        ],
+    },
+    {
+        id: "social_services",
+        label: "Social Services",
+        description: "Protection, victim support, shelter, and crisis referrals",
+        authorityType: "interagency_request",
+        templates: [
+            "Child Protective Services Referral", "Adult Protective Services Referral",
+            "Victim Services Referral", "Shelter Referral", "Crisis Intervention Request",
+            "Mental Health Evaluation Request",
+        ],
+    },
 ];
+
+const requestTemplates = requestCategories.flatMap((category) =>
+    category.templates.map((label) => ({
+        value: `${category.id}__${slugify(label)}`,
+        label,
+        categoryId: category.id,
+        authorityType: category.authorityType,
+    }))
+);
+const requestTypes = requestTemplates.map(({ value, label }) => [value, label]);
+const templateByValue = new Map(requestTemplates.map((template) => [template.value, template]));
+const legacyCategoryByType = {
+    warrant: "judicial", search_warrant: "judicial", arrest_warrant: "judicial",
+    court_order: "judicial", subpoena: "judicial", wiretap_order: "judicial",
+    da_prosecutor_request: "prosecutor", prosecutor_filing_packet: "prosecutor",
+    grand_jury_request: "prosecutor", preservation_request: "emergency",
+    emergency_disclosure_request: "emergency", records_request: "records",
+    interagency_request: "interagency", lab_submission: "forensics", evidence_transfer: "evidence",
+};
 
 const statusOptions = [
     ["draft", "Draft"],
@@ -81,6 +222,7 @@ const fetchLegalOrders = async () => {
     const data = await apiGet("/legal-access/");
     const legalTypes = new Set(requestTypes.map(([value]) => value));
     const legacyTypes = new Set([
+        ...Object.keys(legacyCategoryByType),
         "court_order",
         "warrant",
         "search_warrant",
@@ -97,19 +239,26 @@ const fetchLegalOrders = async () => {
         : [];
 };
 
+const categoryForOrder = (order) =>
+    templateByValue.get(order.request_type)?.categoryId ||
+    legacyCategoryByType[order.request_type || order.authority_type] ||
+    "records";
+
 function LegalOrders() {
     const [searchParams, setSearchParams] = useSearchParams();
     const statusFilter = searchParams.get("status") || "";
+    const requestedTemplate = searchParams.get("template") || "";
     const username = localStorage.getItem("username") || "";
     const role = localStorage.getItem("role") || "viewer";
     const isSupervisor = role === "supervisor";
     const [orders, setOrders] = useState([]);
     const [message, setMessage] = useState("");
-    const [selectedType, setSelectedType] = useState("all");
+    const [selectedCategory, setSelectedCategory] = useState("all");
+    const [templateSearch, setTemplateSearch] = useState("");
     const [showMoreActive, setShowMoreActive] = useState(false);
     const [showMoreClosed, setShowMoreClosed] = useState(false);
     const [form, setForm] = useState({
-        request_type: "da_prosecutor_request",
+        request_type: templateByValue.has(requestedTemplate) ? requestedTemplate : requestTemplates[0].value,
         case_number: "",
         person_id: "",
         requester_name: username,
@@ -158,11 +307,9 @@ function LegalOrders() {
     }, []);
 
     const filteredOrders = useMemo(() => {
-        const typeFiltered = selectedType === "all"
+        const typeFiltered = selectedCategory === "all"
             ? orders
-            : orders.filter((order) =>
-                (order.request_type || order.authority_type) === selectedType
-            );
+            : orders.filter((order) => categoryForOrder(order) === selectedCategory);
 
         if (!statusFilter) {
             return typeFiltered;
@@ -173,7 +320,7 @@ function LegalOrders() {
         }
 
         return typeFiltered.filter((order) => order.status === statusFilter);
-    }, [orders, selectedType, statusFilter]);
+    }, [orders, selectedCategory, statusFilter]);
 
     const activeOrders = filteredOrders.filter((order) =>
         !closedStatuses.has(order.status)
@@ -182,11 +329,15 @@ function LegalOrders() {
         closedStatuses.has(order.status)
     );
 
-    const requestTypeCounts = requestTypes.map(([value, label]) => [
-        value,
-        label,
-        orders.filter((order) => (order.request_type || order.authority_type) === value).length,
-    ]);
+    const categoryCounts = requestCategories.map((category) => ({
+        ...category,
+        count: orders.filter((order) => categoryForOrder(order) === category.id).length,
+    }));
+    const visibleTemplates = requestTemplates.filter((template) => {
+        const matchesCategory = selectedCategory === "all" || template.categoryId === selectedCategory;
+        const searchValue = templateSearch.trim().toLowerCase();
+        return matchesCategory && (!searchValue || template.label.toLowerCase().includes(searchValue));
+    });
 
     const handleChange = (event) => {
         setForm((current) => ({
@@ -199,6 +350,7 @@ function LegalOrders() {
         event.preventDefault();
         setMessage("");
 
+        const selectedTemplate = templateByValue.get(form.request_type);
         const payload = {
             case_number: form.case_number.trim(),
             person_id: form.person_id ? Number(form.person_id) : null,
@@ -212,7 +364,7 @@ function LegalOrders() {
             requester_organization: form.receiving_entity,
             requester_role: "supervisor",
             contact_email: null,
-            authority_type: form.request_type,
+            authority_type: selectedTemplate?.authorityType || "records_request",
             request_type: form.request_type,
             source_type: form.source_type,
             receiving_entity: form.receiving_entity,
@@ -382,23 +534,57 @@ function LegalOrders() {
             <section className="legal-request-type-grid" aria-label="Legal request categories">
                 <button
                     type="button"
-                    className={selectedType === "all" ? "active" : ""}
-                    onClick={() => setSelectedType("all")}
+                    className={selectedCategory === "all" ? "active" : ""}
+                    onClick={() => setSelectedCategory("all")}
                 >
-                    <span>Requests</span>
+                    <span className="legal-category-copy"><b>All Workflows</b><small>Every request and document category</small></span>
                     <strong>{orders.length}</strong>
                 </button>
-                {requestTypeCounts.map(([value, label, count]) => (
+                {categoryCounts.map((category) => (
                     <button
-                        key={value}
+                        key={category.id}
                         type="button"
-                        className={selectedType === value ? "active" : ""}
-                        onClick={() => setSelectedType(value)}
+                        className={selectedCategory === category.id ? "active" : ""}
+                        onClick={() => setSelectedCategory(category.id)}
                     >
-                        <span>{label}</span>
-                        <strong>{count}</strong>
+                        <span className="legal-category-copy"><b>{category.label}</b><small>{category.description}</small></span>
+                        <strong>{category.count}</strong>
                     </button>
                 ))}
+            </section>
+
+            <section className="legal-template-library" aria-label="Request template library">
+                <div className="legal-template-library-header">
+                    <div>
+                        <span>Configurable document library</span>
+                        <h2>{selectedCategory === "all" ? "All Request Templates" : requestCategories.find((category) => category.id === selectedCategory)?.label}</h2>
+                        <p>Choose a workflow template. Agencies can later replace its fields and generated document with their approved local version.</p>
+                    </div>
+                    <input
+                        type="search"
+                        value={templateSearch}
+                        onChange={(event) => setTemplateSearch(event.target.value)}
+                        placeholder="Search templates"
+                        aria-label="Search request templates"
+                    />
+                </div>
+                <div className="legal-template-list">
+                    {visibleTemplates.map((template) => (
+                        <button
+                            key={template.value}
+                            type="button"
+                            className={form.request_type === template.value ? "active" : ""}
+                            onClick={() => {
+                                setForm((current) => ({ ...current, request_type: template.value }));
+                                setSelectedCategory(template.categoryId);
+                            }}
+                        >
+                            <span>{template.label}</span>
+                            <small>{requestCategories.find((category) => category.id === template.categoryId)?.label}</small>
+                        </button>
+                    ))}
+                    {visibleTemplates.length === 0 && <p>No templates match this search.</p>}
+                </div>
             </section>
 
             {statusFilter && (
@@ -457,8 +643,12 @@ function LegalOrders() {
 
                     <form className="legal-form legal-order-form" onSubmit={submitOrder}>
                         <select name="request_type" value={form.request_type} onChange={handleChange}>
-                            {requestTypes.map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
+                            {requestCategories.map((category) => (
+                                <optgroup key={category.id} label={category.label}>
+                                    {requestTemplates.filter((template) => template.categoryId === category.id).map((template) => (
+                                        <option key={template.value} value={template.value}>{template.label}</option>
+                                    ))}
+                                </optgroup>
                             ))}
                         </select>
                         <input

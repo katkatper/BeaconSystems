@@ -18,7 +18,31 @@ const SOURCE_COLORS = {
     work: 0xfbbf24,
     last_seen: 0xef4444,
     other: 0xcbd5e1,
+    human_trafficking: 0xf43f5e,
+    repeat_offenders: 0xfb7185,
+    unidentified_remains: 0xe5e7eb,
+    multiple_missing_persons: 0x38bdf8,
+    offender_residences: 0xf97316,
+    child_exploitation: 0xef4444,
+    crime_clusters: 0xfacc15,
+    lpr_hits: 0xa78bfa,
+    camera_hits: 0x22d3ee,
+    gang_territories: 0x8b5cf6,
 };
+
+const ANALYSIS_LAYERS = [
+    ["human_trafficking", "Human trafficking trends", "#f43f5e"],
+    ["repeat_offenders", "Repeat offender locations", "#fb7185"],
+    ["unidentified_remains", "Unidentified remains", "#e5e7eb"],
+    ["multiple_missing_persons", "Multiple missing persons", "#38bdf8"],
+    ["offender_residences", "Known offender residences", "#f97316"],
+    ["child_exploitation", "Child exploitation investigations", "#ef4444"],
+    ["crime_clusters", "Geographic crime clusters", "#facc15"],
+    ["lpr_hits", "License plate reader hits", "#a78bfa"],
+    ["camera_hits", "Camera hits", "#22d3ee"],
+    ["social_media", "Social media intelligence", "#f472b6"],
+    ["gang_territories", "Gang-linked geography", "#8b5cf6"],
+];
 
 function hashLocation(value) {
     return [...String(value || "unknown")].reduce(
@@ -140,6 +164,7 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
                 detail: sighting.description || "Reported sighting",
                 caseId: sighting.case_id,
                 confidence: Number(sighting.confidence_score ?? 0.35),
+                analysisLayer: sighting.analysis_layer || "crime_clusters",
                 latitude: Number(sighting.latitude),
                 longitude: Number(sighting.longitude),
             })),
@@ -155,6 +180,7 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
                 detail: location.detail || location.address || "Case geography",
                 caseId: location.caseId || location.case_id,
                 confidence: Number(location.confidence ?? 0.62),
+                analysisLayer: location.analysisLayer || location.analysis_layer || "multiple_missing_persons",
                 latitude: Number(location.latitude),
                 longitude: Number(location.longitude),
             })),
@@ -179,6 +205,7 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
                     confidence: record.geocode_score
                         ? Math.max(0.35, Math.min(Number(record.geocode_score) / 100, 0.95))
                         : 0.55,
+                    analysisLayer: record.analysis_layer || "crime_clusters",
                     latitude: geocoded.latitude,
                     longitude: geocoded.longitude,
                 };
@@ -214,6 +241,7 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
             detail: record.notes || "Partner-provided intelligence",
             caseId: record.case_id,
             confidence: 0.48 + (seed % 45) / 100,
+            analysisLayer: record.analysis_layer || "crime_clusters",
             x: ((seed % 29) - 14) + (index % 3) * 0.4,
             z: (((seed * 7) % 25) - 12) + (index % 2) * 0.6,
         };
@@ -233,11 +261,37 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
     const raycasterRef = useRef(new THREE.Raycaster());
     const pointerRef = useRef(new THREE.Vector2());
     const [selectedPoint, setSelectedPoint] = useState(null);
+    const [activeLayers, setActiveLayers] = useState(() => new Set(ANALYSIS_LAYERS.map(([id]) => id)));
 
     const points = useMemo(
         () => buildMapPoints(sightings, records, mappedLocations),
         [sightings, records, mappedLocations]
     );
+    const visiblePoints = useMemo(
+        () => points.filter((point) => activeLayers.has(point.analysisLayer)),
+        [points, activeLayers]
+    );
+    const layerCounts = useMemo(() => points.reduce((counts, point) => ({
+        ...counts,
+        [point.analysisLayer]: (counts[point.analysisLayer] || 0) + 1,
+    }), {}), [points]);
+    const clusterCount = useMemo(() => {
+        const occupiedCells = new Map();
+        visiblePoints.forEach((point) => {
+            const key = `${point.analysisLayer}:${Math.round(point.x / 4)}:${Math.round(point.z / 4)}`;
+            occupiedCells.set(key, (occupiedCells.get(key) || 0) + 1);
+        });
+        return [...occupiedCells.values()].filter((count) => count > 1).length;
+    }, [visiblePoints]);
+
+    const toggleLayer = (layerId) => {
+        setActiveLayers((current) => {
+            const next = new Set(current);
+            if (next.has(layerId)) next.delete(layerId);
+            else next.add(layerId);
+            return next;
+        });
+    };
 
     useEffect(() => {
         const mount = mountRef.current;
@@ -306,7 +360,7 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
             transparent: true,
             opacity: 0.46,
         });
-        const routePoints = points
+        const routePoints = visiblePoints
             .slice(0, 10)
             .map((point) => new THREE.Vector3(point.x, 0.18, point.z));
         if (routePoints.length > 1) {
@@ -320,8 +374,35 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
         const markerGroup = new THREE.Group();
         markerRefs.current = [];
 
-        points.forEach((point, index) => {
-            const color = SOURCE_COLORS[point.type] ?? SOURCE_COLORS.other;
+        const clusterCells = new Map();
+        visiblePoints.forEach((point) => {
+            const key = `${point.analysisLayer}:${Math.round(point.x / 4)}:${Math.round(point.z / 4)}`;
+            const cell = clusterCells.get(key) || [];
+            cell.push(point);
+            clusterCells.set(key, cell);
+        });
+        clusterCells.forEach((cluster) => {
+            if (cluster.length < 2) return;
+            const color = SOURCE_COLORS[cluster[0].analysisLayer] ?? SOURCE_COLORS.other;
+            const centerX = cluster.reduce((sum, point) => sum + point.x, 0) / cluster.length;
+            const centerZ = cluster.reduce((sum, point) => sum + point.z, 0) / cluster.length;
+            const clusterDisc = new THREE.Mesh(
+                new THREE.CircleGeometry(Math.min(4.2, 1.4 + cluster.length * 0.42), 48),
+                new THREE.MeshBasicMaterial({
+                    color,
+                    transparent: true,
+                    opacity: 0.13,
+                    side: THREE.DoubleSide,
+                    depthWrite: false,
+                })
+            );
+            clusterDisc.rotation.x = -Math.PI / 2;
+            clusterDisc.position.set(centerX, 0.05, centerZ);
+            markerGroup.add(clusterDisc);
+        });
+
+        visiblePoints.forEach((point, index) => {
+            const color = SOURCE_COLORS[point.analysisLayer] ?? SOURCE_COLORS[point.type] ?? SOURCE_COLORS.other;
             const height = 0.8 + Math.max(point.confidence, 0.25) * 4.2;
 
             const tower = new THREE.Mesh(
@@ -416,16 +497,38 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
             });
             renderer.dispose();
         };
-    }, [points]);
+    }, [visiblePoints]);
 
-    const summary = selectedPoint || points[0];
+    const summary = selectedPoint && activeLayers.has(selectedPoint.analysisLayer)
+        ? selectedPoint
+        : visiblePoints[0];
 
     return (
-        <div className="intelligence-3d-shell">
-            <div ref={mountRef} className="intelligence-3d-stage" />
+        <div className="intelligence-analysis-workspace">
+            <aside className="intelligence-layer-panel">
+                <div className="intelligence-layer-summary">
+                    <span>Pattern engine</span>
+                    <strong>{clusterCount}</strong>
+                    <small>multi-point clusters visible</small>
+                </div>
+                {ANALYSIS_LAYERS.map(([id, label, color]) => (
+                    <button
+                        key={id}
+                        type="button"
+                        className={activeLayers.has(id) ? "active" : ""}
+                        onClick={() => toggleLayer(id)}
+                    >
+                        <i style={{ backgroundColor: color }}></i>
+                        <span>{label}</span>
+                        <strong>{layerCounts[id] || 0}</strong>
+                    </button>
+                ))}
+            </aside>
+            <div className="intelligence-3d-shell">
+                <div ref={mountRef} className="intelligence-3d-stage" />
             <div className="intelligence-3d-overlay">
                 <div>
-                    <span>Selected Lead</span>
+                    <span>Selected Intelligence Signal</span>
                     <strong>{summary ? summary.title : "No mapped data"}</strong>
                     {summary && (
                         <p>
@@ -435,11 +538,6 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
                     )}
                 </div>
             </div>
-            <div className="intelligence-3d-legend">
-                <span className="legend-blue">Sightings</span>
-                <span className="legend-green">Hospitals</span>
-                <span className="legend-yellow">Transport</span>
-                <span className="legend-pink">Social</span>
             </div>
         </div>
     );

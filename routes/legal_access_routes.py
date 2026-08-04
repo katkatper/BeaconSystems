@@ -161,6 +161,19 @@ def create_legal_access_request(
     }
 
     allowed_priorities = {"routine", "medium", "high", "urgent", "critical"}
+    allowed_template_categories = {
+        "judicial",
+        "prosecutor",
+        "emergency",
+        "records",
+        "interagency",
+        "forensics",
+        "evidence",
+        "medical_examiner",
+        "missing_persons",
+        "healthcare",
+        "social_services",
+    }
     request_type = data.request_type or data.authority_type
     status_value = data.status or "draft"
     priority_value = data.priority or "routine"
@@ -182,7 +195,12 @@ def create_legal_access_request(
     if data.authority_type not in allowed_authorities:
         raise HTTPException(status_code=400, detail="Invalid authority type")
 
-    if request_type not in allowed_authorities:
+    is_configured_template = any(
+        request_type.startswith(f"{category}__")
+        for category in allowed_template_categories
+    )
+
+    if request_type not in allowed_authorities and not is_configured_template:
         raise HTTPException(status_code=400, detail="Invalid request type")
 
     if data.source_type not in allowed_sources:

@@ -1,35 +1,38 @@
 import React, { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+
+const alertTemplates = [
+    ["Sighting", { alert_type: "HIGH_CONFIDENCE_SIGHTING", title: "High Confidence Sighting", severity: "high", alert_source: "witness_tip" }],
+    ["Child Missing", { alert_type: "CHILD_MISSING", title: "Child Missing", severity: "critical", alert_source: "supervisor_action" }],
+    ["Officer Safety", { alert_type: "OFFICER_SAFETY", title: "Officer Safety Alert", severity: "critical", alert_source: "public_safety_system" }],
+    ["Critical Evidence", { alert_type: "CRITICAL_EVIDENCE", title: "Critical Evidence", severity: "critical", alert_source: "investigator" }],
+    ["Hospital Match", { alert_type: "HOSPITAL_MATCH", title: "Potential Hospital Match", severity: "high", alert_source: "integration_feed" }],
+    ["DNA Match", { alert_type: "DNA_MATCH", title: "DNA Match", severity: "high", alert_source: "data_match_engine" }],
+    ["Known Associate Located", { alert_type: "KNOWN_ASSOCIATE_LOCATED", title: "Known Associate Located", severity: "high", alert_source: "investigator" }],
+    ["Vehicle Located", { alert_type: "VEHICLE_LOCATED", title: "Vehicle Located", severity: "high", alert_source: "integration_feed" }],
+];
 
 function Alerts() {
+    const [searchParams] = useSearchParams();
+    const isAmberLaunch = searchParams.get("create") === "amber";
     const [alerts, setAlerts] = useState([]);
-    const [bolos, setBolos] = useState([]);
+    const [cases, setCases] = useState([]);
+    const [persons, setPersons] = useState([]);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
     const [showAllAlerts, setShowAllAlerts] = useState(false);
-    const [showAllBolos, setShowAllBolos] = useState(false);
     const [editingAlertId, setEditingAlertId] = useState(null);
-    const [editingBoloId, setEditingBoloId] = useState(null);
 
     const [form, setForm] = useState({
         case_id: "",
         person_id: "",
-        alert_type: "HIGH_CONFIDENCE_SIGHTING",
+        alert_type: isAmberLaunch ? "AMBER_ALERT" : "HIGH_CONFIDENCE_SIGHTING",
         alert_source: "investigator",
         source_detail: "",
         confidence_score: "",
-        title: "",
+        title: isAmberLaunch ? "AMBER Alert" : "",
         description: "",
-        severity: "medium",
-    });
-    const [boloForm, setBoloForm] = useState({
-        case_id: "",
-        title: "",
-        person_name: "",
-        last_known_location: "",
-        description: "",
-        risk_level: "high",
-        share_with_partners: false,
-        expires_at: "",
+        severity: isAmberLaunch ? "critical" : "medium",
     });
     const [alertEditForm, setAlertEditForm] = useState({
         case_id: "",
@@ -42,16 +45,6 @@ function Alerts() {
         description: "",
         severity: "medium",
         alert_status: "active",
-    });
-    const [boloEditForm, setBoloEditForm] = useState({
-        title: "",
-        person_name: "",
-        last_known_location: "",
-        description: "",
-        risk_level: "high",
-        status: "active",
-        share_with_partners: false,
-        expires_at: "",
     });
     const alertSourceLabels = {
         investigator: "Investigator lead",
@@ -90,49 +83,39 @@ function Alerts() {
             });
     };
 
-    const loadBolos = () => {
-        const token = localStorage.getItem("token");
-
-        fetch("http://127.0.0.1:8000/bolos/", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Failed to load BOLOs");
-                }
-
-                return res.json();
-            })
-            .then((data) => {
-                setBolos(data);
-            })
-            .catch((err) => {
-                console.error(err);
-                setError("Could not load operational alerts.");
-            });
-    };
-
     useEffect(() => {
         loadAlerts();
-        loadBolos();
+        const token = localStorage.getItem("token");
+        Promise.all([
+            fetch("http://127.0.0.1:8000/cases/", { headers: { Authorization: `Bearer ${token}` } }),
+            fetch("http://127.0.0.1:8000/persons/?limit=200", { headers: { Authorization: `Bearer ${token}` } }),
+        ]).then(async ([caseResponse, personResponse]) => {
+            setCases(caseResponse.ok ? await caseResponse.json() : []);
+            setPersons(personResponse.ok ? await personResponse.json() : []);
+        }).catch((err) => console.error(err));
     }, []);
 
     const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value,
-        });
+        const { name, value } = e.target;
+        if (name === "case_id") {
+            const selectedCase = cases.find((caseItem) => String(caseItem.case_id) === value);
+            setForm((current) => ({
+                ...current,
+                case_id: value,
+                person_id: selectedCase?.person_id ?? "",
+            }));
+            return;
+        }
+        setForm((current) => ({ ...current, [name]: value }));
     };
 
-    const handleBoloChange = (e) => {
-        const { name, value, type, checked } = e.target;
-
-        setBoloForm({
-            ...boloForm,
-            [name]: type === "checkbox" ? checked : value,
-        });
+    const applyAlertTemplate = (template) => {
+        setForm((current) => ({
+            ...current,
+            ...template,
+            description: "",
+            confidence_score: "",
+        }));
     };
 
     const handleAlertEditChange = (e) => {
@@ -140,25 +123,6 @@ function Alerts() {
             ...alertEditForm,
             [e.target.name]: e.target.value,
         });
-    };
-
-    const handleBoloEditChange = (e) => {
-        const { name, value, type, checked } = e.target;
-
-        setBoloEditForm({
-            ...boloEditForm,
-            [name]: type === "checkbox" ? checked : value,
-        });
-    };
-
-    const formatDateTimeLocal = (value) => {
-        if (!value) return "";
-
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return "";
-
-        const offsetMs = date.getTimezoneOffset() * 60000;
-        return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
     };
 
     const startEditingAlert = (alert) => {
@@ -177,26 +141,8 @@ function Alerts() {
         });
     };
 
-    const startEditingBolo = (bolo) => {
-        setEditingBoloId(bolo.bolo_id);
-        setBoloEditForm({
-            title: bolo.title || "",
-            person_name: bolo.person_name || "",
-            last_known_location: bolo.last_known_location || "",
-            description: bolo.description || "",
-            risk_level: bolo.risk_level || "high",
-            status: bolo.status || "active",
-            share_with_partners: Boolean(bolo.share_with_partners),
-            expires_at: formatDateTimeLocal(bolo.expires_at),
-        });
-    };
-
     const cancelAlertEdit = () => {
         setEditingAlertId(null);
-    };
-
-    const cancelBoloEdit = () => {
-        setEditingBoloId(null);
     };
 
     const createAlert = async (e) => {
@@ -257,53 +203,6 @@ function Alerts() {
         }
     };
 
-    const createBolo = async (e) => {
-        e.preventDefault();
-
-        const token = localStorage.getItem("token");
-        const payload = {
-            ...boloForm,
-            case_id: boloForm.case_id.trim(),
-            expires_at: boloForm.expires_at || null,
-        };
-
-        try {
-            const response = await fetch("http://127.0.0.1:8000/bolos/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const detail = Array.isArray(errorData.detail)
-                    ? errorData.detail.map((item) => item.msg).join("; ")
-                    : errorData.detail;
-
-                throw new Error(detail || "Failed to create BOLO");
-            }
-
-            setMessage("BOLO created and added to operational alerts.");
-            setBoloForm({
-                case_id: "",
-                title: "",
-                person_name: "",
-                last_known_location: "",
-                description: "",
-                risk_level: "high",
-                share_with_partners: false,
-                expires_at: "",
-            });
-            loadBolos();
-        } catch (err) {
-            console.error(err);
-            setMessage(err.message || "Could not create BOLO.");
-        }
-    };
-
     const updateAlert = async (alertId) => {
         const token = localStorage.getItem("token");
         const payload = {
@@ -340,43 +239,24 @@ function Alerts() {
         }
     };
 
-    const updateBolo = async (boloId) => {
-        const token = localStorage.getItem("token");
-        const payload = {
-            ...boloEditForm,
-            expires_at: boloEditForm.expires_at || null,
-        };
-
-        try {
-            const response = await fetch(`http://127.0.0.1:8000/bolos/${boloId}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const detail = Array.isArray(errorData.detail)
-                    ? errorData.detail.map((item) => item.msg).join("; ")
-                    : errorData.detail;
-
-                throw new Error(detail || "Failed to update BOLO");
-            }
-
-            setMessage("BOLO updated.");
-            setEditingBoloId(null);
-            loadBolos();
-        } catch (err) {
-            console.error(err);
-            setMessage(err.message || "Could not update BOLO.");
-        }
-    };
-
     const visibleAlerts = showAllAlerts ? alerts : alerts.slice(0, 2);
-    const visibleBolos = showAllBolos ? bolos : bolos.slice(0, 2);
+    const caseLookup = new Map(cases.map((caseItem) => [Number(caseItem.case_id), caseItem]));
+    const personLookup = new Map(persons.map((person) => [Number(person.person_id), person]));
+    const alertContextFor = (alert) => {
+        const caseItem = caseLookup.get(Number(alert.case_id));
+        const person = personLookup.get(Number(alert.person_id || caseItem?.person_id));
+        return {
+            caseNumber: caseItem?.case_number || `Case ${alert.case_id}`,
+            personName: person ? `${person.first_name || ""} ${person.last_name || ""}`.trim() : `Person ${alert.person_id}`,
+            location: alert.source_detail || person?.last_seen_location || caseItem?.last_seen_location || "Not recorded",
+            assignedTo: caseItem?.investigator_name || (caseItem?.investigator_id ? `Investigator ${caseItem.investigator_id}` : "Unassigned"),
+        };
+    };
+    const displayConfidence = (value) => {
+        const score = Number(value);
+        if (!Number.isFinite(score)) return "Not scored";
+        return `${Math.round(score <= 1 ? score * 100 : score)}%`;
+    };
 
     return (
         <div className="alerts-page">
@@ -387,26 +267,47 @@ function Alerts() {
             {error && <p>{error}</p>}
             {message && <p>{message}</p>}
 
+            <section className="quick-alert-templates" aria-label="Quick alert templates">
+                <div>
+                    <span>Quick Alerts</span>
+                    <small>One click pre-populates the alert workflow</small>
+                </div>
+                <div className="quick-alert-template-list">
+                    {alertTemplates.map(([label, template]) => (
+                        <button key={label} type="button" onClick={() => applyAlertTemplate(template)}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            </section>
+
             <div className="alerts-paired-layout">
                 <section className="alerts-panel">
                     <h2>Create Alert</h2>
 
                     <form className="alerts-form" onSubmit={createAlert}>
-                        <input
+                        <select
                             name="case_id"
-                            type="number"
-                            placeholder="Case ID"
                             value={form.case_id}
                             onChange={handleChange}
-                        />
+                            required
+                        >
+                            <option value="">Select authorized case</option>
+                            {cases.map((caseItem) => (
+                                <option key={caseItem.case_id} value={caseItem.case_id}>
+                                    {caseItem.case_number} · {caseItem.title}
+                                </option>
+                            ))}
+                        </select>
 
-                        <input
-                            name="person_id"
-                            type="number"
-                            placeholder="Person ID"
-                            value={form.person_id}
-                            onChange={handleChange}
-                        />
+                        <div className="smart-alert-context">
+                            <span>Victim / Subject</span>
+                            <strong>{form.person_id ? (() => {
+                                const selectedPerson = personLookup.get(Number(form.person_id));
+                                return selectedPerson ? `${selectedPerson.first_name} ${selectedPerson.last_name}` : `Person ${form.person_id}`;
+                            })() : "Select a case"}</strong>
+                            <small>Person and investigator context are supplied by the case.</small>
+                        </div>
 
                         <input
                             name="title"
@@ -471,6 +372,12 @@ function Alerts() {
                             <option value="CASE_ESCALATION">
                                 Case Escalation
                             </option>
+                            <option value="AMBER_ALERT">
+                                AMBER Alert
+                            </option>
+                            {alertTemplates.slice(1).map(([, template]) => (
+                                <option key={template.alert_type} value={template.alert_type}>{template.title}</option>
+                            ))}
                             <option value="GENERAL_ALERT">
                                 General Alert
                             </option>
@@ -597,40 +504,27 @@ function Alerts() {
                                     ) : (
                                         <>
                                             <div className="alert-card-topline">
+                                                <span className={`alert-severity-banner ${alert.severity}`}>
+                                                    {alert.severity}
+                                                </span>
                                                 <h3>{alert.title}</h3>
-                                                <span>{alert.severity}</span>
                                             </div>
-
-                                            <p>
-                                                <strong>Type:</strong> {alert.alert_type}
-                                            </p>
-
-                                            <p>
-                                                <strong>Source:</strong> {alertSourceLabels[alert.alert_source] || "Not recorded"}
-                                                {alert.source_detail ? ` | ${alert.source_detail}` : ""}
-                                            </p>
-
-                                            {alert.confidence_score !== null && alert.confidence_score !== undefined && (
-                                                <p>
-                                                    <strong>Confidence:</strong> {alert.confidence_score}%
-                                                </p>
-                                            )}
-
-                                            <p>
-                                                <strong>Description:</strong> {alert.description}
-                                            </p>
-
-                                            <p>
-                                                <strong>Case ID:</strong> {alert.case_id}
-                                            </p>
-
-                                            <p>
-                                                <strong>Person ID:</strong> {alert.person_id}
-                                            </p>
-
-                                            <p>
-                                                <strong>Status:</strong> {alert.alert_status}
-                                            </p>
+                                            <div className="alert-command-summary">
+                                                {[
+                                                    ["Case", alertContextFor(alert).caseNumber],
+                                                    ["Victim / Subject", alertContextFor(alert).personName],
+                                                    ["Location", alertContextFor(alert).location],
+                                                    ["Reported", alert.created_at ? new Date(alert.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Not recorded"],
+                                                    ["Confidence", displayConfidence(alert.confidence_score)],
+                                                    ["Assigned To", alertContextFor(alert).assignedTo],
+                                                ].map(([label, value]) => (
+                                                    <div key={label}><span>{label}</span><strong>{value}</strong></div>
+                                                ))}
+                                            </div>
+                                            <p className="alert-card-description">{alert.description}</p>
+                                            <small className="alert-card-source">
+                                                {alertSourceLabels[alert.alert_source] || "Source not recorded"}
+                                            </small>
 
                                             <button
                                                 type="button"
@@ -658,203 +552,15 @@ function Alerts() {
                 </section>
             </div>
 
-            <div className="alerts-paired-layout">
-                <section className="alerts-panel">
-                    <h2>Create BOLO</h2>
+            <section className="alerts-panel alerts-bolo-handoff">
+                <div>
+                    <span>Dedicated workflow</span>
+                    <h2>BOLO creation has moved to the BOLO Board</h2>
+                    <p>Build vehicle, occupant, photo, distribution, expiration, and approval details in one guided workflow.</p>
+                </div>
+                <Link to="/bolos">Open BOLO Workflow</Link>
+            </section>
 
-                    <form className="bolo-form" onSubmit={createBolo}>
-                        <input
-                            name="case_id"
-                            value={boloForm.case_id}
-                            onChange={handleBoloChange}
-                            placeholder="Case ID"
-                            required
-                        />
-
-                        <input
-                            name="title"
-                            value={boloForm.title}
-                            onChange={handleBoloChange}
-                            placeholder="BOLO Title"
-                            required
-                        />
-
-                        <input
-                            name="person_name"
-                            value={boloForm.person_name}
-                            onChange={handleBoloChange}
-                            placeholder="Person Name"
-                        />
-
-                        <input
-                            name="last_known_location"
-                            value={boloForm.last_known_location}
-                            onChange={handleBoloChange}
-                            placeholder="Last Known Location"
-                        />
-
-                        <textarea
-                            name="description"
-                            value={boloForm.description}
-                            onChange={handleBoloChange}
-                            placeholder="BOLO Description"
-                            required
-                        />
-
-                        <select
-                            name="risk_level"
-                            value={boloForm.risk_level}
-                            onChange={handleBoloChange}
-                        >
-                            <option value="critical">Critical</option>
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                        </select>
-
-                        <input
-                            type="datetime-local"
-                            name="expires_at"
-                            value={boloForm.expires_at}
-                            onChange={handleBoloChange}
-                        />
-
-                        <label className="archive-toggle">
-                            <input
-                                type="checkbox"
-                                name="share_with_partners"
-                                checked={boloForm.share_with_partners}
-                                onChange={handleBoloChange}
-                            />
-                            Share with approved partners
-                        </label>
-
-                        <button type="submit">Create BOLO</button>
-                    </form>
-                </section>
-
-                <section className="alerts-panel">
-                    <h2>Active BOLOs</h2>
-
-                    {bolos.length === 0 ? (
-                        <p>No active BOLO alerts.</p>
-                    ) : (
-                        <div className="bolo-list">
-                            {visibleBolos.map((bolo) => (
-                                <article key={bolo.bolo_id} className="bolo-card">
-                                    {editingBoloId === bolo.bolo_id ? (
-                                        <div className="inline-edit-form bolo-edit-form">
-                                            <input
-                                                name="title"
-                                                value={boloEditForm.title}
-                                                onChange={handleBoloEditChange}
-                                                placeholder="BOLO Title"
-                                            />
-                                            <input
-                                                name="person_name"
-                                                value={boloEditForm.person_name}
-                                                onChange={handleBoloEditChange}
-                                                placeholder="Person Name"
-                                            />
-                                            <input
-                                                name="last_known_location"
-                                                value={boloEditForm.last_known_location}
-                                                onChange={handleBoloEditChange}
-                                                placeholder="Last Known Location"
-                                            />
-                                            <textarea
-                                                name="description"
-                                                value={boloEditForm.description}
-                                                onChange={handleBoloEditChange}
-                                                placeholder="BOLO Description"
-                                            />
-                                            <select
-                                                name="risk_level"
-                                                value={boloEditForm.risk_level}
-                                                onChange={handleBoloEditChange}
-                                            >
-                                                <option value="critical">Critical</option>
-                                                <option value="high">High</option>
-                                                <option value="medium">Medium</option>
-                                                <option value="low">Low</option>
-                                            </select>
-                                            <select
-                                                name="status"
-                                                value={boloEditForm.status}
-                                                onChange={handleBoloEditChange}
-                                            >
-                                                <option value="active">Active</option>
-                                                <option value="expired">Expired</option>
-                                                <option value="closed">Closed</option>
-                                            </select>
-                                            <input
-                                                type="datetime-local"
-                                                name="expires_at"
-                                                value={boloEditForm.expires_at}
-                                                onChange={handleBoloEditChange}
-                                            />
-                                            <label className="archive-toggle">
-                                                <input
-                                                    type="checkbox"
-                                                    name="share_with_partners"
-                                                    checked={boloEditForm.share_with_partners}
-                                                    onChange={handleBoloEditChange}
-                                                />
-                                                Share with approved partners
-                                            </label>
-                                            <div className="inline-edit-actions">
-                                                <button type="button" onClick={() => updateBolo(bolo.bolo_id)}>
-                                                    Save BOLO
-                                                </button>
-                                                <button type="button" onClick={cancelBoloEdit}>
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="bolo-card-topline">
-                                                <strong>{bolo.title}</strong>
-                                                <span className={`priority-badge priority-${bolo.risk_level}`}>
-                                                    {bolo.risk_level}
-                                                </span>
-                                            </div>
-                                            <p>{bolo.description}</p>
-                                            <small>
-                                                Case {bolo.case_id}
-                                                {bolo.person_name ? ` | ${bolo.person_name}` : ""}
-                                                {bolo.last_known_location
-                                                    ? ` | ${bolo.last_known_location}`
-                                                    : ""}
-                                                {bolo.expires_at
-                                                    ? ` | Expires ${new Date(bolo.expires_at).toLocaleString()}`
-                                                    : ""}
-                                            </small>
-                                            <button
-                                                type="button"
-                                                className="small-secondary-button"
-                                                onClick={() => startEditingBolo(bolo)}
-                                            >
-                                                Edit BOLO
-                                            </button>
-                                        </>
-                                    )}
-                                </article>
-                            ))}
-                        </div>
-                    )}
-
-                    {bolos.length > 2 && (
-                        <button
-                            type="button"
-                            className="alerts-show-more"
-                            onClick={() => setShowAllBolos((current) => !current)}
-                        >
-                            {showAllBolos ? "Show Less" : `Show ${bolos.length - 2} More BOLOs`}
-                        </button>
-                    )}
-                </section>
-            </div>
         </div>
     );
 }

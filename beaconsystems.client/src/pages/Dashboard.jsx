@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { apiGet } from "../api.jsx";
 import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
+import OperationsMap from "./OperationsMap.jsx";
 
 
 
@@ -9,6 +10,7 @@ function Dashboard() {
     const [summary, setSummary] = useState(null);
     const [supervisorQueue, setSupervisorQueue] = useState(null);
     const [showAllActionItems, setShowAllActionItems] = useState(false);
+    const [currentTime, setCurrentTime] = useState(() => new Date());
     const [, setReadStateVersion] = useState(0);
     const [error, setError] = useState(
         localStorage.getItem("token") ? "" : "No login token found. Please log in first."
@@ -164,12 +166,12 @@ function Dashboard() {
         setReadStateVersion((current) => current + 1);
     }), []);
 
-    const metricLinks = {
-        Cases: "/cases",
-        Alerts: "/alerts",
-        Leads: "/intelligence",
-        Evidence: "/evidence-upload",
-    };
+    useEffect(() => {
+        const interval = setInterval(() => setCurrentTime(new Date()), 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const isCommandRole = ["admin", "agency_admin", "supervisor"].includes(role);
     const commandDashboard = supervisorQueue?.command_dashboard || {};
     const stallRiskSummary = supervisorQueue?.stall_risk_summary || {};
     const leadSummary = supervisorQueue?.lead_summary || {};
@@ -180,10 +182,53 @@ function Dashboard() {
         0
     );
     const metrics = [
-        ["Cases", summary?.open_cases ?? commandDashboard.active_cases ?? 0],
-        ["Alerts", summary?.new_alerts ?? commandDashboard.active_alerts ?? 0],
-        ["Leads", summary?.lead_count ?? summary?.leads ?? leadSummary.total ?? totalLeadCount],
-        ["Evidence", summary?.total_evidence ?? summary?.evidence_uploaded_today ?? 0],
+        ["Cases", summary?.open_cases ?? commandDashboard.active_cases ?? 0, "/cases"],
+        ["Alerts", summary?.new_alerts ?? commandDashboard.active_alerts ?? 0, "/alerts"],
+        ["Leads", summary?.lead_count ?? summary?.leads ?? leadSummary.total ?? totalLeadCount, "/intelligence"],
+        ["Evidence", summary?.total_evidence ?? summary?.evidence_uploaded_today ?? 0, "/evidence-upload"],
+    ];
+    const commandStatusGroups = [
+        {
+            label: "Case Load",
+            items: [
+                ["Active Cases", summary?.open_cases ?? commandDashboard.active_cases ?? 0, "/cases", "standard"],
+                ["Critical Cases", summary?.critical_cases ?? 0, "/cases?priority=critical", "critical"],
+                ["Missing Children", summary?.missing_children ?? 0, "/missing?age=minor", "attention"],
+                ["AMBER Alerts", summary?.amber_alerts ?? 0, "/alerts?type=amber", "critical"],
+                ["High Risk Cases", summary?.high_risk_cases ?? summary?.high_priority_cases ?? 0, "/missing?risk=high", "attention"],
+            ],
+        },
+        {
+            label: "Operational Workload",
+            items: [
+                ["Open Warrants", summary?.open_warrants ?? 0, "/legal-orders", "standard"],
+                ["Outstanding Leads", summary?.outstanding_leads ?? leadSummary.total ?? totalLeadCount, "/intelligence", "standard"],
+                ["Pending Evidence", summary?.pending_evidence ?? summary?.evidence_awaiting_review ?? 0, "/evidence-upload", "standard"],
+            ],
+        },
+        {
+            label: "Staffing",
+            items: [
+                ["Current Personnel", summary?.current_personnel ?? 0, "/supervisor/personnel", "personnel"],
+            ],
+        },
+    ];
+    const commandHeaderMetrics = [
+        ["Personnel Online", summary?.current_personnel ?? 0, "/supervisor/personnel"],
+        ["Active Investigations", summary?.open_cases ?? commandDashboard.active_cases ?? 0, "/cases"],
+        ["Critical Incidents", summary?.critical_cases ?? 0, "/cases?priority=critical"],
+        ["AMBER Alerts", summary?.amber_alerts ?? 0, "/alerts?type=amber"],
+        ["Agency Requests", summary?.agency_requests ?? 0, "/partner-sources"],
+    ];
+    const commandQuickActions = [
+        ["Create Search Warrant", "/legal-orders?template=judicial__search_warrant"],
+        ["Send Interagency Request", "/legal-orders?template=interagency__investigative_assistance_request"],
+        ["Issue BOLO", "/bolos?create=1"],
+        ["Submit DNA", "/legal-orders?template=forensics__dna_submission"],
+        ["Request Hospital Search", "/legal-orders?template=healthcare__hospital_admission_inquiry"],
+        ["Launch AMBER Alert", "/alerts?create=amber"],
+        ["Generate Briefing", "/command/briefing"],
+        ["Open Intelligence Map", "/intelligence"],
     ];
     const workload = (supervisorQueue?.investigator_workload || []).length > 0
         ? supervisorQueue.investigator_workload.map((item) => [
@@ -244,25 +289,8 @@ function Dashboard() {
         },
     ].map((item) => ({ ...item, count: getVisibleCount("tasks", item) }));
     const visibleActionItems = showAllActionItems ? actionRequiredItems : actionRequiredItems.slice(0, 4);
-    const highPriorityCount = summary?.high_priority_cases ?? commandDashboard.high_risk_missing_persons ?? 0;
-    const activeAlertCount = summary?.new_alerts ?? commandDashboard.active_alerts ?? 0;
-    const stalledCaseCount = summary?.stalled_cases ?? stallRiskSummary.inactive_7_days ?? 0;
-    const predictiveAlertCount = summary?.predictive_alerts ?? 0;
-    const riskScore = Math.min(
-        99,
-        18
-            + (highPriorityCount * 7)
-            + (activeAlertCount * 3)
-            + (stalledCaseCount * 5)
-            + predictiveAlertCount
-    );
-    const riskSignals = [
-        ["Case health", `${stalledCaseCount} at risk`],
-        ["Predictive alerts", `${predictiveAlertCount}`],
-    ];
     const caseHealthItems = [
-        ["Inactive 7+ days", summary?.inactive_7_days ?? stallRiskSummary.inactive_7_days ?? 0, "/cases?filter=stalled"],
-        ["Pending warrants", summary?.pending_warrants ?? stallRiskSummary.pending_warrants ?? 0, "/legal-orders?status=pending"],
+        ["Legal Orders", summary?.pending_legal_requests ?? summary?.pending_warrants ?? stallRiskSummary.pending_warrants ?? 0, "/legal-orders"],
         ["Missing reports", summary?.missing_reports ?? stallRiskSummary.missing_reports ?? 0, "/cases?filter=missing_reports"],
     ];
     const agencyCoordination = [
@@ -270,33 +298,86 @@ function Dashboard() {
         ["Outstanding requests", agencySummary.outstanding_requests ?? summary?.outstanding_partner_requests ?? 0],
         ["Joint investigations", agencySummary.joint_investigations ?? summary?.joint_investigations ?? 0],
     ];
-    const recentTimelineEvents = [
-        ...(timelineSummary.recent_events || []).map((event) => [
-            event.case_number || `Case ${event.case_id}`,
-            event.description || event.event_type || event.location || "Timeline event recorded.",
-        ]),
-        ...(timelineSummary.recent_sightings || []).map((sighting) => [
-            sighting.case_number || `Case ${sighting.case_id}`,
-            `Sighting reported${sighting.location ? ` at ${sighting.location}` : ""}.`,
-        ]),
-        ...(timelineSummary.recent_evidence || []).map((item) => [
-            item.case_number || `Case ${item.case_id}`,
-            `${item.evidence_type || "Evidence"} recorded as ${item.custody_status || "collected"}.`,
-        ]),
-    ];
-    const unifiedTimeline = recentTimelineEvents.length > 0
-        ? recentTimelineEvents.slice(0, 3)
-        : [
-            ["Today", "Critical sighting and supervisor alert review."],
-            ["Yesterday", "Evidence submitted and external intelligence received."],
-            ["This week", "Investigator actions, lead assignments, and agency requests."],
-        ];
+    const liveFeedEvents = [
+        ...(summary?.recent_activity || [])
+            .filter((item) => !String(item.details || "").toLowerCase().includes("deleted"))
+            .map((item) => ({
+                id: `activity-${item.id}`,
+                timestamp: item.timestamp,
+                title: item.details || String(item.action || "Agency activity").replaceAll("_", " "),
+                detail: item.entity ? `Source: ${String(item.entity).replaceAll("_", " ")}` : "Agency activity",
+            })),
+        ...(timelineSummary.recent_events || []).map((event) => ({
+            id: `timeline-${event.event_id}`,
+            timestamp: event.timestamp,
+            title: event.description || event.event_type || "Investigation updated",
+            detail: event.case_number || event.location || `Case ${event.case_id}`,
+        })),
+        ...(timelineSummary.recent_sightings || []).map((sighting) => ({
+            id: `sighting-${sighting.sighting_id}`,
+            timestamp: sighting.created_at,
+            title: sighting.location ? `Sighting reported at ${sighting.location}` : "New sighting reported",
+            detail: sighting.case_number || `Case ${sighting.case_id}`,
+            confidence: sighting.confidence_score,
+        })),
+        ...(timelineSummary.recent_evidence || []).map((item) => ({
+            id: `evidence-${item.evidence_id}`,
+            timestamp: item.created_at,
+            title: `${item.evidence_type || "Evidence"} update`,
+            detail: `${item.case_number || `Case ${item.case_id}`} · ${item.custody_status || "Collected"}`,
+        })),
+    ]
+        .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+        .slice(0, 5);
+    const exampleFeedEvents = [
+        [2, "Houston PD accepted assistance request", "Interagency coordination"],
+        [5, "Hospital uploaded unidentified patient", "Healthcare partner upload"],
+        [11, "Lab completed DNA comparison", "Forensic result received"],
+        [14, "Witness uploaded Ring footage", "Digital evidence received"],
+        [19, "LPR camera hit", "White Ford F-150", 0.92],
+    ].map(([minutesAgo, title, detail, confidence], index) => ({
+        id: `example-feed-${index}`,
+        timestamp: new Date(currentTime.getTime() - (minutesAgo * 60000)).toISOString(),
+        title,
+        detail,
+        confidence,
+    }));
+    const liveIntelligenceFeed = liveFeedEvents.length > 0 ? liveFeedEvents : exampleFeedEvents;
+    const formatFeedTime = (value) => {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime())
+            ? "Now"
+            : date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    };
 
     return (
         <div className="dashboard-page">
-            <div className="dashboard-header">
-                <h1>{profile.title}</h1>
-            </div>
+            {isCommandRole ? (
+                <header className="command-operations-header">
+                    <div className="command-operations-identity">
+                        <span>Agency command view</span>
+                        <h1>Command Operations Center</h1>
+                        <div className="command-operations-clock" aria-label="Current local time">
+                            <strong>{currentTime.toLocaleDateString(undefined, { weekday: "long" })}</strong>
+                            <time dateTime={currentTime.toISOString()}>
+                                {currentTime.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                            </time>
+                        </div>
+                    </div>
+                    <div className="command-operations-metrics" aria-label="Current command indicators">
+                        {commandHeaderMetrics.map(([label, value, path]) => (
+                            <Link key={label} to={path}>
+                                <span>{label}</span>
+                                <strong>{value}</strong>
+                            </Link>
+                        ))}
+                    </div>
+                </header>
+            ) : (
+                <div className="dashboard-header">
+                    <h1>{profile.title}</h1>
+                </div>
+            )}
 
             {error && (
                 <p className="alert-banner">
@@ -307,15 +388,55 @@ function Dashboard() {
             {(summary || error || role === "supervisor") && (
                 <>
                     <div className="dashboard-board supervisor-command-dashboard">
-                        <div className="command-grid">
-                            {metrics.map(([label, value]) => (
-                                <Link className="command-card" to={metricLinks[label] || "/"} key={label}>
-                                    <span>{label}</span>
-                                    <strong>{value ?? 0}</strong>
-                                    <small>{summary ? "Current authorized view" : "Waiting for data"}</small>
-                                </Link>
-                            ))}
-                        </div>
+                        {isCommandRole ? (
+                            <section className="command-status-board" aria-labelledby="command-status-heading">
+                                <div className="command-status-heading">
+                                    <div>
+                                        <span>Agency snapshot</span>
+                                        <h2 id="command-status-heading">Command Status</h2>
+                                    </div>
+                                    <small>{summary ? "Live authorized agency view" : "Waiting for data"}</small>
+                                </div>
+                                <div className="command-status-groups">
+                                    {commandStatusGroups.map((group) => (
+                                        <div key={group.label} className={`command-status-group command-status-${group.label.toLowerCase().replaceAll(" ", "-")}`}>
+                                            <h3>{group.label}</h3>
+                                            <div className="command-status-metrics">
+                                                {group.items.map(([label, value, path, tone]) => (
+                                                    <Link key={label} to={path} className={`command-status-metric ${tone}`}>
+                                                        <span>{label}</span>
+                                                        <strong>{value ?? 0}</strong>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        ) : (
+                            <div className="command-grid">
+                                {metrics.map(([label, value, path]) => (
+                                    <Link className="command-card" to={path} key={label}>
+                                        <span>{label}</span>
+                                        <strong>{value ?? 0}</strong>
+                                        <small>{summary ? "Current authorized view" : "Waiting for data"}</small>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+
+                        {isCommandRole && (
+                            <section className="dashboard-panel operations-map-panel">
+                                <div className="dashboard-panel-header">
+                                    <div>
+                                        <span>Operations Map</span>
+                                        <p>Agency-wide investigations, sightings, alerts, and partner activity.</p>
+                                    </div>
+                                    <Link to="/intelligence">Open Intelligence Map</Link>
+                                </div>
+                                <OperationsMap data={summary?.operations_map} />
+                            </section>
+                        )}
 
                         <div className="supervisor-home-grid">
                             <section className="dashboard-panel action-required-panel">
@@ -353,24 +474,10 @@ function Dashboard() {
 
                             <section className="dashboard-panel command-health-panel">
                                 <div className="dashboard-panel-header">
-                                    <span>Command Risk &amp; Case Health</span>
+                                    <span>Case Health Monitoring</span>
                                     <div className="dashboard-panel-links">
                                         <Link to="/analytics">Analytics</Link>
                                         <Link to="/cases">Open Cases</Link>
-                                    </div>
-                                </div>
-                                <div className="command-health-summary">
-                                    <div className="risk-score-meter">
-                                        <strong>{riskScore}</strong>
-                                        <span>Command risk</span>
-                                    </div>
-                                    <div className="command-health-signals">
-                                        {riskSignals.map(([label, value]) => (
-                                            <div key={label} className="risk-signal-row">
-                                                <span>{label}</span>
-                                                <strong>{value}</strong>
-                                            </div>
-                                        ))}
                                     </div>
                                 </div>
                                 <div className="command-health-cases" aria-label="Case health monitoring">
@@ -406,17 +513,25 @@ function Dashboard() {
                                 )}
                             </section>
 
-                            <section className="dashboard-panel unified-timeline-panel">
+                            <section className="dashboard-panel unified-timeline-panel live-intelligence-feed">
                                 <div className="dashboard-panel-header">
-                                    <span>Unified Timeline Across Cases</span>
+                                    <span>Live Intelligence Feed</span>
                                     <Link to="/cases">Review</Link>
                                 </div>
-                                {unifiedTimeline.map(([time, detail], index) => (
-                                    <article key={`${time}-${index}`} className="timeline-signal-row">
-                                        <strong>{time}</strong>
-                                        <p>{detail}</p>
+                                <div className="live-intelligence-list">
+                                {liveIntelligenceFeed.map((event) => (
+                                    <article key={event.id} className="timeline-signal-row live-intelligence-row">
+                                        <time dateTime={event.timestamp}>{formatFeedTime(event.timestamp)}</time>
+                                        <div>
+                                            <strong>{event.title}</strong>
+                                            {event.detail && <p>{event.detail}</p>}
+                                            {event.confidence !== undefined && event.confidence !== null && (
+                                                <small>Confidence {Math.round(Number(event.confidence) * (Number(event.confidence) <= 1 ? 100 : 1))}%</small>
+                                            )}
+                                        </div>
                                     </article>
                                 ))}
+                                </div>
                             </section>
 
                             <section className="dashboard-panel agency-coordination-panel">
@@ -439,7 +554,7 @@ function Dashboard() {
                                 </div>
                                 <h2>Command Actions</h2>
                                 <div className="dashboard-action-list">
-                                    {profile.actions.map(([label, path]) => (
+                                    {(isCommandRole ? commandQuickActions : profile.actions).map(([label, path]) => (
                                         <Link key={`${label}-${path}`} to={path}>
                                             {label}
                                         </Link>

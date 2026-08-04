@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
 
+const distributionOptions = [
+    "Patrol", "Detectives", "Supervisors", "Dispatch", "State Police",
+    "Partner Agencies", "FBI", "Fusion Center", "Crime Lab",
+    "Medical Examiner", "Hospitals",
+];
+
 const fetchBolos = async (token) => {
     const response = await fetch("http://127.0.0.1:8000/bolos/", {
         headers: {
@@ -23,9 +29,14 @@ function BoloBoard() {
         person_name: "",
         last_known_location: "",
         description: "",
+        vehicle: "",
+        occupants: "",
+        photo_url: "",
         risk_level: "high",
-        share_with_partners: false,
+        distribution: ["Patrol", "Detectives", "Supervisors", "Dispatch"],
         expires_at: "",
+        approving_supervisor: "",
+        approval_confirmed: false,
     });
     const [message, setMessage] = useState("");
 
@@ -67,13 +78,36 @@ function BoloBoard() {
         }));
     };
 
+    const toggleDistribution = (recipient) => {
+        setForm((current) => ({
+            ...current,
+            distribution: current.distribution.includes(recipient)
+                ? current.distribution.filter((item) => item !== recipient)
+                : [...current.distribution, recipient],
+        }));
+    };
+
     const createBolo = async (event) => {
         event.preventDefault();
         setMessage("");
 
+        const partnerRecipients = ["State Police", "Partner Agencies", "FBI", "Fusion Center", "Crime Lab", "Medical Examiner", "Hospitals"];
+        const structuredDescription = [
+            form.description,
+            form.vehicle && `Vehicle: ${form.vehicle}`,
+            form.occupants && `Occupants: ${form.occupants}`,
+            form.photo_url && `Photo: ${form.photo_url}`,
+            `Distribution: ${form.distribution.join(", ") || "No recipients selected"}`,
+            `Approval: ${form.approval_confirmed ? `Confirmed by ${form.approving_supervisor || "supervisor"}` : "Not confirmed"}`,
+        ].filter(Boolean).join("\n\n");
         const payload = {
-            ...form,
             case_id: form.case_id.trim(),
+            title: form.title,
+            person_name: form.person_name,
+            last_known_location: form.last_known_location,
+            description: structuredDescription,
+            risk_level: form.risk_level,
+            share_with_partners: form.distribution.some((recipient) => partnerRecipients.includes(recipient)),
             expires_at: form.expires_at || null,
         };
 
@@ -101,9 +135,14 @@ function BoloBoard() {
             person_name: "",
             last_known_location: "",
             description: "",
+            vehicle: "",
+            occupants: "",
+            photo_url: "",
             risk_level: "high",
-            share_with_partners: false,
+            distribution: ["Patrol", "Detectives", "Supervisors", "Dispatch"],
             expires_at: "",
+            approving_supervisor: "",
+            approval_confirmed: false,
         });
 
         setMessage("BOLO alert created");
@@ -122,12 +161,14 @@ function BoloBoard() {
                 <section className="bolo-panel">
                     <h2>Create BOLO</h2>
 
-                    <form className="bolo-form" onSubmit={createBolo}>
+                    <form className="bolo-form bolo-workflow-form" onSubmit={createBolo}>
+                        <fieldset>
+                            <legend>General Information</legend>
                         <input
                             name="case_id"
                             value={form.case_id}
                             onChange={handleChange}
-                            placeholder="Case ID"
+                            placeholder="Case ID or case number"
                             required
                         />
 
@@ -171,25 +212,70 @@ function BoloBoard() {
                             <option value="medium">Medium</option>
                             <option value="low">Low</option>
                         </select>
+                        </fieldset>
 
+                        <fieldset>
+                            <legend>Vehicle</legend>
+                            <textarea name="vehicle" value={form.vehicle} onChange={handleChange} placeholder="Year, make, model, color, plate, VIN, distinguishing features" />
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Occupants</legend>
+                            <textarea name="occupants" value={form.occupants} onChange={handleChange} placeholder="Names, descriptions, roles, cautions, and known associates" />
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Photo</legend>
+                            <input name="photo_url" value={form.photo_url} onChange={handleChange} placeholder="Approved photo or secure file URL" />
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Distribution · Send To</legend>
+                            <div className="bolo-distribution-grid">
+                                {distributionOptions.map((recipient) => (
+                                    <label key={recipient}>
+                                        <input
+                                            type="checkbox"
+                                            checked={form.distribution.includes(recipient)}
+                                            onChange={() => toggleDistribution(recipient)}
+                                        />
+                                        {recipient}
+                                    </label>
+                                ))}
+                            </div>
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Expiration</legend>
                         <input
                             type="datetime-local"
                             name="expires_at"
                             value={form.expires_at}
                             onChange={handleChange}
                         />
+                        </fieldset>
 
+                        <fieldset>
+                            <legend>Approvals</legend>
+                            <input
+                                name="approving_supervisor"
+                                value={form.approving_supervisor}
+                                onChange={handleChange}
+                                placeholder="Approving supervisor"
+                            />
                         <label className="archive-toggle">
                             <input
                                 type="checkbox"
-                                name="share_with_partners"
-                                checked={form.share_with_partners}
+                                name="approval_confirmed"
+                                checked={form.approval_confirmed}
                                 onChange={handleChange}
+                                required
                             />
-                            Share with approved partners
+                            Approval and distribution reviewed
                         </label>
+                        </fieldset>
 
-                        <button type="submit">Create BOLO</button>
+                        <button type="submit">Approve &amp; Distribute BOLO</button>
                     </form>
                 </section>
 

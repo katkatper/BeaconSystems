@@ -18,8 +18,10 @@ function CaseDetail() {
     const [selectedExternalRecord, setSelectedExternalRecord] = useState(null);
     const [showSightingForm, setShowSightingForm] = useState(false);
     const [agencyExchanges, setAgencyExchanges] = useState([]);
+    const [caseCorrelations, setCaseCorrelations] = useState([]);
+    const [showCorrelationReview, setShowCorrelationReview] = useState(false);
     const [selectedExternalRequest, setSelectedExternalRequest] = useState(null);
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState("landscape");
     const [escapeRouteAnalysis, setEscapeRouteAnalysis] = useState(null);
     const [associateForm, setAssociateForm] = useState({
         name: "",
@@ -66,6 +68,7 @@ function CaseDetail() {
                     personResponse,
                     externalRecordsResponse,
                     agencyExchangesResponse,
+                    correlationsResponse,
                 ] = await Promise.all([
                     fetch(`http://127.0.0.1:8000/sightings/?case_id=${id}`, {
                         headers: authHeaders,
@@ -84,6 +87,9 @@ function CaseDetail() {
                     fetch(`http://127.0.0.1:8000/agency-exchanges/?case_id=${id}`, {
                         headers: authHeaders,
                     }),
+                    fetch(`http://127.0.0.1:8000/cases/${id}/correlations`, {
+                        headers: authHeaders,
+                    }),
                 ]);
 
                 const [
@@ -93,6 +99,7 @@ function CaseDetail() {
                     personData,
                     externalRecordsData,
                     agencyExchangesData,
+                    correlationsData,
                 ] = await Promise.all([
                     sightingsResponse.ok ? sightingsResponse.json() : [],
                     timelineResponse.ok ? timelineResponse.json() : [],
@@ -100,6 +107,7 @@ function CaseDetail() {
                     personResponse.ok ? personResponse.json() : null,
                     externalRecordsResponse.ok ? externalRecordsResponse.json() : [],
                     agencyExchangesResponse.ok ? agencyExchangesResponse.json() : [],
+                    correlationsResponse.ok ? correlationsResponse.json() : { correlations: [] },
                 ]);
 
                 if (!isMounted) return;
@@ -113,6 +121,9 @@ function CaseDetail() {
                 );
                 setAgencyExchanges(
                     Array.isArray(agencyExchangesData) ? agencyExchangesData : []
+                );
+                setCaseCorrelations(
+                    Array.isArray(correlationsData?.correlations) ? correlationsData.correlations : []
                 );
             } catch (err) {
                 console.error(err);
@@ -543,6 +554,7 @@ function CaseDetail() {
         ),
     ].filter(Boolean);
     const caseTabs = [
+        ["landscape", "Investigative Landscape"],
         ["overview", "Overview"],
         ["timeline", "Timeline"],
         ["escapeRoutes", "Escape Routes"],
@@ -639,6 +651,43 @@ function CaseDetail() {
     ];
     const externalRequests = agencyExchanges.length > 0 ? agencyExchanges : externalRequestExamples;
     const selectedRequestDetails = selectedExternalRequest || externalRequests[0];
+    const landscapeTimeline = [
+        ...timelineEvents.map((event) => ({
+            id: `event-${event.event_id}`,
+            type: statusLabel(event.event_type || "Case event"),
+            title: event.description || "Case activity recorded",
+            detail: event.location || "No location recorded",
+            timestamp: event.timestamp,
+        })),
+        ...sortedSightings.map((sighting, index) => ({
+            id: `sighting-${sighting.sighting_id || index}`,
+            type: "Sighting",
+            title: sighting.location || "Sighting reported",
+            detail: sighting.description || "No description recorded",
+            timestamp: sighting.sighting_time || sighting.created_at,
+        })),
+    ]
+        .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+        .slice(0, 6);
+    const relationshipGroups = associates.reduce((groups, associate) => {
+        const relationship = String(associate.relationship || "associate").toLowerCase();
+        if (relationship.includes("family") || relationship.includes("parent") || relationship.includes("sibling") || relationship.includes("spouse")) {
+            groups.family += 1;
+        } else if (relationship.includes("friend")) {
+            groups.friends += 1;
+        } else if (relationship.includes("work") || relationship.includes("coworker") || relationship.includes("colleague")) {
+            groups.coworkers += 1;
+        } else {
+            groups.associates += 1;
+        }
+        return groups;
+    }, { family: 0, friends: 0, coworkers: 0, associates: 0 });
+    const activeExternalRequests = agencyExchanges.filter((request) =>
+        !["completed", "closed", "cancelled", "denied"].includes(String(request.status || "").toLowerCase())
+    ).length;
+    const topCorrelationConfidence = caseCorrelations.length > 0
+        ? Math.round(Number(caseCorrelations[0].confidence || 0) * 100)
+        : 0;
 
     return (
         <div className="case-detail-page">
@@ -676,6 +725,172 @@ function CaseDetail() {
                     </button>
                 ))}
             </div>
+
+            {activeTab === "landscape" && (
+                <div className="investigative-landscape" aria-label="Investigative landscape">
+                    <section className="case-section landscape-hero">
+                        <div className="case-card-header">
+                            <div>
+                                <span className="landscape-kicker">Live case picture</span>
+                                <h2>Investigative Landscape</h2>
+                                <p>Geography, relationships, activity, and external coordination assembled from this case.</p>
+                            </div>
+                            <span className="landscape-live-indicator">Live</span>
+                        </div>
+                        <div className="landscape-summary-strip">
+                            <button type="button" onClick={() => setActiveTab("sightings")}>
+                                <strong>{mappedCaseLocations.length + sortedSightings.length + associateLocations.length}</strong>
+                                <span>Mapped locations</span>
+                            </button>
+                            <button type="button" onClick={() => setActiveTab("associates")}>
+                                <strong>{associates.length}</strong>
+                                <span>Known relationships</span>
+                            </button>
+                            <button type="button" onClick={() => setActiveTab("timeline")}>
+                                <strong>{timelineEvents.length + sortedSightings.length}</strong>
+                                <span>Timeline events</span>
+                            </button>
+                            <button type="button" onClick={() => setActiveTab("externalRequests")}>
+                                <strong>{activeExternalRequests}</strong>
+                                <span>Open external requests</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section className="case-section investigator-correlation-panel">
+                        <div className="investigator-correlation-header">
+                            <div>
+                                <span>Beacon AI · Cross-case analysis</span>
+                                <h2>Investigative Connections</h2>
+                                <p>Transparent comparisons across cases you are authorized to view.</p>
+                            </div>
+                            <div className="investigator-correlation-score">
+                                <strong>{caseCorrelations.length}</strong>
+                                <span>connections</span>
+                                {topCorrelationConfidence > 0 && <small>Top confidence {topCorrelationConfidence}%</small>}
+                            </div>
+                        </div>
+                        {caseCorrelations.length === 0 ? (
+                            <p className="investigator-correlation-empty">No supported cross-case connections have been found yet. Beacon will continue comparing new locations, vehicles, hospital records, and associates as information is added.</p>
+                        ) : (
+                            <>
+                                <article className="investigator-correlation-lead">
+                                    <div>
+                                        <span>{caseCorrelations[0].type.replaceAll("_", " ")}</span>
+                                        <strong>{caseCorrelations[0].title}</strong>
+                                        <p>{caseCorrelations[0].summary}</p>
+                                    </div>
+                                    <b>{Math.round(Number(caseCorrelations[0].confidence) * 100)}%</b>
+                                </article>
+                                <button
+                                    type="button"
+                                    className="investigator-correlation-review-button"
+                                    onClick={() => setShowCorrelationReview((current) => !current)}
+                                >
+                                    {showCorrelationReview ? "Close Connection Review" : "Review Connections & Evidence"}
+                                </button>
+                            </>
+                        )}
+                        {showCorrelationReview && caseCorrelations.length > 0 && (
+                            <div className="investigator-correlation-list">
+                                {caseCorrelations.map((correlation) => (
+                                    <article key={correlation.id}>
+                                        <div className="investigator-correlation-card-header">
+                                            <div>
+                                                <span>{correlation.type.replaceAll("_", " ")}</span>
+                                                <strong>{correlation.title}</strong>
+                                            </div>
+                                            <b>{Math.round(Number(correlation.confidence) * 100)}%</b>
+                                        </div>
+                                        <p>{correlation.summary}</p>
+                                        <small>{correlation.explanation}</small>
+                                        <div className="investigator-correlation-evidence">
+                                            {correlation.evidence.map((item, index) => (
+                                                <div key={`${correlation.id}-evidence-${index}`}>
+                                                    <strong>{item.case_number}</strong>
+                                                    <span>{item.source}</span>
+                                                    <p>{item.value}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {correlation.linked_case_id && (
+                                            <Link to={`/cases/${correlation.linked_case_id}`}>Open linked case {correlation.linked_case_number}</Link>
+                                        )}
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <section className="case-section landscape-map-panel">
+                        <div className="landscape-section-heading">
+                            <div>
+                                <span>Geographic layer</span>
+                                <h2>Movement &amp; Location Intelligence</h2>
+                            </div>
+                            <button type="button" onClick={() => setActiveTab("sightings")}>Open geography</button>
+                        </div>
+                        <div className="landscape-location-context">
+                            <div><span>Last known</span><strong>{person?.last_seen_location || "Not recorded"}</strong></div>
+                            <div><span>Home address</span><strong>{person?.primary_address || "Not recorded"}</strong></div>
+                            <div><span>Evidence locations</span><strong>{evidence.filter((item) => hasMapCoordinates(item.evidence_latitude, item.evidence_longitude)).length}</strong></div>
+                            <div><span>Associate locations</span><strong>{associateLocations.length}</strong></div>
+                        </div>
+                        <SightingMap
+                            sightings={sortedSightings}
+                            associateLocations={associateLocations}
+                            mappedLocations={mappedCaseLocations}
+                            escapeAnalysis={escapeRouteAnalysis}
+                            analysisOrigin={escapeRouteAnalysis?.origin}
+                        />
+                    </section>
+
+                    <div className="landscape-layer-grid">
+                        <section className="case-section landscape-layer-card">
+                            <div className="landscape-section-heading">
+                                <div><span>Relationship layer</span><h2>People &amp; Vehicles</h2></div>
+                                <button type="button" onClick={() => setActiveTab("associates")}>View relationships</button>
+                            </div>
+                            <div className="landscape-metric-grid">
+                                <div><strong>{relationshipGroups.family}</strong><span>Family</span></div>
+                                <div><strong>{relationshipGroups.friends}</strong><span>Friends</span></div>
+                                <div><strong>{relationshipGroups.coworkers}</strong><span>Coworkers</span></div>
+                                <div><strong>{relationshipGroups.associates}</strong><span>Other associates</span></div>
+                            </div>
+                            <div className="landscape-detail-row"><span>Known vehicles</span><strong>{person?.vehicles || "None recorded"}</strong></div>
+                        </section>
+
+                        <section className="case-section landscape-layer-card">
+                            <div className="landscape-section-heading">
+                                <div><span>Timeline layer</span><h2>Latest Case Activity</h2></div>
+                                <button type="button" onClick={() => setActiveTab("timeline")}>Open timeline</button>
+                            </div>
+                            <div className="landscape-timeline-preview">
+                                {landscapeTimeline.length === 0 ? <p>No case events recorded.</p> : landscapeTimeline.map((event) => (
+                                    <article key={event.id}>
+                                        <span>{event.type}</span>
+                                        <strong>{event.title}</strong>
+                                        <small>{event.timestamp || event.detail}</small>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="case-section landscape-layer-card landscape-external-layer">
+                            <div className="landscape-section-heading">
+                                <div><span>External data layer</span><h2>Requests &amp; Partner Data</h2></div>
+                                <button type="button" onClick={() => setActiveTab("externalRequests")}>Open requests</button>
+                            </div>
+                            <div className="landscape-metric-grid">
+                                <div><strong>{agencyExchanges.length}</strong><span>Agency requests</span></div>
+                                <div><strong>{activeExternalRequests}</strong><span>Awaiting response</span></div>
+                                <div><strong>{externalRecords.length}</strong><span>Partner records</span></div>
+                                <div><strong>{evidence.length}</strong><span>Evidence items</span></div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            )}
 
             {activeTab === "overview" && person && (
                 <div className="case-section missing-person-profile case-tab-panel">
