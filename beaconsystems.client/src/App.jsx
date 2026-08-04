@@ -32,6 +32,7 @@ import "./App.css";
 import BoloBoard from "./pages/BoloBoard.jsx";
 import SupervisorQueue from "./pages/SupervisorQueue";
 import AuditCenter from "./pages/AuditCenter.jsx";
+import BeaconInsight from "./components/BeaconInsight.jsx";
 
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -370,6 +371,7 @@ function AppLayout() {
                 />
                 </Routes>
             </main>
+            {!hideNavbar && localStorage.getItem("token") && <BeaconInsight />}
         </>
     );
 }

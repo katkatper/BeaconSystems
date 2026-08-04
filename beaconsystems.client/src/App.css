@@ -1028,6 +1028,56 @@
     margin-left: 260px;
 }
 
+/* Beacon Insight stays available across authenticated operational workspaces. */
+.beacon-insight-panel {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 70;
+    width: min(380px, calc(100vw - 36px));
+    border: 1px solid rgba(96, 165, 250, 0.42);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(7, 15, 31, 0.96);
+    box-shadow: 0 22px 55px rgba(2, 6, 23, 0.58), 0 0 28px rgba(37, 99, 235, 0.12);
+    backdrop-filter: blur(16px);
+}
+
+.beacon-insight-toggle {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 13px;
+    border: 0;
+    border-radius: 0;
+    background: linear-gradient(105deg, rgba(30, 64, 175, 0.75), rgba(15, 23, 42, 0.9));
+    color: #eff6ff;
+    text-align: left;
+}
+
+.beacon-insight-toggle strong { font-size: 16px; letter-spacing: 0.02em; }
+.beacon-insight-toggle > span:last-child { color: #bfdbfe; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.beacon-insight-pulse { width: 9px; height: 9px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.14); }
+.beacon-insight-body { padding: 14px 15px 15px; }
+.beacon-insight-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.beacon-insight-heading > span { color: #93c5fd; font-size: 11px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.beacon-insight-heading button { width: auto; min-height: 30px; padding: 5px 9px; border: 1px solid rgba(96, 165, 250, 0.28); border-radius: 7px; background: rgba(30, 64, 175, 0.22); color: #dbeafe; font-size: 12px; font-weight: 800; }
+.beacon-insight-body ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.beacon-insight-body li { position: relative; padding: 10px 5px 10px 18px; border-top: 1px solid rgba(148, 163, 184, 0.14); color: #e2e8f0; font-size: 13px; line-height: 1.42; }
+.beacon-insight-body li::before { content: ""; position: absolute; top: 16px; left: 3px; width: 6px; height: 6px; border-radius: 50%; background: #60a5fa; }
+.beacon-insight-body footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(96, 165, 250, 0.2); color: #94a3b8; font-size: 11px; line-height: 1.45; }
+.beacon-insight-body footer strong { color: #cbd5e1; }
+.beacon-insight-error { color: #fca5a5; }
+.beacon-insight-panel.is-collapsed { width: 210px; }
+
+@media (max-width: 700px) {
+    .beacon-insight-panel { right: 10px; bottom: 10px; width: calc(100vw - 20px); }
+    .beacon-insight-panel.is-collapsed { width: 190px; }
+}
+
 .navbar {
     position: fixed;
     inset: 0 auto 0 0;
