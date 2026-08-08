@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiGet, apiPost, apiPostForm } from "../api.jsx";
 import ActiveFilterBanner from "../components/ActiveFilterBanner.jsx";
 import ShowMoreControls from "../components/ShowMoreControls.jsx";
@@ -7,6 +7,7 @@ import ShowMoreControls from "../components/ShowMoreControls.jsx";
 function MissingPersonsList() {
 
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const riskFilter = searchParams.get("risk") || "";
     const [persons, setPersons] = useState([]);
     const [error, setError] = useState("");
@@ -14,7 +15,6 @@ function MissingPersonsList() {
     const [visiblePersonCount, setVisiblePersonCount] = useState(2);
     const [searchTerm, setSearchTerm] = useState("");
     const [reportDate, setReportDate] = useState("");
-    const [selectedPersonId, setSelectedPersonId] = useState(null);
     const [photoFile, setPhotoFile] = useState(null);
     const [photoInputKey, setPhotoInputKey] = useState(0);
     const [formData, setFormData] = useState({
@@ -51,7 +51,11 @@ function MissingPersonsList() {
             params.set("reported_on", reportDate);
         }
 
-        apiGet(`/persons/?${params.toString()}`)
+        if (riskFilter) {
+            params.set("risk_level", riskFilter);
+        }
+
+        apiGet(`/persons/registry?${params.toString()}`)
             .then((data) => {
                 setPersons(Array.isArray(data) ? data : []);
                 setError("");
@@ -60,7 +64,7 @@ function MissingPersonsList() {
                 console.error(err);
                 setError("Could not load missing persons.");
             });
-    }, [reportDate, searchTerm]);
+    }, [reportDate, riskFilter, searchTerm]);
 
     useEffect(() => {
         loadPersons();
@@ -143,30 +147,11 @@ function MissingPersonsList() {
         }
     };
 
-    const formatReportDate = (dateValue) => {
-        if (!dateValue) return "Not recorded";
-
-        return new Date(dateValue).toLocaleDateString();
-    };
     const getPersonName = (person) => `${person.first_name || ""} ${person.last_name || ""}`.trim();
-    const filteredPersons = persons.filter((person) => {
-        const riskLevel = (person.risk_level || "").toLowerCase();
-
-        if (riskFilter === "high") {
-            return riskLevel === "high" || riskLevel === "critical";
-        }
-
-        if (riskFilter) {
-            return riskLevel === riskFilter;
-        }
-
-        return true;
-    });
-    const sortedPersons = [...filteredPersons].sort((firstPerson, secondPerson) =>
+    const sortedPersons = [...persons].sort((firstPerson, secondPerson) =>
         getPersonName(firstPerson).localeCompare(getPersonName(secondPerson))
     );
     const visiblePersons = sortedPersons.slice(0, visiblePersonCount);
-    const selectedPerson = sortedPersons.find((person) => person.person_id === selectedPersonId) || visiblePersons[0];
 
     return (
 
@@ -277,7 +262,7 @@ function MissingPersonsList() {
                     <div className="missing-person-search-row">
                         <input
                             type="search"
-                            placeholder="Search by name, location, status, risk, or description"
+                            placeholder="Search by name"
                             value={searchTerm}
                             onChange={(event) => {
                                 setSearchTerm(event.target.value);
@@ -320,10 +305,8 @@ function MissingPersonsList() {
                             <button
                                 key={person.person_id}
                                 type="button"
-                                className={`missing-person-name-row ${
-                                    selectedPerson?.person_id === person.person_id ? "active" : ""
-                                }`}
-                                onClick={() => setSelectedPersonId(person.person_id)}
+                                className="missing-person-name-row"
+                                onClick={() => navigate(`/persons/${person.person_id}`)}
                             >
                                 <span>{getPersonName(person)}</span>
                             </button>
@@ -343,46 +326,6 @@ function MissingPersonsList() {
                         />
                     </div>
 
-                    {selectedPerson && (
-                        <article className="missing-person-selected-detail">
-                            <div className="dashboard-panel-header">
-                                <span>Selected Person</span>
-                                <strong>{getPersonName(selectedPerson)}</strong>
-                            </div>
-                            <div className="missing-person-selected-layout">
-                                <div className="missing-person-selected-photo">
-                                    {selectedPerson.photo_url ? (
-                                        <img src={selectedPerson.photo_url} alt={`${getPersonName(selectedPerson)} profile`} />
-                                    ) : (
-                                        <span>No photo</span>
-                                    )}
-                                </div>
-                                <div className="missing-person-detail-grid">
-                                    <p>Age: {selectedPerson.age || "Unknown"}</p>
-                                    <p>Report Date: {formatReportDate(selectedPerson.created_at)}</p>
-                                    <p>Status: {selectedPerson.status || "Unknown"}</p>
-                                    <p>Risk Level: {selectedPerson.risk_level || "Unknown"}</p>
-                                    <p>Housing: {selectedPerson.housing_status || "Unknown"}</p>
-                                    <p className="full-width-field">Address: {selectedPerson.primary_address || "Not recorded"}</p>
-                                    <p className="full-width-field">School: {selectedPerson.school_name || "Not recorded"}</p>
-                                    <p className="full-width-field">School Address: {selectedPerson.school_address || "Not recorded"}</p>
-                                    <p className="full-width-field">Employer / Status: {selectedPerson.employer_name || selectedPerson.employment_status || "Not recorded"}</p>
-                                    <p className="full-width-field">Work Address: {selectedPerson.work_address || "Not recorded"}</p>
-                                    <p className="full-width-field">Medical Needs: {selectedPerson.medical_conditions || "Not recorded"}</p>
-                                    <p className="full-width-field">Last Seen: {selectedPerson.last_seen_location || "Not recorded"}</p>
-                                    <p className="full-width-field">{selectedPerson.description || "No description recorded."}</p>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    window.location.href = `/persons/${selectedPerson.person_id}`;
-                                }}
-                            >
-                                View Profile
-                            </button>
-                        </article>
-                    )}
                 </section>
             </section>
         </div>

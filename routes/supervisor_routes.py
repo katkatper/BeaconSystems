@@ -87,8 +87,16 @@ def get_supervisor_queue(
             LegalAccessRequest.agency_id == current_user.agency_id
         )
         access_query = access_query.filter(
-            CaseAccessGrant.agency_id == current_user.agency_id
+            CaseAccessGrant.case_id.in_(
+                db.query(Cases.case_id).filter(
+                    Cases.agency_id == current_user.agency_id
+                )
+            )
         )
+        # Integration sources are system-wide configuration and currently have
+        # no agency owner. Do not expose pending system configuration to agency
+        # supervisors until ownership is represented in the data model.
+        partner_query = partner_query.filter(IntegrationSource.id == -1)
         bolo_query = bolo_query.filter(BoloAlert.agency_id == current_user.agency_id)
         alert_query = alert_query.filter(
             Alerts.recipient_agency_id == current_user.agency_id
@@ -673,7 +681,13 @@ def get_reviewable_case_access_grant(
     query = db.query(CaseAccessGrant).filter(CaseAccessGrant.grant_id == grant_id)
 
     if current_user.role != "admin":
-        query = query.filter(CaseAccessGrant.agency_id == current_user.agency_id)
+        query = query.filter(
+            CaseAccessGrant.case_id.in_(
+                db.query(Cases.case_id).filter(
+                    Cases.agency_id == current_user.agency_id
+                )
+            )
+        )
 
     grant = query.first()
 
@@ -691,6 +705,9 @@ def approve_case_access_request(
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     grant = get_reviewable_case_access_grant(db, grant_id, current_user)
+
+    if grant.status != "pending":
+        raise HTTPException(status_code=409, detail="Case access request was already reviewed")
 
     grant.status = "active"
     grant.approval_type = "manual"
@@ -723,6 +740,9 @@ def deny_case_access_request(
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
     grant = get_reviewable_case_access_grant(db, grant_id, current_user)
+
+    if grant.status != "pending":
+        raise HTTPException(status_code=409, detail="Case access request was already reviewed")
 
     grant.status = "denied"
     grant.approval_type = "manual"

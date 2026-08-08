@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { apiGet, apiPost, apiRequest } from "../api.jsx";
 
@@ -10,6 +10,9 @@ import { apiGet, apiPost, apiRequest } from "../api.jsx";
 function SupervisorQueue() {
     const [queue, setQueue] = useState(null);
     const [message, setMessage] = useState("");
+    const [queueError, setQueueError] = useState("");
+    const [isQueueLoading, setIsQueueLoading] = useState(true);
+    const [reviewingGrants, setReviewingGrants] = useState({});
     const [reviewNotes, setReviewNotes] = useState({});
     const [users, setUsers] = useState([]);
     const [expandedSections, setExpandedSections] = useState({});
@@ -54,6 +57,8 @@ function SupervisorQueue() {
     const oversightCount = (queue?.pending_legal_requests?.length || 0) +
         (queue?.pending_case_access?.length || 0) +
         (queue?.recent_case_access?.length || 0);
+    const pendingDecisionCount = (queue?.pending_legal_requests?.length || 0) +
+        (queue?.pending_case_access?.length || 0);
     const commandDashboard = queue?.command_dashboard || {};
     const investigatorWorkload = queue?.investigator_workload || [];
     const overloadedInvestigators = investigatorWorkload.filter((item) =>
@@ -107,40 +112,28 @@ function SupervisorQueue() {
  // Load the review queue once when the page opens. The backend enforces that
 // only admins, agency admins, and supervisors can access this endpoint.
 
+    const loadQueue = useCallback(async () => {
+        setIsQueueLoading(true);
+        setQueueError("");
+
+        try {
+            const data = await apiGet("/supervisor/queue");
+            setQueue(data);
+        } catch (err) {
+            console.error(err);
+            setQueueError(
+                err.message || "Supervisor command data could not be loaded."
+            );
+        } finally {
+            setIsQueueLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
+        const timer = setTimeout(loadQueue, 0);
 
- // Prevent React from updating state if the user leaves the page before the
-        // request finishes.
-
-        let isMounted = true;
-
-        // The token proves the user is logged in; role checks happen on the API.
-
-        const loadQueue = async () => {
-            try {
-                const data = await apiGet("/supervisor/queue");
-
-                if (isMounted) {
-                    setQueue(data);
-                    setMessage("");
-                }
-            } catch (err) {
-                console.error(err);
-
-                if (isMounted) {
-                    setMessage(
-                        "Supervisor queue is unavailable. Confirm this account has a role and agency assignment if this persists."
-                    );
-                }
-            }
-        };
-
-        loadQueue();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [token]);
+        return () => clearTimeout(timer);
+    }, [loadQueue, token]);
 
     useEffect(() => {
         let isMounted = true;
@@ -188,6 +181,17 @@ function SupervisorQueue() {
     }, [token]);
 
     const reviewCaseAccess = async (grantId, action) => {
+        if (reviewingGrants[grantId]) {
+            return;
+        }
+
+        const request = (queue?.pending_case_access || []).find(
+            (item) => item.grant_id === grantId
+        );
+        const requester = request?.username || `User ${request?.user_id || "unknown"}`;
+        const caseLabel = request?.case_number || `Case ${request?.case_id || "unknown"}`;
+        setReviewingGrants((current) => ({ ...current, [grantId]: action }));
+
         try {
             const data = await apiRequest(`/supervisor/case-access/${grantId}/${action}`, {
                 method: "PUT",
@@ -198,7 +202,11 @@ function SupervisorQueue() {
                     review_notes: reviewNotes[grantId] || "",
                 }),
             });
-            setMessage(data.message);
+            setMessage(
+                action === "approve"
+                    ? `${caseLabel} access approved for ${requester}. ${data.message}`
+                    : `${caseLabel} access denied for ${requester}.`
+            );
 
             setQueue((currentQueue) => {
                 if (!currentQueue) {
@@ -221,6 +229,12 @@ function SupervisorQueue() {
         } catch (err) {
             console.error(err);
             setMessage(err.message || "Could not review case access request.");
+        } finally {
+            setReviewingGrants((current) => {
+                const next = { ...current };
+                delete next[grantId];
+                return next;
+            });
         }
     };
 
@@ -301,6 +315,113 @@ function SupervisorQueue() {
                 <h1>Supervisor Workspace</h1>
             </div>
 
+            {isQueueLoading && (
+                <section className="supervisor-queue-state" aria-live="polite" aria-busy="true">
+                    <span className="supervisor-loading-indicator" aria-hidden="true" />
+                    <div>
+                        <strong>Loading command data…</strong>
+                        <p>Gathering approvals, case activity, and operational status.</p>
+                    </div>
+                </section>
+            )}
+
+            {!isQueueLoading && queueError && (
+                <section className="supervisor-queue-state error" role="alert">
+                    <div>
+                        <strong>Supervisor data is unavailable</strong>
+                        <p>{queueError}</p>
+                    </div>
+                    <button type="button" onClick={loadQueue}>Retry</button>
+                </section>
+            )}
+
+            {!workspaceFromPath && queue && (
+                <section className="supervisor-attention-inbox" aria-labelledby="attention-inbox-title">
+                    <div className="supervisor-attention-header">
+                        <div>
+                            <span>Command Inbox</span>
+                            <h2 id="attention-inbox-title">Needs Attention</h2>
+                            <p>Approvals and compliance decisions waiting for supervisor action.</p>
+                        </div>
+                        <strong className={pendingDecisionCount > 0 ? "has-items" : "is-clear"}>
+                            {pendingDecisionCount} pending
+                        </strong>
+                    </div>
+
+                    {pendingDecisionCount === 0 ? (
+                        <div className="supervisor-attention-empty">
+                            <strong>All caught up</strong>
+                            <span>No approval decisions are waiting.</span>
+                        </div>
+                    ) : (
+                        <div className="supervisor-attention-list">
+                            {(queue.pending_case_access || []).map((item) => (
+                                <article key={`access-${item.grant_id}`} className="supervisor-attention-item urgent">
+                                    <div className="supervisor-attention-copy">
+                                        <span className="supervisor-attention-type">Restricted Case Access</span>
+                                        <h3>{item.case_number || `Case ${item.case_id}`}</h3>
+                                        <p>
+                                            <strong>{item.username || `User ${item.user_id}`}</strong> requested access
+                                            {item.case_title ? ` to ${item.case_title}` : ""}.
+                                        </p>
+                                        <small>
+                                            {item.reason_category || "Manual review"} · Requested {formatDateTime(item.granted_at)}
+                                        </small>
+                                        {item.reason && <p className="supervisor-attention-reason">{item.reason}</p>}
+                                    </div>
+
+                                    <div className="supervisor-attention-decision">
+                                        <textarea
+                                            className="supervisor-review-notes"
+                                            aria-label={`Review notes for ${item.case_number || `case ${item.case_id}`}`}
+                                            placeholder="Review notes (optional)"
+                                            value={reviewNotes[item.grant_id] || ""}
+                                            onChange={(event) =>
+                                                setReviewNotes((currentNotes) => ({
+                                                    ...currentNotes,
+                                                    [item.grant_id]: event.target.value,
+                                                }))
+                                            }
+                                        />
+                                        <div className="supervisor-actions">
+                                            <button
+                                                type="button"
+                                                disabled={Boolean(reviewingGrants[item.grant_id])}
+                                                onClick={() => reviewCaseAccess(item.grant_id, "approve")}
+                                            >
+                                                {reviewingGrants[item.grant_id] === "approve" ? "Approving…" : "Approve"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="supervisor-deny-button"
+                                                disabled={Boolean(reviewingGrants[item.grant_id])}
+                                                onClick={() => reviewCaseAccess(item.grant_id, "deny")}
+                                            >
+                                                {reviewingGrants[item.grant_id] === "deny" ? "Denying…" : "Deny"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </article>
+                            ))}
+
+                            {(queue.pending_legal_requests || []).map((item) => (
+                                <article key={`legal-${item.request_id}`} className="supervisor-attention-item">
+                                    <div className="supervisor-attention-copy">
+                                        <span className="supervisor-attention-type">Legal Access Review</span>
+                                        <h3>{item.source_type || "Partner source request"}</h3>
+                                        <p>{item.purpose || "Purpose not recorded."}</p>
+                                        <small>Submitted {formatDateTime(item.requested_at)}</small>
+                                    </div>
+                                    <Link className="supervisor-attention-link" to="/legal-access">
+                                        Review request
+                                    </Link>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
+
             <section className="supervisor-admin-links" aria-label="Supervisor administration links">
                 {workspaceCards.map(([key, title, description, count]) => (
                     <Link
@@ -308,14 +429,14 @@ function SupervisorQueue() {
                         to={`/supervisor/${key}`}
                         className={`supervisor-admin-card ${activeWorkspace === key ? "active" : ""}`}
                     >
-                        <span className="supervisor-workspace-count">{count}</span>
+                        <span className="supervisor-workspace-count">{queue ? count : "—"}</span>
                         <strong>{title}</strong>
                         <small>{description}</small>
                     </Link>
                 ))}
             </section>
 
-            <section className="supervisor-command-strip" aria-label="Command dashboard">
+            {queue && <section className="supervisor-command-strip" aria-label="Command dashboard">
                 <article className="supervisor-metric-card">
                     <span>Active Cases</span>
                     <strong>{commandDashboard.active_cases || 0}</strong>
@@ -336,9 +457,9 @@ function SupervisorQueue() {
                     <strong>{commandDashboard.cases_needing_attention_today || 0}</strong>
                     <small>Stall, lead, or warrant risk</small>
                 </article>
-            </section>
+            </section>}
 
-            {activeWorkspace === "personnel" && (
+            {queue && activeWorkspace === "personnel" && (
             <div className="supervisor-operations-grid">
                 <section className="supervisor-user-registration supervisor-capacity-card">
                     <div className="supervisor-panel-header">
@@ -475,7 +596,7 @@ function SupervisorQueue() {
             </div>
             )}
 
-            {activeWorkspace === "investigations" && (
+            {queue && activeWorkspace === "investigations" && (
             <div className="supervisor-operations-grid">
                 <section className="case-team-panel supervisor-stall-panel">
                     <div className="supervisor-panel-header">
@@ -625,7 +746,7 @@ function SupervisorQueue() {
             </div>
             )}
 
-            {activeWorkspace === "community" && (
+            {queue && activeWorkspace === "community" && (
             <div className="supervisor-operations-grid">
                 <section className="case-team-panel supervisor-coordination-panel">
                     <div className="supervisor-panel-header">
@@ -744,7 +865,7 @@ function SupervisorQueue() {
             </div>
             )}
 
-            {activeWorkspace === "compliance" && (
+            {queue && activeWorkspace === "compliance" && (
                 <section className="supervisor-review-section">
                     <div className="supervisor-panel-header">
                         <span>Legal Compliance</span>
@@ -772,7 +893,7 @@ function SupervisorQueue() {
                 </section>
             )}
 
-            {activeWorkspace === "operations" && (
+            {queue && activeWorkspace === "operations" && (
                 <section className="supervisor-review-section">
                     <div className="supervisor-panel-header">
                         <span>Operational Management</span>
@@ -804,7 +925,7 @@ function SupervisorQueue() {
                 </section>
             )}
 
-            {activeWorkspace === "reports" && (
+            {queue && activeWorkspace === "reports" && (
                 <section className="supervisor-review-section">
                     <div className="supervisor-panel-header">
                         <span>Command Reporting</span>
@@ -918,15 +1039,17 @@ function SupervisorQueue() {
                                     <div className="supervisor-actions">
                                         <button
                                             type="button"
+                                            disabled={Boolean(reviewingGrants[item.grant_id])}
                                             onClick={() => reviewCaseAccess(item.grant_id, "approve")}
                                         >
-                                            Approve
+                                            {reviewingGrants[item.grant_id] === "approve" ? "Approving…" : "Approve"}
                                         </button>
                                         <button
                                             type="button"
+                                            disabled={Boolean(reviewingGrants[item.grant_id])}
                                             onClick={() => reviewCaseAccess(item.grant_id, "deny")}
                                         >
-                                            Deny
+                                            {reviewingGrants[item.grant_id] === "deny" ? "Denying…" : "Deny"}
                                         </button>
                                     </div>
                                 </article>

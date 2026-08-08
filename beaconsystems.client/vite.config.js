@@ -43,6 +43,12 @@ const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_H
 export default defineConfig(({ command }) => {
     const config = {
         plugins: [plugin()],
+        build: {
+            // The optional Three.js intelligence map is isolated in its own
+            // lazy-loaded chunk (~550 kB); the initial application bundle is
+            // kept well below this threshold by route-level code splitting.
+            chunkSizeWarningLimit: 600,
+        },
         resolve: {
             alias: {
                 '@': fileURLToPath(new URL('./src', import.meta.url))

@@ -281,6 +281,15 @@ function Alerts() {
                 </div>
             </section>
 
+            <section className="alerts-panel alerts-bolo-handoff">
+                <div>
+                    <span>Dedicated workflow</span>
+                    <h2>BOLO creation has moved to the BOLO Board</h2>
+                    <p>Build vehicle, occupant, photo, distribution, expiration, and approval details in one guided workflow.</p>
+                </div>
+                <Link to="/bolos">Open BOLO Workflow</Link>
+            </section>
+
             <div className="alerts-paired-layout">
                 <section className="alerts-panel">
                     <h2>Create Alert</h2>
@@ -551,15 +560,6 @@ function Alerts() {
                     )}
                 </section>
             </div>
-
-            <section className="alerts-panel alerts-bolo-handoff">
-                <div>
-                    <span>Dedicated workflow</span>
-                    <h2>BOLO creation has moved to the BOLO Board</h2>
-                    <p>Build vehicle, occupant, photo, distribution, expiration, and approval details in one guided workflow.</p>
-                </div>
-                <Link to="/bolos">Open BOLO Workflow</Link>
-            </section>
 
         </div>
     );

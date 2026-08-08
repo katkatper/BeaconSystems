@@ -1,5 +1,34 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
+import {
+    AmbientLight,
+    BufferGeometry,
+    CanvasTexture,
+    CircleGeometry,
+    Clock,
+    Color,
+    CylinderGeometry,
+    DirectionalLight,
+    DoubleSide,
+    EdgesGeometry,
+    Fog,
+    Group,
+    Line,
+    LineBasicMaterial,
+    LineSegments,
+    Mesh,
+    MeshBasicMaterial,
+    MeshStandardMaterial,
+    PerspectiveCamera,
+    PlaneGeometry,
+    PointLight,
+    Raycaster,
+    RingGeometry,
+    Scene,
+    SRGBColorSpace,
+    Vector2,
+    Vector3,
+    WebGLRenderer,
+} from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { geocodeLocal, isUsCoordinate } from "../geoUtils.js";
 
@@ -140,8 +169,8 @@ function createMapTexture() {
         context.fillText(label, x, y);
     });
 
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
     texture.anisotropy = 8;
     return texture;
 }
@@ -258,8 +287,8 @@ function buildMapPoints(sightings, records, mappedLocations = []) {
 function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
     const mountRef = useRef(null);
     const markerRefs = useRef([]);
-    const raycasterRef = useRef(new THREE.Raycaster());
-    const pointerRef = useRef(new THREE.Vector2());
+    const raycasterRef = useRef(new Raycaster());
+    const pointerRef = useRef(new Vector2());
     const [selectedPoint, setSelectedPoint] = useState(null);
     const [activeLayers, setActiveLayers] = useState(() => new Set(ANALYSIS_LAYERS.map(([id]) => id)));
 
@@ -297,19 +326,19 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
         const mount = mountRef.current;
         if (!mount) return undefined;
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x020617);
-        scene.fog = new THREE.Fog(0x020617, 22, 72);
+        const scene = new Scene();
+        scene.background = new Color(0x020617);
+        scene.fog = new Fog(0x020617, 22, 72);
 
-        const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 160);
+        const camera = new PerspectiveCamera(48, 1, 0.1, 160);
         camera.position.set(0, 22, 34);
 
-        const renderer = new THREE.WebGLRenderer({
+        const renderer = new WebGLRenderer({
             antialias: true,
             alpha: false,
         });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.outputColorSpace = SRGBColorSpace;
         renderer.domElement.className = "intelligence-3d-canvas";
         mount.appendChild(renderer.domElement);
 
@@ -321,31 +350,31 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
         controls.maxDistance = 58;
         controls.target.set(0, 0, 0);
 
-        scene.add(new THREE.AmbientLight(0x8fb4ff, 0.42));
+        scene.add(new AmbientLight(0x8fb4ff, 0.42));
 
-        const keyLight = new THREE.DirectionalLight(0xeff6ff, 2.4);
+        const keyLight = new DirectionalLight(0xeff6ff, 2.4);
         keyLight.position.set(-10, 22, 18);
         scene.add(keyLight);
 
-        const blueLight = new THREE.PointLight(0x2563eb, 42, 58);
+        const blueLight = new PointLight(0x2563eb, 42, 58);
         blueLight.position.set(12, 11, -14);
         scene.add(blueLight);
 
-        const groundGeometry = new THREE.PlaneGeometry(40, 34, 1, 1);
-        const groundMaterial = new THREE.MeshStandardMaterial({
+        const groundGeometry = new PlaneGeometry(40, 34, 1, 1);
+        const groundMaterial = new MeshStandardMaterial({
             color: 0xffffff,
             map: createMapTexture(),
             roughness: 0.9,
             metalness: 0.14,
         });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        const ground = new Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.position.y = -0.03;
         scene.add(ground);
 
-        const border = new THREE.LineSegments(
-            new THREE.EdgesGeometry(groundGeometry),
-            new THREE.LineBasicMaterial({
+        const border = new LineSegments(
+            new EdgesGeometry(groundGeometry),
+            new LineBasicMaterial({
                 color: 0x60a5fa,
                 transparent: true,
                 opacity: 0.36,
@@ -355,23 +384,23 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
         border.position.y = 0.01;
         scene.add(border);
 
-        const routeMaterial = new THREE.LineBasicMaterial({
+        const routeMaterial = new LineBasicMaterial({
             color: 0x93c5fd,
             transparent: true,
             opacity: 0.46,
         });
         const routePoints = visiblePoints
             .slice(0, 10)
-            .map((point) => new THREE.Vector3(point.x, 0.18, point.z));
+            .map((point) => new Vector3(point.x, 0.18, point.z));
         if (routePoints.length > 1) {
-            const route = new THREE.Line(
-                new THREE.BufferGeometry().setFromPoints(routePoints),
+            const route = new Line(
+                new BufferGeometry().setFromPoints(routePoints),
                 routeMaterial
             );
             scene.add(route);
         }
 
-        const markerGroup = new THREE.Group();
+        const markerGroup = new Group();
         markerRefs.current = [];
 
         const clusterCells = new Map();
@@ -386,13 +415,13 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
             const color = SOURCE_COLORS[cluster[0].analysisLayer] ?? SOURCE_COLORS.other;
             const centerX = cluster.reduce((sum, point) => sum + point.x, 0) / cluster.length;
             const centerZ = cluster.reduce((sum, point) => sum + point.z, 0) / cluster.length;
-            const clusterDisc = new THREE.Mesh(
-                new THREE.CircleGeometry(Math.min(4.2, 1.4 + cluster.length * 0.42), 48),
-                new THREE.MeshBasicMaterial({
+            const clusterDisc = new Mesh(
+                new CircleGeometry(Math.min(4.2, 1.4 + cluster.length * 0.42), 48),
+                new MeshBasicMaterial({
                     color,
                     transparent: true,
                     opacity: 0.13,
-                    side: THREE.DoubleSide,
+                    side: DoubleSide,
                     depthWrite: false,
                 })
             );
@@ -405,9 +434,9 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
             const color = SOURCE_COLORS[point.analysisLayer] ?? SOURCE_COLORS[point.type] ?? SOURCE_COLORS.other;
             const height = 0.8 + Math.max(point.confidence, 0.25) * 4.2;
 
-            const tower = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.18, 0.28, height, 24),
-                new THREE.MeshStandardMaterial({
+            const tower = new Mesh(
+                new CylinderGeometry(0.18, 0.28, height, 24),
+                new MeshStandardMaterial({
                     color,
                     emissive: color,
                     emissiveIntensity: 0.38,
@@ -420,13 +449,13 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
             markerGroup.add(tower);
             markerRefs.current.push(tower);
 
-            const pulse = new THREE.Mesh(
-                new THREE.RingGeometry(0.6, 0.72, 48),
-                new THREE.MeshBasicMaterial({
+            const pulse = new Mesh(
+                new RingGeometry(0.6, 0.72, 48),
+                new MeshBasicMaterial({
                     color,
                     transparent: true,
                     opacity: 0.45,
-                    side: THREE.DoubleSide,
+                    side: DoubleSide,
                 })
             );
             pulse.rotation.x = -Math.PI / 2;
@@ -462,7 +491,7 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
         resize();
 
         let frameId = 0;
-        const clock = new THREE.Clock();
+        const clock = new Clock();
 
         const animate = () => {
             const elapsed = clock.getElapsedTime();

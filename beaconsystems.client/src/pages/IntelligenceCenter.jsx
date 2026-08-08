@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import IntelligenceMap3D from "./IntelligenceMap3D.jsx";
+import React, { lazy, Suspense, useEffect, useState } from "react";
+
+const IntelligenceMap3D = lazy(() => import("./IntelligenceMap3D.jsx"));
 
 const includesAny = (value, terms) => {
     const normalized = String(value || "").toLowerCase();
@@ -358,11 +359,13 @@ function IntelligenceCenter() {
                             <p>Explore concentrations, relationships, repeat locations, and integrated intelligence signals.</p>
                         </div>
                     </div>
-                    <IntelligenceMap3D
-                        sightings={analyticalSightings}
-                        records={analyticalRecords}
-                        mappedLocations={mappedLocations}
-                    />
+                    <Suspense fallback={<div className="intelligence-map-loading">Loading analytical map…</div>}>
+                        <IntelligenceMap3D
+                            sightings={analyticalSightings}
+                            records={analyticalRecords}
+                            mappedLocations={mappedLocations}
+                        />
+                    </Suspense>
                 </section>
 
                 <aside className="intelligence-right-rail">

@@ -302,6 +302,15 @@ class PersonResponse(BaseModel):
         from_attributes = True
 
 
+class PersonRegistrySummary(BaseModel):
+    person_id: int
+    first_name: str
+    last_name: str
+
+    class Config:
+        from_attributes = True
+
+
 class MessageResponse(BaseModel):
     message: str
     person_id: Optional[int] = None

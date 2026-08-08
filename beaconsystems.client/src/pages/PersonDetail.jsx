@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import AuthenticatedImage from "../components/AuthenticatedImage.jsx";
 import { useParams } from "react-router-dom";
 
 const formatDate = (value) => {
@@ -112,7 +113,7 @@ function PersonDetail() {
                 <section className="person-profile-card person-profile-overview">
                     <div className="person-profile-photo">
                         {person.photo_url ? (
-                            <img
+                            <AuthenticatedImage
                                 src={person.photo_url}
                                 alt={`${person.first_name} ${person.last_name}`}
                             />

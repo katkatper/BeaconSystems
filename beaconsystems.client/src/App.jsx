@@ -1,38 +1,39 @@
-import React, { useEffect } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 
 import { BrowserRouter as Router,Routes,Route,Navigate,useLocation,useNavigate} from "react-router-dom";
 
-import Dashboard from "./pages/Dashboard.jsx";
-import MissingPersonsList from "./pages/MissingPersons.jsx";
 import Navbar from "./pages/Navbar.jsx";
-import AddPerson from "./pages/AddReport.jsx";
 import Login from "./pages/Login.jsx";
-import CaseDetail from "./pages/CaseDetail.jsx";
-import PersonDetail from "./pages/PersonDetail.jsx";
-import CreateCase from "./pages/CreateCase.jsx";
-import AddExternalRecord from "./pages/AddExternalRecord.jsx";
-import ExternalRecordList from "./pages/ExternalRecordList.jsx";
-import Alerts from "./pages/Alerts.jsx";
-import AgencyManagement from "./pages/AgencyManagement.jsx";
-import UserManagement from "./pages/UserManagement.jsx";
-import Cases from "./pages/Cases.jsx";
-import IntelligenceCenter from "./pages/IntelligenceCenter.jsx";
-import EvidenceUpload from "./pages/EvidenceUpload.jsx";
-import LegalAccessRequests from "./pages/LegalAccessRequests.jsx";
-import LegalOrders from "./pages/LegalOrders.jsx";
-import LegalOrderDetail from "./pages/LegalOrderDetail.jsx";
-import PartnerSources from "./pages/PartnerSources.jsx";
-import CaseAccess from "./pages/CaseAccess.jsx";
-import Sightings from "./pages/Sightings.jsx";
-import Analytics from "./pages/Analytics.jsx";
-import Administration from "./pages/Administration.jsx";
-import CommandTools from "./pages/CommandTools.jsx";
-import EscapeRouteAnalysis from "./pages/EscapeRouteAnalysis.jsx";
 import "./App.css";
-import BoloBoard from "./pages/BoloBoard.jsx";
-import SupervisorQueue from "./pages/SupervisorQueue";
-import AuditCenter from "./pages/AuditCenter.jsx";
 import BeaconInsight from "./components/BeaconInsight.jsx";
+
+const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
+const MissingPersonsList = lazy(() => import("./pages/MissingPersons.jsx"));
+const AddPerson = lazy(() => import("./pages/AddReport.jsx"));
+const CaseDetail = lazy(() => import("./pages/CaseDetail.jsx"));
+const PersonDetail = lazy(() => import("./pages/PersonDetail.jsx"));
+const CreateCase = lazy(() => import("./pages/CreateCase.jsx"));
+const AddExternalRecord = lazy(() => import("./pages/AddExternalRecord.jsx"));
+const ExternalRecordList = lazy(() => import("./pages/ExternalRecordList.jsx"));
+const Alerts = lazy(() => import("./pages/Alerts.jsx"));
+const AgencyManagement = lazy(() => import("./pages/AgencyManagement.jsx"));
+const UserManagement = lazy(() => import("./pages/UserManagement.jsx"));
+const Cases = lazy(() => import("./pages/Cases.jsx"));
+const IntelligenceCenter = lazy(() => import("./pages/IntelligenceCenter.jsx"));
+const EvidenceUpload = lazy(() => import("./pages/EvidenceUpload.jsx"));
+const LegalAccessRequests = lazy(() => import("./pages/LegalAccessRequests.jsx"));
+const LegalOrders = lazy(() => import("./pages/LegalOrders.jsx"));
+const LegalOrderDetail = lazy(() => import("./pages/LegalOrderDetail.jsx"));
+const PartnerSources = lazy(() => import("./pages/PartnerSources.jsx"));
+const CaseAccess = lazy(() => import("./pages/CaseAccess.jsx"));
+const Sightings = lazy(() => import("./pages/Sightings.jsx"));
+const Analytics = lazy(() => import("./pages/Analytics.jsx"));
+const Administration = lazy(() => import("./pages/Administration.jsx"));
+const CommandTools = lazy(() => import("./pages/CommandTools.jsx"));
+const EscapeRouteAnalysis = lazy(() => import("./pages/EscapeRouteAnalysis.jsx"));
+const BoloBoard = lazy(() => import("./pages/BoloBoard.jsx"));
+const SupervisorQueue = lazy(() => import("./pages/SupervisorQueue.jsx"));
+const AuditCenter = lazy(() => import("./pages/AuditCenter.jsx"));
 
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -122,6 +123,12 @@ function AppLayout() {
             {!hideNavbar && <Navbar />}
 
             <main className={hideNavbar ? "app-content" : "app-content with-sidebar"}>
+                <Suspense fallback={(
+                    <div className="route-loading-state" role="status" aria-live="polite">
+                        <span aria-hidden="true" />
+                        Loading workspace…
+                    </div>
+                )}>
                 <Routes>
 
                 <Route path="/login" element={<Login />} />
@@ -370,6 +377,7 @@ function AppLayout() {
                     }
                 />
                 </Routes>
+                </Suspense>
             </main>
             {!hideNavbar && localStorage.getItem("token") && <BeaconInsight />}
         </>

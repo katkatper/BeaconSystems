@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import AuthenticatedImage from "../components/AuthenticatedImage.jsx";
 import { useParams, Link } from "react-router-dom";
 import SightingMap from "./SightingMap.jsx";
 import EscapeRouteAnalysis from "./EscapeRouteAnalysis.jsx";
@@ -896,7 +897,7 @@ function CaseDetail() {
                 <div className="case-section missing-person-profile case-tab-panel">
                     <div className="missing-person-photo">
                         {person.photo_url ? (
-                            <img
+                            <AuthenticatedImage
                                 src={person.photo_url}
                                 alt={`${person.first_name} ${person.last_name}`}
                             />
