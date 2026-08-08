@@ -3,9 +3,14 @@
 from fastapi import FastAPI
 from database.connection import Base, engine
 from database.schema_maintenance import ensure_local_schema
+from config.settings import (
+    CORS_ORIGINS,
+    ENABLE_LOCAL_SCHEMA_BOOTSTRAP,
+    IS_PRODUCTION,
+    validate_runtime_settings,
+)
 from  contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from routes import person_routes
 from pydantic import BaseModel
 from fastapi import APIRouter
 
@@ -61,8 +66,6 @@ from routes import external_records_routes
 from routes import partner_intake_routes
 from routes import match_routes
 from  routes.timeline_events_routes import router as timeline_events_router
-from routes.sightings_routes import router as sightings_routes
-from routes.alerts_routes import router as alerts_router
 from routes.bolo_routes import router as bolo_router
 from routes.supervisor_routes import router as supervisor_router
 from routes.audit_routes import router as audit_router
@@ -100,16 +103,23 @@ async def lifespan(app: FastAPI):
 
     print("Shutting down...")
    
-app = FastAPI( title="Beacon API",lifespan=lifespan)
+validate_runtime_settings()
+
+app = FastAPI(title="Beacon API", lifespan=lifespan)
 
 
-# CORS allows the local React frontend to call the FastAPI backend during
-# development. Production origins should be restricted to approved domains only.
+# Development accepts local browser ports. Production starts only when explicit
+# approved origins are configured and never accepts a wildcard origin.
 
 app.add_middleware(
 
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_origin_regex=(
+        None
+        if IS_PRODUCTION
+        else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    ),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -118,8 +128,9 @@ app.add_middleware(
 # Local development table bootstrap. In AWS/GovCloud production, use Alembic
 # migrations instead so schema changes are reviewed, repeatable, and auditable.
 
-Base.metadata.create_all(bind=engine)
-ensure_local_schema(engine)
+if ENABLE_LOCAL_SCHEMA_BOOTSTRAP:
+    Base.metadata.create_all(bind=engine)
+    ensure_local_schema(engine)
 app.include_router(users_router)
 app.include_router(sightings_router)
 app.include_router(cases_router)
@@ -128,15 +139,12 @@ app.include_router(evidence_router)
 app.include_router(admin_user_router)
 app.include_router(dashboard_router)
 app.include_router(legal_access_router)
-app.include_router(person_routes.router)
-app.include_router(sightings_router)
 app.include_router(person_router)
 app.include_router(integrations_routes.router)
 app.include_router(external_records_routes.router)
 app.include_router(partner_intake_routes.router)
 app.include_router(match_routes.router)
 app.include_router(timeline_events_router)
-app.include_router(alerts_router)
 app.include_router(bolo_router)
 app.include_router(supervisor_router)
 app.include_router(audit_router)
@@ -156,7 +164,3 @@ def health_check():
 @app.get("/")
 def read_root():
     return {"message": "Beacon backend is working"}
-
-
-Base.metadata.create_all(bind=engine)
-ensure_local_schema(engine)

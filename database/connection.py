@@ -5,6 +5,12 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from config.settings import (
+    DATABASE_MAX_OVERFLOW,
+    DATABASE_POOL_RECYCLE_SECONDS,
+    DATABASE_POOL_SIZE,
+)
+
 
 load_dotenv()
 
@@ -34,7 +40,13 @@ def build_database_url() -> str:
 
 DATABASE_URL = build_database_url()
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=DATABASE_POOL_RECYCLE_SECONDS,
+    pool_size=DATABASE_POOL_SIZE,
+    max_overflow=DATABASE_MAX_OVERFLOW,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

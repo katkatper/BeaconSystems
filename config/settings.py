@@ -8,6 +8,35 @@ except ImportError:
 if load_dotenv:
     load_dotenv()
 
+
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_csv(name: str) -> list[str]:
+    return [
+        value.strip()
+        for value in os.getenv(name, "").split(",")
+        if value.strip()
+    ]
+
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
+IS_PRODUCTION = ENVIRONMENT in {"production", "prod"}
+CORS_ORIGINS = env_csv("CORS_ORIGINS")
+ENABLE_LOCAL_SCHEMA_BOOTSTRAP = env_bool(
+    "ENABLE_LOCAL_SCHEMA_BOOTSTRAP",
+    default=ENVIRONMENT in {"development", "dev", "test"},
+)
+DATABASE_POOL_SIZE = int(os.getenv("DATABASE_POOL_SIZE", "10"))
+DATABASE_MAX_OVERFLOW = int(os.getenv("DATABASE_MAX_OVERFLOW", "20"))
+DATABASE_POOL_RECYCLE_SECONDS = int(
+    os.getenv("DATABASE_POOL_RECYCLE_SECONDS", "1800")
+)
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
@@ -26,4 +55,26 @@ ARCGIS_GEOCODE_URL = os.getenv(
 ARCGIS_GEOCODE_FOR_STORAGE = os.getenv("ARCGIS_GEOCODE_FOR_STORAGE", "true").lower() == "true"
 ARCGIS_GEOCODE_TIMEOUT_SECONDS = float(os.getenv("ARCGIS_GEOCODE_TIMEOUT_SECONDS", "5"))
 ARCGIS_GEOCODE_MIN_SCORE = float(os.getenv("ARCGIS_GEOCODE_MIN_SCORE", "80"))
+
+
+def validate_runtime_settings() -> None:
+    if not IS_PRODUCTION:
+        return
+
+    errors = []
+
+    if not SECRET_KEY or len(SECRET_KEY) < 32:
+        errors.append("SECRET_KEY must contain at least 32 characters")
+
+    if not CORS_ORIGINS:
+        errors.append("CORS_ORIGINS must list approved production frontend origins")
+
+    if "*" in CORS_ORIGINS:
+        errors.append("CORS_ORIGINS cannot contain '*' in production")
+
+    if ENABLE_LOCAL_SCHEMA_BOOTSTRAP:
+        errors.append("ENABLE_LOCAL_SCHEMA_BOOTSTRAP must be false in production")
+
+    if errors:
+        raise RuntimeError("Invalid production configuration: " + "; ".join(errors))
 
