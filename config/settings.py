@@ -36,6 +36,16 @@ DATABASE_MAX_OVERFLOW = int(os.getenv("DATABASE_MAX_OVERFLOW", "20"))
 DATABASE_POOL_RECYCLE_SECONDS = int(
     os.getenv("DATABASE_POOL_RECYCLE_SECONDS", "1800")
 )
+DATABASE_SLOW_QUERY_MS = float(os.getenv("DATABASE_SLOW_QUERY_MS", "500"))
+API_REQUEST_TIMEOUT_SECONDS = float(os.getenv("API_REQUEST_TIMEOUT_SECONDS", "30"))
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
+OBJECT_STORAGE_BACKEND = os.getenv("OBJECT_STORAGE_BACKEND", "local").strip().lower()
+OBJECT_STORAGE_BUCKET = os.getenv("OBJECT_STORAGE_BUCKET", "").strip()
+OBJECT_STORAGE_PREFIX = os.getenv("OBJECT_STORAGE_PREFIX", "beacon").strip().strip("/")
+OBJECT_STORAGE_LOCAL_ROOT = os.getenv("OBJECT_STORAGE_LOCAL_ROOT", "uploads").strip()
+OBJECT_STORAGE_SIGNED_URL_TTL_SECONDS = int(
+    os.getenv("OBJECT_STORAGE_SIGNED_URL_TTL_SECONDS", "300")
+)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -74,6 +84,18 @@ def validate_runtime_settings() -> None:
 
     if ENABLE_LOCAL_SCHEMA_BOOTSTRAP:
         errors.append("ENABLE_LOCAL_SCHEMA_BOOTSTRAP must be false in production")
+
+    if OBJECT_STORAGE_BACKEND != "s3":
+        errors.append("OBJECT_STORAGE_BACKEND must be 's3' in production")
+
+    if not OBJECT_STORAGE_BUCKET:
+        errors.append("OBJECT_STORAGE_BUCKET is required in production")
+
+    if API_REQUEST_TIMEOUT_SECONDS <= 0:
+        errors.append("API_REQUEST_TIMEOUT_SECONDS must be greater than zero")
+
+    if MAX_UPLOAD_BYTES <= 0:
+        errors.append("MAX_UPLOAD_BYTES must be greater than zero")
 
     if errors:
         raise RuntimeError("Invalid production configuration: " + "; ".join(errors))

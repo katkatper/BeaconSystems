@@ -49,9 +49,10 @@ def get_timeline_events(
         )
 
     events = paginate_query(
-        query.order_by(Timeline_Event.timestamp.desc()),
+        query.order_by(Timeline_Event.timestamp.desc(), Timeline_Event.event_id.desc()),
         pagination,
         response,
+        cursor_column=Timeline_Event.event_id,
     )
 
     return events

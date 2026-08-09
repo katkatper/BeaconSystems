@@ -1,12 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from pathlib import Path
-import shutil
-import hashlib
-from uuid import uuid4
 from datetime import datetime
 
 from database.connection import get_db
@@ -23,15 +20,13 @@ from services.activity_service import create_activity_log
 from config.settings import EVIDENCE_ENCRYPTION_ENABLED, EVIDENCE_ENCRYPTION_KEY_ID
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
+from services.object_storage import object_storage
+from services.upload_validation import validate_upload
 
 router = APIRouter(
     prefix="/evidence",
     tags=["Evidence"]
 )
-
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
-
 
 class EvidenceCustodyEvent(BaseModel):
     action: str
@@ -172,9 +167,10 @@ def get_all_evidence(
     )
 
     items = paginate_query(
-        query.order_by(Evidence.created_at.desc()),
+        query.order_by(Evidence.created_at.desc(), Evidence.evidence_id.desc()),
         pagination,
         response,
+        cursor_column=Evidence.evidence_id,
     )
 
     return serialize_evidence_items(items, db)
@@ -191,16 +187,20 @@ def upload_evidence(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_case_write_access(db, case_id, current_user)
+    case = assert_case_write_access(db, case_id, current_user)
 
     original_file_name = Path(file.filename or "evidence-upload").name
-    stored_file_name = f"{uuid4().hex}_{original_file_name}"
-    file_path = UPLOAD_DIR / stored_file_name
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    content_sha256 = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    validate_upload(
+        file.file,
+        file_name=original_file_name,
+        content_type=file.content_type,
+    )
+    agency_id = case.agency_id or current_user.agency_id
+    if not agency_id:
+        raise HTTPException(status_code=400, detail="Evidence requires an owning agency")
+    storage_key = object_storage.create_key(agency_id, "evidence", original_file_name)
+    stored = object_storage.put(file.file, storage_key, file.content_type)
+    content_sha256 = stored.sha256
     geocoded_location = geocode_address(evidence_location)
 
     evidence = Evidence(
@@ -219,7 +219,7 @@ def upload_evidence(
         current_holder=current_user.username,
         custody_status="collected",
         file_name=original_file_name,
-        file_path=str(file_path),
+        file_path=stored.key,
         is_encrypted=EVIDENCE_ENCRYPTION_ENABLED,
         encryption_key_id=EVIDENCE_ENCRYPTION_KEY_ID if EVIDENCE_ENCRYPTION_ENABLED else None,
         content_sha256=content_sha256,
@@ -286,9 +286,10 @@ def get_case_evidence(
     )
 
     items = paginate_query(
-        query.order_by(Evidence.created_at.desc()),
+        query.order_by(Evidence.created_at.desc(), Evidence.evidence_id.desc()),
         pagination,
         response,
+        cursor_column=Evidence.evidence_id,
     )
     return serialize_evidence_items(items, db)
 
@@ -412,13 +413,10 @@ def view_evidence(
                 detail="You do not have permission to access sensitive evidence.",
             )
 
-    if not evidence.file_path or not Path(evidence.file_path).is_file():
+    if not evidence.file_path:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Evidence file is missing from storage. The registry record exists, "
-                "but the uploaded file is not available on disk."
-            ),
+            detail="Evidence file is missing from storage.",
         )
 
     chain_event = EvidenceChain(
@@ -443,10 +441,21 @@ def view_evidence(
         ip_address=request.client.host if request.client else None,
     )
 
-    return FileResponse(
-        path=evidence.file_path,
-        filename=evidence.file_name,
-    )
+    if object_storage.backend == "s3":
+        return RedirectResponse(
+            object_storage.signed_url(evidence.file_path, evidence.file_name),
+            status_code=307,
+        )
+
+    storage_path = object_storage.local_path(evidence.file_path)
+    if not storage_path.is_file():
+        # Backward compatibility for evidence uploaded before tenant-scoped storage.
+        legacy_path = Path(evidence.file_path)
+        if not legacy_path.is_file():
+            raise HTTPException(status_code=404, detail="Evidence file is missing from storage")
+        storage_path = legacy_path
+
+    return FileResponse(path=storage_path, filename=evidence.file_name)
 
 
 @router.put("/{evidence_id}/sensitive")

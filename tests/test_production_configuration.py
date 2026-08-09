@@ -38,6 +38,7 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("pool_pre_ping=True", source)
         self.assertIn("pool_size=DATABASE_POOL_SIZE", source)
         self.assertIn("max_overflow=DATABASE_MAX_OVERFLOW", source)
+        self.assertIn('"slow_database_query"', source)
 
     def test_frontend_pages_do_not_hard_code_a_local_api_host(self):
         pages_directory = REPOSITORY_ROOT / "beaconsystems.client" / "src" / "pages"

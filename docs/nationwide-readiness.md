@@ -126,6 +126,13 @@ schema mechanism, and security tests run in continuous integration.
 
 ### Phase 1 — Bounded APIs and stateless storage
 
+Implementation status: in progress. Tenant-scoped object storage, signed S3
+access, request correlation, structured request and slow-query telemetry,
+database readiness, request timeouts, compound indexes, upload validation, and
+backward-compatible cursor pagination are implemented. Production-like load
+testing, malware scanning, retention/legal-hold enforcement, and verified
+stateless deployment remain exit-gate work.
+
 - Add standardized pagination envelopes and cursor support.
 - Add required compound indexes and query-duration telemetry.
 - Move all uploads to encrypted object storage with signed access.

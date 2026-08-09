@@ -19,9 +19,10 @@ def get_audit_logs(
     current_user: User = Depends(require_role("admin"))
 ):
  logs = paginate_query(
-     db.query(ActivityLog).order_by(ActivityLog.timestamp.desc()),
+     db.query(ActivityLog).order_by(ActivityLog.timestamp.desc(), ActivityLog.id.desc()),
      pagination,
      response,
+     cursor_column=ActivityLog.id,
  )
 
  return logs

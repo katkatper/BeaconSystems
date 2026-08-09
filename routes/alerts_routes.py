@@ -117,9 +117,10 @@ def get_alerts(
     )
 
     return paginate_query(
-        query.order_by(Alerts.created_at.desc()),
+        query.order_by(Alerts.created_at.desc(), Alerts.alert_id.desc()),
         pagination,
         response,
+        cursor_column=Alerts.alert_id,
     )
 
 

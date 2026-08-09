@@ -1,9 +1,18 @@
 # FastAPI app setup and database bootstrap.
 
-from fastapi import FastAPI
+import asyncio
+import json
+import logging
+import time
+from uuid import uuid4
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy import text as sql_text
 from database.connection import Base, engine
 from database.schema_maintenance import ensure_local_schema
 from config.settings import (
+    API_REQUEST_TIMEOUT_SECONDS,
     CORS_ORIGINS,
     ENABLE_LOCAL_SCHEMA_BOOTSTRAP,
     IS_PRODUCTION,
@@ -107,6 +116,60 @@ validate_runtime_settings()
 
 app = FastAPI(title="Beacon API", lifespan=lifespan)
 
+request_logger = logging.getLogger("beacon.requests")
+request_logger.setLevel(logging.INFO)
+
+
+@app.middleware("http")
+async def request_context(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    request.state.request_id = request_id[:128]
+    started = time.perf_counter()
+
+    try:
+        response = await asyncio.wait_for(
+            call_next(request),
+            timeout=API_REQUEST_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        duration_ms = round((time.perf_counter() - started) * 1000, 2)
+        request_logger.warning(json.dumps({
+            "event": "http_request_timed_out",
+            "request_id": request.state.request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "duration_ms": duration_ms,
+        }))
+        response = JSONResponse(
+            status_code=504,
+            content={
+                "detail": "Request timed out",
+                "request_id": request.state.request_id,
+            },
+        )
+    except Exception:
+        request_logger.exception(
+            json.dumps({
+                "event": "http_request_failed",
+                "request_id": request.state.request_id,
+                "method": request.method,
+                "path": request.url.path,
+            })
+        )
+        raise
+
+    duration_ms = round((time.perf_counter() - started) * 1000, 2)
+    response.headers["X-Request-ID"] = request.state.request_id
+    request_logger.info(json.dumps({
+        "event": "http_request_completed",
+        "request_id": request.state.request_id,
+        "method": request.method,
+        "path": request.url.path,
+        "status_code": response.status_code,
+        "duration_ms": duration_ms,
+    }))
+    return response
+
 
 # Development accepts local browser ports. Production starts only when explicit
 # approved origins are configured and never accepts a wildcard origin.
@@ -123,6 +186,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Page-Limit", "X-Page-Offset", "X-Has-More", "X-Next-Cursor"],
 )
     
 # Local development table bootstrap. In AWS/GovCloud production, use Alembic
@@ -158,6 +222,18 @@ app.include_router(geocoding_router)
 def health_check():
 
     return {"status": "ok"}
+
+
+@app.get("/ready")
+def readiness_check():
+    try:
+        with engine.connect() as connection:
+            connection.execute(sql_text("SELECT 1"))
+    except Exception:
+        request_logger.exception(json.dumps({"event": "readiness_check_failed"}))
+        return JSONResponse(status_code=503, content={"status": "not_ready"})
+
+    return {"status": "ready"}
 
 
 

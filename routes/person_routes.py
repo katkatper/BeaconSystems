@@ -1,11 +1,9 @@
 from datetime import datetime, time
 import json
-import shutil
 from pathlib import Path
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi import Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -27,12 +25,12 @@ from schemas.person_schema import (
 from services.activity_service import create_activity_log
 from services.geocoding_service import geocode_address
 from services.pagination import paginate_query_values
+from services.object_storage import object_storage
+from services.upload_validation import validate_upload
 
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
 
-PHOTO_UPLOAD_DIR = Path("uploads") / "person_photos"
-PHOTO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
@@ -241,48 +239,55 @@ def upload_person_photo(
     file: UploadFile = File(...),
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
-    if file.content_type not in ALLOWED_PHOTO_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail="Upload a JPEG, PNG, WEBP, or GIF image",
-        )
-
     original_file_name = Path(file.filename or "missing-person-photo").name
-    extension = Path(original_file_name).suffix.lower() or ".jpg"
-    stored_file_name = f"{uuid4().hex}{extension}"
-    file_path = PHOTO_UPLOAD_DIR / stored_file_name
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    validate_upload(
+        file.file,
+        file_name=original_file_name,
+        content_type=file.content_type,
+        allowed_content_types=ALLOWED_PHOTO_TYPES,
+    )
+    if not current_user.agency_id:
+        raise HTTPException(status_code=400, detail="Photo upload requires an owning agency")
+    storage_key = object_storage.create_key(
+        current_user.agency_id,
+        "person-photos",
+        original_file_name,
+    )
+    object_storage.put(file.file, storage_key, file.content_type)
 
     base_url = str(request.base_url).rstrip("/")
     return {
         "message": "Photo uploaded",
-        "photo_url": f"{base_url}/persons/photo/{stored_file_name}",
+        "photo_url": f"{base_url}/persons/photo/{storage_key}",
     }
 
 
-@router.get("/photo/{file_name}")
+@router.get("/photo/{storage_key:path}")
 def get_person_photo(
-    file_name: str,
+    storage_key: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    safe_name = Path(file_name).name
-    file_path = PHOTO_UPLOAD_DIR / safe_name
-
-    if not file_path.is_file():
-        raise HTTPException(status_code=404, detail="Photo not found")
-
     photo_owner = apply_person_agency_scope(
         db.query(Person).filter(
-            Person.photo_url.like(f"%/persons/photo/{safe_name}")
+            Person.photo_url.like(f"%/persons/photo/{storage_key}")
         ),
         current_user,
     ).first()
 
     if not photo_owner:
         raise HTTPException(status_code=404, detail="Photo not found or access denied")
+
+    if object_storage.backend == "s3":
+        return RedirectResponse(object_storage.signed_url(storage_key), status_code=307)
+
+    file_path = object_storage.local_path(storage_key)
+    if not file_path.is_file():
+        # Backward compatibility for pre-Phase-I person photos.
+        legacy_path = Path("uploads") / "person_photos" / Path(storage_key).name
+        if not legacy_path.is_file():
+            raise HTTPException(status_code=404, detail="Photo not found")
+        file_path = legacy_path
 
     return FileResponse(path=file_path)
 
