@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
+from fastapi import Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -15,6 +16,7 @@ from models.case import Cases
 from models.person import Person
 from models.user import User
 from security.auth import get_current_user, require_role
+from security.tenant_scope import apply_person_agency_scope
 from schemas.person_schema import (
     MessageResponse,
     PersonCreate,
@@ -24,6 +26,7 @@ from schemas.person_schema import (
 )
 from services.activity_service import create_activity_log
 from services.geocoding_service import geocode_address
+from services.pagination import paginate_query_values
 
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
@@ -31,16 +34,6 @@ router = APIRouter(prefix="/persons", tags=["Persons"])
 PHOTO_UPLOAD_DIR = Path("uploads") / "person_photos"
 PHOTO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-
-
-def apply_person_agency_scope(query, current_user: User):
-    """Restrict person records to cases owned by the caller's agency."""
-    if current_user.role == "admin":
-        return query
-
-    return query.filter(
-        Person.cases.any(Cases.agency_id == current_user.agency_id)
-    )
 
 
 def infer_missing_person_risk(data: dict) -> str:
@@ -191,10 +184,11 @@ def persons_test():
 
 @router.get("/registry", response_model=List[PersonRegistrySummary])
 def get_missing_person_registry(
+    response: Response,
     risk_level: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     reported_on: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=500),
+    limit: int = Query(20, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -233,11 +227,11 @@ def get_missing_person_registry(
             Person.created_at <= datetime.combine(report_day, time.max),
         )
 
-    return (
-        query.order_by(Person.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
+    return paginate_query_values(
+        query.order_by(Person.created_at.desc()),
+        limit=limit,
+        offset=offset,
+        response=response,
     )
 
 
@@ -295,11 +289,12 @@ def get_person_photo(
 
 @router.get("/", response_model=List[PersonResponse])
 def get_persons(
+    response: Response,
     status: Optional[str] = Query(None),
     risk_level: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     reported_on: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=500),
+    limit: int = Query(20, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -344,7 +339,12 @@ def get_persons(
             Person.created_at <= datetime.combine(report_day, time.max),
         )
 
-    return query.order_by(Person.created_at.desc()).offset(offset).limit(limit).all()
+    return paginate_query_values(
+        query.order_by(Person.created_at.desc()),
+        limit=limit,
+        offset=offset,
+        response=response,
+    )
 
 
 @router.get("/{person_id}", response_model=PersonResponse)

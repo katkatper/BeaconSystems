@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { apiUrl } from "../api.jsx";
 
 const distributionOptions = [
     "Patrol", "Detectives", "Supervisors", "Dispatch", "State Police",
@@ -7,7 +8,7 @@ const distributionOptions = [
 ];
 
 const fetchBolos = async (token) => {
-    const response = await fetch("http://127.0.0.1:8000/bolos/", {
+    const response = await fetch(apiUrl("/bolos/"), {
         headers: {
             Authorization: `Bearer ${token}`,
         },
@@ -111,7 +112,7 @@ function BoloBoard() {
             expires_at: form.expires_at || null,
         };
 
-        const response = await fetch("http://127.0.0.1:8000/bolos/", {
+        const response = await fetch(apiUrl("/bolos/"), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

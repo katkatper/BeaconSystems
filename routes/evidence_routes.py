@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import FileResponse
+from fastapi import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from pathlib import Path
@@ -21,6 +22,7 @@ from security.case_access import (
 from services.activity_service import create_activity_log
 from config.settings import EVIDENCE_ENCRYPTION_ENABLED, EVIDENCE_ENCRYPTION_KEY_ID
 from services.geocoding_service import geocode_address
+from services.pagination import PaginationParams, paginate_query
 
 router = APIRouter(
     prefix="/evidence",
@@ -148,6 +150,8 @@ def serialize_evidence_items(items: list[Evidence], db: Session):
 def get_all_evidence(
     case_id: int | None = None,
     request: Request = None,
+    response: Response = None,
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -167,7 +171,11 @@ def get_all_evidence(
         ip_address=request.client.host if request and request.client else None,
     )
 
-    items = query.order_by(Evidence.created_at.desc()).all()
+    items = paginate_query(
+        query.order_by(Evidence.created_at.desc()),
+        pagination,
+        response,
+    )
 
     return serialize_evidence_items(items, db)
 
@@ -258,6 +266,8 @@ def upload_evidence(
 def get_case_evidence(
     case_id: int,
     request: Request = None,
+    response: Response = None,
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -275,7 +285,12 @@ def get_case_evidence(
         ip_address=request.client.host if request and request.client else None,
     )
 
-    return serialize_evidence_items(query.all(), db)
+    items = paginate_query(
+        query.order_by(Evidence.created_at.desc()),
+        pagination,
+        response,
+    )
+    return serialize_evidence_items(items, db)
 
 
 @router.get("/chain/{evidence_id}")

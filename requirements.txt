@@ -1,5 +1,6 @@
 alembic
 boto3
+email-validator
 fastapi
 passlib[bcrypt]
 bcrypt<4.1

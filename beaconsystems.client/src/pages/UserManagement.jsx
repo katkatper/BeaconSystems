@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 
 function UserManagement() {
@@ -57,7 +58,7 @@ function UserManagement() {
     };
 
     useEffect(() => {
-        fetch("http://127.0.0.1:8000/admin/users/", {
+        fetch(apiUrl("/admin/users/"), {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -91,7 +92,7 @@ function UserManagement() {
                 agency_id: newUser.agency_id ? Number(newUser.agency_id) : null,
             };
 
-            const response = await fetch("http://127.0.0.1:8000/admin/users/", {
+            const response = await fetch(apiUrl("/admin/users/"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -126,7 +127,7 @@ function UserManagement() {
     const updateUserStatus = async (userId, isActive) => {
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/admin/users/${userId}/status?is_active=${isActive}`,
+                apiUrl(`/admin/users/${userId}/status?is_active=${isActive}`),
                 {
                     method: "PUT",
                     headers: {
@@ -157,7 +158,7 @@ function UserManagement() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/admin/users/${userId}/reset-password`,
+                apiUrl(`/admin/users/${userId}/reset-password`),
                 {
                     method: "PUT",
                     headers: {
@@ -190,7 +191,7 @@ function UserManagement() {
     const promoteToInvestigator = async (userId) => {
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/admin/users/${userId}/role?role=investigator`,
+                apiUrl(`/admin/users/${userId}/role?role=investigator`),
                 {
                     method: "PUT",
                     headers: {

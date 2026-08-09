@@ -26,6 +26,9 @@ from models.evidence_chain import EvidenceChain
 from models.legal_access_request import LegalAccessRequest
 from models.case_access_grant import CaseAccessGrant
 from models.case_team_member import CaseTeamMember
+from models.partner_intake_record import PartnerIntakeRecord
+from models.agency_exchange import AgencyExchange
+from models.bolo_alert import BoloAlert
 
 
 

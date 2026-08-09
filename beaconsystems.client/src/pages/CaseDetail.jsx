@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import AuthenticatedImage from "../components/AuthenticatedImage.jsx";
 import { useParams, Link } from "react-router-dom";
@@ -49,7 +50,7 @@ function CaseDetail() {
 
         const loadCaseDetail = async () => {
             try {
-                const caseResponse = await fetch(`http://127.0.0.1:8000/cases/${id}`, {
+                const caseResponse = await fetch(apiUrl(`/cases/${id}`), {
                     headers: authHeaders,
                 });
 
@@ -71,24 +72,24 @@ function CaseDetail() {
                     agencyExchangesResponse,
                     correlationsResponse,
                 ] = await Promise.all([
-                    fetch(`http://127.0.0.1:8000/sightings/?case_id=${id}`, {
+                    fetch(apiUrl(`/sightings/?case_id=${id}`), {
                         headers: authHeaders,
                     }),
-                    fetch(`http://127.0.0.1:8000/timeline-events/?case_id=${id}`),
-                    fetch(`http://127.0.0.1:8000/evidence/case/${id}`, {
+                    fetch(apiUrl(`/timeline-events/?case_id=${id}`)),
+                    fetch(apiUrl(`/evidence/case/${id}`), {
                         headers: authHeaders,
                     }),
-                    fetch(`http://127.0.0.1:8000/persons/${caseData.person_id}`, {
+                    fetch(apiUrl(`/persons/${caseData.person_id}`), {
                         headers: authHeaders,
                     }),
                     fetch(
-                        `http://127.0.0.1:8000/external-records/?case_id=${id}`,
+                        apiUrl(`/external-records/?case_id=${id}`),
                         { headers: authHeaders }
                     ),
-                    fetch(`http://127.0.0.1:8000/agency-exchanges/?case_id=${id}`, {
+                    fetch(apiUrl(`/agency-exchanges/?case_id=${id}`), {
                         headers: authHeaders,
                     }),
-                    fetch(`http://127.0.0.1:8000/cases/${id}/correlations`, {
+                    fetch(apiUrl(`/cases/${id}/correlations`), {
                         headers: authHeaders,
                     }),
                 ]);
@@ -169,7 +170,7 @@ function CaseDetail() {
                 image_url: null,
             };
 
-            const response = await fetch("http://127.0.0.1:8000/sightings/", {
+            const response = await fetch(apiUrl("/sightings/"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -192,7 +193,7 @@ function CaseDetail() {
 
             const data = await response.json();
             const createdSightingResponse = data.sighting_id
-                ? await fetch(`http://127.0.0.1:8000/sightings/${data.sighting_id}`, {
+                ? await fetch(apiUrl(`/sightings/${data.sighting_id}`), {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -238,7 +239,7 @@ function CaseDetail() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/sightings/${sighting.sighting_id}`,
+                apiUrl(`/sightings/${sighting.sighting_id}`),
                 {
                     method: "DELETE",
                     headers: {
@@ -290,7 +291,7 @@ function CaseDetail() {
         const nextAssociates = [...associates, nextAssociate];
 
         try {
-            const response = await fetch(`http://127.0.0.1:8000/persons/${person.person_id}`, {
+            const response = await fetch(apiUrl(`/persons/${person.person_id}`), {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -313,7 +314,7 @@ function CaseDetail() {
 
             if (!response.ok) throw new Error("Failed to save associate");
 
-            const refreshedPersonResponse = await fetch(`http://127.0.0.1:8000/persons/${person.person_id}`, {
+            const refreshedPersonResponse = await fetch(apiUrl(`/persons/${person.person_id}`), {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -347,7 +348,7 @@ function CaseDetail() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/evidence/chain/${evidenceId}`,
+                apiUrl(`/evidence/chain/${evidenceId}`),
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
@@ -370,7 +371,7 @@ function CaseDetail() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/evidence/view/${evidenceId}`,
+                apiUrl(`/evidence/view/${evidenceId}`),
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -396,7 +397,7 @@ function CaseDetail() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/evidence/${evidenceId}/sensitive?is_sensitive=${isSensitive}`,
+                apiUrl(`/evidence/${evidenceId}/sensitive?is_sensitive=${isSensitive}`),
                 {
                     method: "PUT",
                     headers: {

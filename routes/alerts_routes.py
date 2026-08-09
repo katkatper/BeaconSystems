@@ -1,5 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from fastapi import Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from models.alerts import Alerts
@@ -7,6 +8,7 @@ from  database.connection import get_db
 from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import apply_related_case_access_filter, assert_case_write_access
+from services.pagination import PaginationParams, paginate_query
 
 # ALERTS ROUTES - FOR MANAGING ALERTS GENERATED FROM CASES OR EXTERNAL SOURCES
 
@@ -97,6 +99,10 @@ def create_alerts(
 
 def get_alerts(
 
+    response: Response,
+
+    pagination: PaginationParams = Depends(),
+
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -110,11 +116,11 @@ def get_alerts(
         (Alerts.title.is_(None)) | (~func.lower(Alerts.title).like("%deleted%")),
     )
 
-    return query.order_by(
-
-        Alerts.created_at.desc()
-
-    ).all()
+    return paginate_query(
+        query.order_by(Alerts.created_at.desc()),
+        pagination,
+        response,
+    )
 
 
 @router.put("/{alert_id}")

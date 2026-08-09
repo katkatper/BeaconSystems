@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useMemo, useState } from "react";
 import SightingMap from "./SightingMap.jsx";
 import { geocodeLocal } from "../geoUtils.js";
@@ -238,7 +239,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
         if (token && value.trim()) {
             try {
                 const response = await fetch(
-                    `http://127.0.0.1:8000/geocoding/address?address=${encodeURIComponent(value)}`,
+                    apiUrl(`/geocoding/address?address=${encodeURIComponent(value)}`),
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -328,7 +329,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
 
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("http://127.0.0.1:8000/timeline-events/", {
+            const response = await fetch(apiUrl("/timeline-events/"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

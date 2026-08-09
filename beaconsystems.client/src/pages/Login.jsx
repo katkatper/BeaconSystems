@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -67,7 +68,7 @@ function Login({ onLogin }) {
         setMfaCode("");
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/users/login", {
+            const response = await fetch(apiUrl("/users/login"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -103,7 +104,7 @@ function Login({ onLogin }) {
         setMessage("");
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/users/mfa/verify", {
+            const response = await fetch(apiUrl("/users/mfa/verify"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -140,7 +141,7 @@ function Login({ onLogin }) {
         }
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/users/change-password", {
+            const response = await fetch(apiUrl("/users/change-password"), {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",

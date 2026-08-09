@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from fastapi import Response
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -9,6 +10,7 @@ from models.case import Cases
 from models.user import User
 from security.auth import require_role
 from security.case_access import accessible_case_ids
+from services.pagination import PaginationParams, paginate_query
 from services.activity_service import create_activity_log
 
 
@@ -55,7 +57,9 @@ class AgencyExchangeStatusUpdate(BaseModel):
 
 @router.get("/")
 def list_agency_exchanges(
+    response: Response,
     case_id: int | None = Query(default=None),
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
@@ -82,7 +86,11 @@ def list_agency_exchanges(
 
         query = query.filter(AgencyExchange.case_id.in_(allowed_case_ids))
 
-    return query.order_by(AgencyExchange.created_at.desc()).limit(50).all()
+    return paginate_query(
+        query.order_by(AgencyExchange.created_at.desc()),
+        pagination,
+        response,
+    )
 
 
 @router.post("/")

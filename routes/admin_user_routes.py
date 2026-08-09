@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -7,6 +7,7 @@ from models.user import User
 from schemas.user_schema import AdminPasswordReset, AdminUserCreate
 from security.auth import hash_password, require_role
 from services.activity_service import create_activity_log
+from services.pagination import PaginationParams, paginate_query
 
 router = APIRouter(prefix="/admin/users", tags=["Admin Users"])
 
@@ -82,6 +83,8 @@ def create_user(
 
 @router.get("/")
 def get_users(
+    response: Response,
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
 ):
@@ -90,7 +93,12 @@ def get_users(
     if current_user.role != "admin":
         query = query.filter(User.agency_id == current_user.agency_id)
 
-    return [serialize_user(user) for user in query.order_by(User.username.asc()).all()]
+    users = paginate_query(
+        query.order_by(User.username.asc()),
+        pagination,
+        response,
+    )
+    return [serialize_user(user) for user in users]
 
 
 @router.put("/{user_id}/role")

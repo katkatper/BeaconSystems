@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
+from fastapi import Response
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
@@ -8,6 +9,7 @@ from models.timeline_events import Timeline_Event
 from security.auth import get_current_user, require_role
 from models.user import User
 from security.case_access import apply_related_case_access_filter, assert_case_write_access, get_authorized_case
+from services.pagination import PaginationParams, paginate_query
 
 
 
@@ -28,7 +30,9 @@ class TimelineEventCreate(BaseModel):
 
 @router.get("/")
 def get_timeline_events(
+    response: Response,
     case_id: Optional[int] = Query(None),
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -44,11 +48,11 @@ def get_timeline_events(
             Timeline_Event.case_id == case_id
         )
 
-    events = query.order_by(
-
-        Timeline_Event.timestamp.desc()
-
-    ).all()
+    events = paginate_query(
+        query.order_by(Timeline_Event.timestamp.desc()),
+        pagination,
+        response,
+    )
 
     return events
 

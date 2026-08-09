@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -24,7 +25,7 @@ function CaseAccess() {
         const token = localStorage.getItem("token");
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/cases/access-request", {
+            const response = await fetch(apiUrl("/cases/access-request"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

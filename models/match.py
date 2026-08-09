@@ -8,6 +8,8 @@ class Match(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
+    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True, index=True)
+
 
     person_id = Column(Integer, ForeignKey("persons.person_id"))
 

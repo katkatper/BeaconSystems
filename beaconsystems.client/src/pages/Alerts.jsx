@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -62,7 +63,7 @@ function Alerts() {
     const loadAlerts = () => {
         const token = localStorage.getItem("token");
 
-        fetch("http://127.0.0.1:8000/alerts/", {
+        fetch(apiUrl("/alerts/"), {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -87,8 +88,8 @@ function Alerts() {
         loadAlerts();
         const token = localStorage.getItem("token");
         Promise.all([
-            fetch("http://127.0.0.1:8000/cases/", { headers: { Authorization: `Bearer ${token}` } }),
-            fetch("http://127.0.0.1:8000/persons/?limit=200", { headers: { Authorization: `Bearer ${token}` } }),
+            fetch(apiUrl("/cases/"), { headers: { Authorization: `Bearer ${token}` } }),
+            fetch(apiUrl("/persons/?limit=200"), { headers: { Authorization: `Bearer ${token}` } }),
         ]).then(async ([caseResponse, personResponse]) => {
             setCases(caseResponse.ok ? await caseResponse.json() : []);
             setPersons(personResponse.ok ? await personResponse.json() : []);
@@ -167,7 +168,7 @@ function Alerts() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/alerts/?${query.toString()}`,
+                apiUrl(`/alerts/?${query.toString()}`),
                 {
                     method: "POST",
                     headers: {
@@ -216,7 +217,7 @@ function Alerts() {
         };
 
         try {
-            const response = await fetch(`http://127.0.0.1:8000/alerts/${alertId}`, {
+            const response = await fetch(apiUrl(`/alerts/${alertId}`), {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",

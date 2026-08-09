@@ -3,7 +3,7 @@ import json
 import re
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -19,6 +19,7 @@ from security.auth import get_current_user, require_role
 from security.case_access import apply_case_access_filter, get_authorized_case
 from schemas.case_schema import CaseCreate, CaseUpdate, CaseResponse, MessageResponse
 from services.activity_service import create_activity_log
+from services.pagination import PaginationParams, paginate_query, paginate_query_values
 
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
@@ -129,6 +130,10 @@ def get_cases_by_person(
 
     person_id: int,
 
+    response: Response,
+
+    pagination: PaginationParams = Depends(),
+
     db: Session = Depends(get_db),
 
     current_user: User = Depends(get_current_user),
@@ -139,7 +144,12 @@ def get_cases_by_person(
 
     query = apply_case_access_filter(query, current_user)
 
-    return attach_case_list_display_fields(query.all(), db)
+    cases = paginate_query(
+        query.order_by(Cases.updated_at.desc()),
+        pagination,
+        response,
+    )
+    return attach_case_list_display_fields(cases, db)
 
 
 @router.get("/test")
@@ -157,6 +167,8 @@ def get_cases_test():
 @router.get("/", response_model=List[CaseResponse])
 
 def get_cases(
+
+    response: Response,
 
     db: Session = Depends(get_db),
 
@@ -191,7 +203,12 @@ def get_cases(
     if investigator_id is not None:
         query = query.filter(Cases.investigator_id == investigator_id)
 
-    cases = query.offset(offset).limit(limit).all()
+    cases = paginate_query_values(
+        query.order_by(Cases.updated_at.desc()),
+        limit=limit,
+        offset=offset,
+        response=response,
+    )
     attach_case_list_display_fields(cases, db)
 
     create_activity_log(
@@ -269,7 +286,12 @@ def get_case_correlations(
     current_user: User = Depends(get_current_user),
 ):
     target_case = get_authorized_case(db, case_id, current_user)
-    accessible_cases = apply_case_access_filter(db.query(Cases), current_user).all()
+    accessible_cases = (
+        apply_case_access_filter(db.query(Cases), current_user)
+        .order_by(Cases.updated_at.desc())
+        .limit(500)
+        .all()
+    )
     accessible_case_ids = [case.case_id for case in accessible_cases]
     other_cases = [case for case in accessible_cases if case.case_id != case_id]
     case_lookup = {case.case_id: case for case in accessible_cases}
@@ -283,10 +305,20 @@ def get_case_correlations(
     if not target_person:
         return {"case_id": case_id, "generated_at": datetime.utcnow(), "correlations": []}
 
-    sightings = db.query(Sighting).filter(Sighting.case_id.in_(accessible_case_ids)).all()
-    external_records = db.query(ExternalRecord).filter(
-        ExternalRecord.case_id.in_(accessible_case_ids)
-    ).all()
+    sightings = (
+        db.query(Sighting)
+        .filter(Sighting.case_id.in_(accessible_case_ids))
+        .order_by(Sighting.created_at.desc())
+        .limit(2000)
+        .all()
+    )
+    external_records = (
+        db.query(ExternalRecord)
+        .filter(ExternalRecord.case_id.in_(accessible_case_ids))
+        .order_by(ExternalRecord.created_at.desc())
+        .limit(2000)
+        .all()
+    )
     target_sightings = [item for item in sightings if item.case_id == case_id]
     target_records = [item for item in external_records if item.case_id == case_id]
     correlations = []

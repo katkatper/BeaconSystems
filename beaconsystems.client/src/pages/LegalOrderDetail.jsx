@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -82,7 +83,7 @@ function LegalOrderDetail() {
 
         const loadRequest = async () => {
             try {
-                const response = await fetch(`http://127.0.0.1:8000/legal-access/${id}`, {
+                const response = await fetch(apiUrl(`/legal-access/${id}`), {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },

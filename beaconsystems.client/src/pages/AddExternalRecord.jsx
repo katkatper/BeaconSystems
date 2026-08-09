@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useState } from "react";
 
 function AddExternalRecord() {
@@ -34,7 +35,7 @@ function AddExternalRecord() {
         });
 
         const response = await fetch(
-            `http://127.0.0.1:8000/external-records/?${params.toString()}`,
+            apiUrl(`/external-records/?${params.toString()}`),
             {
                 method: "POST",
             }

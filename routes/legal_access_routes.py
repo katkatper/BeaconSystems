@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from fastapi import Response
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
@@ -13,6 +14,7 @@ from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import apply_case_access_filter, get_authorized_case
 from services.activity_service import create_activity_log
+from services.pagination import PaginationParams, paginate_query
 
 
 router = APIRouter(prefix="/legal-access", tags=["Legal Access Requests"])
@@ -279,8 +281,10 @@ def create_legal_access_request(
 
 @router.get("/")
 def get_legal_access_requests(
+    response: Response,
     status: Optional[str] = Query(None),
     case_id: Optional[int] = Query(None),
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -295,7 +299,11 @@ def get_legal_access_requests(
     if case_id is not None:
         query = query.filter(LegalAccessRequest.case_id == case_id)
 
-    requests = query.order_by(LegalAccessRequest.requested_at.desc()).all()
+    requests = paginate_query(
+        query.order_by(LegalAccessRequest.requested_at.desc()),
+        pagination,
+        response,
+    )
     return [serialize_legal_request(request, db) for request in requests]
 
 

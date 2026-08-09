@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import SightingMap from "./SightingMap.jsx";
 
@@ -9,7 +10,7 @@ function Sightings() {
         let isMounted = true;
         const token = localStorage.getItem("token");
 
-        fetch("http://127.0.0.1:8000/sightings/", {
+        fetch(apiUrl("/sightings/"), {
             headers: { Authorization: `Bearer ${token}` },
         })
             .then((response) => (response.ok ? response.json() : []))

@@ -51,7 +51,7 @@ def get_dashboard_summary(
         func.lower(Cases.priority_level) == "high"
     ).count()
 
-    accessible_case_ids = [case.case_id for case in case_query.all()]
+    accessible_case_ids = case_query.with_entities(Cases.case_id).subquery()
     missing_children = (
         active_case_query.join(Person, Cases.person_id == Person.person_id)
         .filter(Person.age < 18)
@@ -75,12 +75,8 @@ def get_dashboard_summary(
             CaseAccessGrant.agency_id == current_user.agency_id
         )
 
-    if accessible_case_ids:
-        evidence_query = evidence_query.filter(Evidence.case_id.in_(accessible_case_ids))
-        alert_query = alert_query.filter(Alerts.case_id.in_(accessible_case_ids))
-    else:
-        evidence_query = evidence_query.filter(Evidence.case_id == -1)
-        alert_query = alert_query.filter(Alerts.case_id == -1)
+    evidence_query = evidence_query.filter(Evidence.case_id.in_(accessible_case_ids))
+    alert_query = alert_query.filter(Alerts.case_id.in_(accessible_case_ids))
 
     dashboard_alert_query = alert_query.filter(
         (Alerts.alert_type.is_(None))
@@ -137,14 +133,10 @@ def get_dashboard_summary(
 
     leads_query = db.query(Leads)
     agency_exchange_query = db.query(AgencyExchange)
-    if accessible_case_ids:
-        leads_query = leads_query.filter(Leads.case_id.in_(accessible_case_ids))
-        agency_exchange_query = agency_exchange_query.filter(
-            AgencyExchange.case_id.in_(accessible_case_ids)
-        )
-    else:
-        leads_query = leads_query.filter(Leads.case_id == -1)
-        agency_exchange_query = agency_exchange_query.filter(AgencyExchange.case_id == -1)
+    leads_query = leads_query.filter(Leads.case_id.in_(accessible_case_ids))
+    agency_exchange_query = agency_exchange_query.filter(
+        AgencyExchange.case_id.in_(accessible_case_ids)
+    )
 
     outstanding_leads = leads_query.filter(
         func.lower(func.coalesce(Leads.status, "open")).notin_(
@@ -164,14 +156,10 @@ def get_dashboard_summary(
 
     bolo_query = db.query(BoloAlert)
     recent_sightings_query = db.query(Sighting)
-    if accessible_case_ids:
-        bolo_query = bolo_query.filter(BoloAlert.case_id.in_(accessible_case_ids))
-        recent_sightings_query = recent_sightings_query.filter(
-            Sighting.case_id.in_(accessible_case_ids)
-        )
-    elif current_user.role != "admin":
-        bolo_query = bolo_query.filter(BoloAlert.case_id == -1)
-        recent_sightings_query = recent_sightings_query.filter(Sighting.case_id == -1)
+    bolo_query = bolo_query.filter(BoloAlert.case_id.in_(accessible_case_ids))
+    recent_sightings_query = recent_sightings_query.filter(
+        Sighting.case_id.in_(accessible_case_ids)
+    )
 
     operational_case_rows = (
         active_case_query.join(Person, Cases.person_id == Person.person_id)

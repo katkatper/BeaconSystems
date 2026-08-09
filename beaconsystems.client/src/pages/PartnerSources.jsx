@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useMemo, useState } from "react";
 
 const sourceTypes = [
@@ -70,13 +71,13 @@ const authHeaders = (includeJson = false) => {
 
 const fetchPartnerWorkspace = async () => {
     const [sourcesResponse, recordsResponse, intakeResponse] = await Promise.all([
-        fetch("http://127.0.0.1:8000/integrations/", {
+        fetch(apiUrl("/integrations/"), {
             headers: authHeaders(),
         }),
-        fetch("http://127.0.0.1:8000/external-records/", {
+        fetch(apiUrl("/external-records/"), {
             headers: authHeaders(),
         }),
-        fetch("http://127.0.0.1:8000/partner-intake/", {
+        fetch(apiUrl("/partner-intake/"), {
             headers: authHeaders(),
         }),
     ]);
@@ -245,7 +246,7 @@ function PartnerSources() {
         e.preventDefault();
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/integrations/", {
+            const response = await fetch(apiUrl("/integrations/"), {
                 method: "POST",
                 headers: authHeaders(true),
                 body: JSON.stringify(sourceForm),
@@ -276,7 +277,7 @@ function PartnerSources() {
                     : null,
             };
 
-            const response = await fetch("http://127.0.0.1:8000/partner-intake/", {
+            const response = await fetch(apiUrl("/partner-intake/"), {
                 method: "POST",
                 headers: authHeaders(true),
                 body: JSON.stringify(payload),
@@ -303,7 +304,7 @@ function PartnerSources() {
     const updateSource = async (sourceId, updates) => {
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/integrations/${sourceId}`,
+                apiUrl(`/integrations/${sourceId}`),
                 {
                     method: "PUT",
                     headers: authHeaders(true),
@@ -339,7 +340,7 @@ function PartnerSources() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/partner-intake/${record.intake_id}/attach`,
+                apiUrl(`/partner-intake/${record.intake_id}/attach`),
                 {
                     method: "PUT",
                     headers: authHeaders(true),
@@ -374,7 +375,7 @@ function PartnerSources() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/partner-intake/${intakeId}/dismiss`,
+                apiUrl(`/partner-intake/${intakeId}/dismiss`),
                 {
                     method: "PUT",
                     headers: authHeaders(true),

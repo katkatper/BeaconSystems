@@ -1,5 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from fastapi import Response
 from typing import List, Optional
 from datetime import datetime
 from database.connection import get_db
@@ -18,6 +19,7 @@ from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResp
 from models.timeline_events import Timeline_Event
 from services.alert_service import create_alert
 from services.geocoding_service import geocode_address
+from services.pagination import paginate_query_values
 
 # CREATE APIRouter INSTANCE WITH PREFIX AND TAGS
 
@@ -117,6 +119,7 @@ def sightings_test():
 @router.get("/", response_model=List[SightingResponse])
 
 def get_sightings(
+    response: Response,
     case_id: Optional[int] = Query(None),
 
     limit: int = Query(20, ge=1, le=100),
@@ -134,7 +137,12 @@ def get_sightings(
         get_authorized_case(db, case_id, current_user)
         query = query.filter(Sighting.case_id == case_id)
 
-    sightings = query.offset(offset).limit(limit).all()
+    sightings = paginate_query_values(
+        query.order_by(Sighting.created_at.desc()),
+        limit=limit,
+        offset=offset,
+        response=response,
+    )
     
 
     create_activity_log(

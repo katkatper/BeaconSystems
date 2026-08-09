@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ from security.case_access import (
     get_authorized_case,
 )
 from services.geocoding_service import geocode_address
+from services.pagination import PaginationParams, paginate_query
 
 
 
@@ -71,16 +72,19 @@ def create_external_record(
 
     current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
 ):
-    if current_user.role == "investigator" and case_id is None:
+    if current_user.role != "admin" and case_id is None:
         raise HTTPException(
             status_code=400,
-            detail="Investigators must link external records to an assigned case.",
+            detail="Agency users must link external records to an authorized case.",
         )
 
+    authorized_case = None
     if case_id is not None:
-        assert_case_write_access(db, case_id, current_user)
+        authorized_case = assert_case_write_access(db, case_id, current_user)
 
     record = ExternalRecord(
+
+        agency_id=authorized_case.agency_id if authorized_case else None,
 
         integration_source_id=integration_source_id,
 
@@ -135,6 +139,10 @@ def get_external_records(
 
     case_id: Optional[int] = None,
 
+    response: Response = None,
+
+    pagination: PaginationParams = Depends(),
+
     db: Session = Depends(get_db),
 
     current_user: User = Depends(get_current_user),
@@ -151,4 +159,8 @@ def get_external_records(
         get_authorized_case(db, case_id, current_user)
         query = query.filter(ExternalRecord.case_id == case_id)
 
-    return query.all()
+    return paginate_query(
+        query.order_by(ExternalRecord.created_at.desc()),
+        pagination,
+        response,
+    )

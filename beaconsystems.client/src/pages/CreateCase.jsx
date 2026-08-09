@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 
 function CreateCase() {
@@ -19,7 +20,7 @@ function CreateCase() {
     useEffect(() => {
         const token = localStorage.getItem("token");
 
-        fetch("http://127.0.0.1:8000/persons/", {
+        fetch(apiUrl("/persons/"), {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -52,7 +53,7 @@ function CreateCase() {
                 agency_id: Number(formData.agency_id),
             };
 
-            const response = await fetch("http://127.0.0.1:8000/cases/", {
+            const response = await fetch(apiUrl("/cases/"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

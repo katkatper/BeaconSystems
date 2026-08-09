@@ -7,6 +7,7 @@ import time
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Response
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -18,6 +19,7 @@ from models.user import User
 from schemas.user_schema import MfaEnable, MfaLoginVerify, PasswordChange, UserCreate, UserLogin, UserResponse, UserRoleUpdate
 from security.auth import hash_password, verify_password, create_access_token, require_role, get_current_user
 from services.activity_service import create_activity_log
+from services.pagination import PaginationParams, paginate_query
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -612,12 +614,20 @@ def activate_user(
 
 def get_users(
 
+    response: Response,
+
+    pagination: PaginationParams = Depends(),
+
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin"))
 ):
 
 
-    users = db.query(User).all()
+    users = paginate_query(
+        db.query(User).order_by(User.username.asc()),
+        pagination,
+        response,
+    )
 
     create_activity_log(
 

@@ -39,6 +39,29 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("pool_size=DATABASE_POOL_SIZE", source)
         self.assertIn("max_overflow=DATABASE_MAX_OVERFLOW", source)
 
+    def test_frontend_pages_do_not_hard_code_a_local_api_host(self):
+        pages_directory = REPOSITORY_ROOT / "beaconsystems.client" / "src" / "pages"
+
+        offenders = [
+            path.name
+            for path in pages_directory.glob("*.jsx")
+            if "http://127.0.0.1:8000" in path.read_text(encoding="utf-8")
+            or "http://localhost" in path.read_text(encoding="utf-8")
+        ]
+
+        self.assertEqual(offenders, [])
+
+    def test_phase_zero_migration_merges_to_one_schema_head(self):
+        source = (
+            REPOSITORY_ROOT
+            / "migrations"
+            / "versions"
+            / "fe5f60718293_merge_phase_zero_migration_heads.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('"c2d3e4f5a6b7"', source)
+        self.assertIn('"fd4e5f607182"', source)
+
 
 if __name__ == "__main__":
     unittest.main()

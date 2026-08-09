@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import AuthenticatedImage from "../components/AuthenticatedImage.jsx";
 import { useParams } from "react-router-dom";
@@ -70,7 +71,7 @@ function PersonDetail() {
     useEffect(() => {
         const token = localStorage.getItem("token");
 
-        fetch(`http://127.0.0.1:8000/persons/${id}`, {
+        fetch(apiUrl(`/persons/${id}`), {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -80,7 +81,7 @@ function PersonDetail() {
                 setPerson(data);
 
                 return fetch(
-                    `http://127.0.0.1:8000/cases/by-person/${id}`,
+                    apiUrl(`/cases/by-person/${id}`),
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,

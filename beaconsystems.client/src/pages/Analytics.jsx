@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 
 function Analytics() {
@@ -7,7 +8,7 @@ function Analytics() {
         let isMounted = true;
         const token = localStorage.getItem("token");
 
-        fetch("http://127.0.0.1:8000/dashboard/summary", {
+        fetch(apiUrl("/dashboard/summary"), {
             headers: { Authorization: `Bearer ${token}` },
         })
             .then((response) => (response.ok ? response.json() : null))

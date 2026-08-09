@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 
 const authorityTypes = [
@@ -30,7 +31,7 @@ const sourceTypes = [
 const fetchLegalAccessRequests = async () => {
     const token = localStorage.getItem("token");
 
-    const response = await fetch("http://127.0.0.1:8000/legal-access/", {
+    const response = await fetch(apiUrl("/legal-access/"), {
         headers: {
             Authorization: `Bearer ${token}`,
         },
@@ -104,7 +105,7 @@ function LegalAccessRequests() {
         };
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/legal-access/", {
+            const response = await fetch(apiUrl("/legal-access/"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -140,7 +141,7 @@ function LegalAccessRequests() {
 
         try {
             const response = await fetch(
-                `http://127.0.0.1:8000/legal-access/${requestId}/review`,
+                apiUrl(`/legal-access/${requestId}/review`),
                 {
                     method: "PUT",
                     headers: {

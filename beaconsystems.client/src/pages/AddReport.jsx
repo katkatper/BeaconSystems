@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useState } from "react";
 
 function AddPerson() {
@@ -44,7 +45,7 @@ function AddPerson() {
                 weight: formData.weight ? Number(formData.weight) : null,
             };
 
-            const response = await fetch("http://127.0.0.1:8000/persons/", {
+            const response = await fetch(apiUrl("/persons/"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

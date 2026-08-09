@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from models.IntegrationSource import IntegrationSource
 from models.user import User
 from security.auth import get_current_user, require_role
 from services.activity_service import create_activity_log
+from services.pagination import PaginationParams, paginate_query
 
 
 router = APIRouter(prefix="/integrations", tags=["Integrations"])
@@ -81,10 +82,24 @@ def create_integration_source(
 
 @router.get("/")
 def get_integration_sources(
+    response: Response,
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return db.query(IntegrationSource).order_by(IntegrationSource.created_at.desc()).all()
+    query = db.query(IntegrationSource)
+
+    if current_user.role != "admin":
+        query = query.filter(
+            IntegrationSource.status == "approved",
+            IntegrationSource.is_active == True,  # noqa: E712
+        )
+
+    return paginate_query(
+        query.order_by(IntegrationSource.created_at.desc()),
+        pagination,
+        response,
+    )
 
 
 @router.put("/{source_id}")
@@ -92,7 +107,7 @@ def update_integration_source(
     source_id: int,
     data: IntegrationSourceUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("admin")),
 ):
     allowed_statuses = {"pending", "approved", "denied", "suspended", "revoked"}
 

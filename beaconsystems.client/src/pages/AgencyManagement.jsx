@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { apiGet, apiPost } from "../api.jsx";
+import { apiGet, apiPost, apiUrl } from "../api.jsx";
 
 
 const starterAgencies = [
@@ -350,7 +350,7 @@ function AgencyManagement() {
 
         const loadAgencies = async () => {
             try {
-                const response = await fetch("http://127.0.0.1:8000/agencies/", {
+                const response = await fetch(apiUrl("/agencies/"), {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },

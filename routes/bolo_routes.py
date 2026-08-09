@@ -2,6 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
+from fastapi import Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,7 @@ from security.auth import get_current_user, require_role
 from security.case_access import apply_related_case_access_filter, assert_case_write_access
 from services.activity_service import create_activity_log
 from services.geocoding_service import geocode_address
+from services.pagination import PaginationParams, paginate_query
 
 
 router = APIRouter(prefix="/bolos", tags=["BOLO Alerts"])
@@ -104,7 +106,9 @@ def apply_geocode_fields(bolo: BoloAlert, location: str | None) -> None:
 
 @router.get("/")
 def list_bolos(
+    response: Response,
     status: str | None = "active",
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -118,7 +122,11 @@ def list_bolos(
                 or_(BoloAlert.expires_at.is_(None), BoloAlert.expires_at > datetime.utcnow())
             )
 
-    return query.order_by(BoloAlert.created_at.desc()).all()
+    return paginate_query(
+        query.order_by(BoloAlert.created_at.desc()),
+        pagination,
+        response,
+    )
 
 
 @router.post("/")

@@ -9,6 +9,7 @@ class PartnerIntakeRecord(Base):
     __tablename__ = "partner_intake_records"
 
     intake_id = Column(Integer, primary_key=True, index=True)
+    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True, index=True)
     integration_source_id = Column(Integer, ForeignKey("integration_sources.id"), nullable=False)
     received_by_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     reviewed_by_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)

@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { useEffect, useMemo, useState } from "react";
 
 function ExternalRecordList() {
@@ -13,8 +14,8 @@ function ExternalRecordList() {
         };
 
         Promise.all([
-            fetch("http://127.0.0.1:8000/external-records/", { headers }),
-            fetch("http://127.0.0.1:8000/integrations/", { headers }),
+            fetch(apiUrl("/external-records/"), { headers }),
+            fetch(apiUrl("/integrations/"), { headers }),
         ])
             .then(async ([recordsResponse, partnersResponse]) => {
                 const recordsData = recordsResponse.ok

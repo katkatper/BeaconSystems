@@ -1,3 +1,4 @@
+import { apiUrl } from "../api.jsx";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 
 const IntelligenceMap3D = lazy(() => import("./IntelligenceMap3D.jsx"));
@@ -37,11 +38,11 @@ function IntelligenceCenter() {
             try {
                 const [sightingsResponse, recordsResponse, bolosResponse, evidenceResponse, personsResponse] =
                     await Promise.all([
-                        fetch("http://127.0.0.1:8000/sightings/", { headers }),
-                        fetch("http://127.0.0.1:8000/external-records/", { headers }),
-                        fetch("http://127.0.0.1:8000/bolos/", { headers }),
-                        fetch("http://127.0.0.1:8000/evidence/", { headers }),
-                        fetch("http://127.0.0.1:8000/persons/?limit=100", { headers }),
+                        fetch(apiUrl("/sightings/"), { headers }),
+                        fetch(apiUrl("/external-records/"), { headers }),
+                        fetch(apiUrl("/bolos/"), { headers }),
+                        fetch(apiUrl("/evidence/"), { headers }),
+                        fetch(apiUrl("/persons/?limit=100"), { headers }),
                     ]);
 
                 const [sightingsData, recordsData, bolosData, evidenceData, personsData] = await Promise.all([

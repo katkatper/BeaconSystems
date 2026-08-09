@@ -1,13 +1,14 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from config.settings import PARTNER_WEBHOOK_TOKEN
 from database.connection import get_db
 from models.IntegrationSource import IntegrationSource
+from models.agencies import Agencies
 from models.case import Cases
 from models.external_record import ExternalRecord
 from models.partner_intake_record import PartnerIntakeRecord
@@ -16,14 +17,17 @@ from models.timeline_events import Timeline_Event
 from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import assert_case_write_access
+from security.tenant_scope import apply_partner_intake_agency_scope
 from services.activity_service import create_activity_log
 from services.geocoding_service import geocode_address
+from services.pagination import PaginationParams, paginate_query
 
 
 router = APIRouter(prefix="/partner-intake", tags=["Partner Intake"])
 
 
 class PartnerIntakeCreate(BaseModel):
+    agency_id: Optional[int] = None
     integration_source_id: int
     record_type: str
     external_id: Optional[str] = None
@@ -191,12 +195,18 @@ def score_case_match(case: Cases, data: PartnerIntakeCreate) -> tuple[int, list[
     return min(score, 100), reasons
 
 
-def find_best_case_match(db: Session, data: PartnerIntakeCreate):
+def find_best_case_match(db: Session, data: PartnerIntakeCreate, agency_id: int):
     best_match = None
     best_score = 0
     best_reasons: list[str] = []
 
-    cases = db.query(Cases).join(Person).all()
+    cases = (
+        db.query(Cases)
+        .join(Person)
+        .filter(Cases.agency_id == agency_id)
+        .limit(500)
+        .all()
+    )
 
     for case in cases:
         score, reasons = score_case_match(case, data)
@@ -219,12 +229,18 @@ def create_intake_record(
     source: IntegrationSource,
     intake_channel: str,
     received_by_user_id: int | None,
+    agency_id: int,
 ):
-    matched_case, match_score, match_reason = find_best_case_match(db, data)
+    matched_case, match_score, match_reason = find_best_case_match(
+        db,
+        data,
+        agency_id,
+    )
     status = "matched_pending_review" if matched_case else "pending_review"
     geocoded = geocode_address(data.location)
 
     intake = PartnerIntakeRecord(
+        agency_id=agency_id,
         integration_source_id=data.integration_source_id,
         received_by_user_id=received_by_user_id,
         suggested_case_id=matched_case.case_id if matched_case else None,
@@ -270,6 +286,7 @@ def get_approved_source(db: Session, source_id: int):
 def serialize_partner_intake(intake: PartnerIntakeRecord) -> dict[str, Any]:
     return {
         "intake_id": intake.intake_id,
+        "agency_id": intake.agency_id,
         "integration_source_id": intake.integration_source_id,
         "received_by_user_id": intake.received_by_user_id,
         "reviewed_by_user_id": intake.reviewed_by_user_id,
@@ -306,10 +323,19 @@ def serialize_partner_intake(intake: PartnerIntakeRecord) -> dict[str, Any]:
 @router.get("/")
 def list_partner_intake_records(
     status: Optional[str] = None,
+    agency_id: Optional[int] = None,
+    response: Response = None,
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(PartnerIntakeRecord)
+    query = apply_partner_intake_agency_scope(
+        db.query(PartnerIntakeRecord),
+        current_user,
+    )
+
+    if current_user.role == "admin" and agency_id is not None:
+        query = query.filter(PartnerIntakeRecord.agency_id == agency_id)
 
     if status:
         query = query.filter(PartnerIntakeRecord.status == status)
@@ -320,7 +346,11 @@ def list_partner_intake_records(
             )
         )
 
-    records = query.order_by(PartnerIntakeRecord.received_at.desc()).all()
+    records = paginate_query(
+        query.order_by(PartnerIntakeRecord.received_at.desc()),
+        pagination,
+        response,
+    )
     return [serialize_partner_intake(record) for record in records]
 
 
@@ -331,12 +361,21 @@ def receive_partner_intake_record(
     current_user: User = Depends(require_role("admin", "agency_admin")),
 ):
     source = get_approved_source(db, data.integration_source_id)
+    agency_id = current_user.agency_id if current_user.role != "admin" else data.agency_id
+
+    if agency_id is None:
+        raise HTTPException(status_code=400, detail="Select an agency for this intake")
+
+    if not db.query(Agencies).filter(Agencies.agency_id == agency_id).first():
+        raise HTTPException(status_code=404, detail="Agency not found")
+
     intake = create_intake_record(
         db=db,
         data=data,
         source=source,
         intake_channel="manual",
         received_by_user_id=current_user.user_id,
+        agency_id=agency_id,
     )
 
     create_activity_log(
@@ -371,18 +410,28 @@ def receive_automated_partner_intake_record(
         raise HTTPException(status_code=401, detail="Invalid partner webhook token")
 
     source = get_approved_source(db, data.integration_source_id)
+    if data.agency_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Automated partner intake must identify its destination agency",
+        )
+
+    if not db.query(Agencies).filter(Agencies.agency_id == data.agency_id).first():
+        raise HTTPException(status_code=404, detail="Agency not found")
+
     intake = create_intake_record(
         db=db,
         data=data,
         source=source,
         intake_channel="automated",
         received_by_user_id=None,
+        agency_id=data.agency_id,
     )
 
     create_activity_log(
         db=db,
         user_id=None,
-        agency_id=None,
+        agency_id=data.agency_id,
         action="AUTOMATED_PARTNER_INTAKE",
         entity="partner_intake_record",
         entity_id=intake.intake_id,
@@ -402,8 +451,11 @@ def attach_partner_intake_to_case(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
-    intake = db.query(PartnerIntakeRecord).filter(
-        PartnerIntakeRecord.intake_id == intake_id
+    intake = apply_partner_intake_agency_scope(
+        db.query(PartnerIntakeRecord).filter(
+            PartnerIntakeRecord.intake_id == intake_id
+        ),
+        current_user,
     ).first()
 
     if not intake:
@@ -419,7 +471,15 @@ def attach_partner_intake_to_case(
             detail="Select a valid legal authority before attaching partner data",
         )
 
-    assert_case_write_access(db, data.case_id, current_user)
+    target_case = assert_case_write_access(db, data.case_id, current_user)
+    if intake.agency_id != target_case.agency_id:
+        raise HTTPException(status_code=404, detail="Partner intake record not found")
+
+    if data.person_id is not None and data.person_id != target_case.person_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Selected person is not the subject of the target case",
+        )
     first_name, last_name = split_subject_name(intake.subject_name)
     reviewed_at = datetime.utcnow()
     linked_raw_data = dict(intake.raw_data or {})
@@ -432,6 +492,7 @@ def attach_partner_intake_to_case(
     }
 
     external_record = ExternalRecord(
+        agency_id=target_case.agency_id,
         integration_source_id=intake.integration_source_id,
         record_type=intake.record_type,
         external_id=intake.external_id,
@@ -440,7 +501,7 @@ def attach_partner_intake_to_case(
         location=intake.location,
         notes=intake.summary,
         raw_data=linked_raw_data,
-        person_id=data.person_id,
+        person_id=data.person_id or target_case.person_id,
         case_id=data.case_id,
     )
     copy_intake_geocode_fields(external_record, intake)
@@ -453,7 +514,7 @@ def attach_partner_intake_to_case(
 
     timeline_event = Timeline_Event(
         case_id=data.case_id,
-        person_id=data.person_id,
+        person_id=data.person_id or target_case.person_id,
         event_type="partner_intake_attached",
         source_type=intake.record_type,
         location=intake.location,
@@ -496,8 +557,11 @@ def dismiss_partner_intake_record(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
 ):
-    intake = db.query(PartnerIntakeRecord).filter(
-        PartnerIntakeRecord.intake_id == intake_id
+    intake = apply_partner_intake_agency_scope(
+        db.query(PartnerIntakeRecord).filter(
+            PartnerIntakeRecord.intake_id == intake_id
+        ),
+        current_user,
     ).first()
 
     if not intake:
