@@ -1,4 +1,4 @@
-from turtle import title
+
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float
 from database.connection import Base
 from datetime import datetime
@@ -16,8 +16,7 @@ class Alerts(Base):
     person_id= Column(Integer, ForeignKey('persons.person_id'))
 
 
-    recipient_agency_id= Column(Integer)
-
+    recipient_agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True)
 
     alert_type= Column(String(100))
 

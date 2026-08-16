@@ -56,5 +56,3 @@ def downgrade():
         "external_records",
         "agency_id"
     )
-.venv/
-uploads/
