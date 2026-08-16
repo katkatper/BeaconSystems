@@ -10,3 +10,6 @@ __pycache__/
 
 *.csproj.user
 packages/
+
+.venv/
+uploads/
