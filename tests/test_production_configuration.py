@@ -12,8 +12,7 @@ class ProductionConfigurationTests(unittest.TestCase):
         ast.parse(source)
 
         self.assertNotIn('allow_origins=["*"]', source)
-        self.assertEqual(source.count("Base.metadata.create_all(bind=engine)"), 1)
-        self.assertIn("if ENABLE_LOCAL_SCHEMA_BOOTSTRAP:", source)
+        self.assertNotIn("Base.metadata.create_all(bind=engine)",source, )
         self.assertEqual(source.count("app.include_router(person_router)"), 1)
         self.assertEqual(source.count("app.include_router(alerts_router)"), 1)
         self.assertEqual(source.count("app.include_router(sightings_router)"), 1)

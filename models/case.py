@@ -20,7 +20,7 @@ class Cases(Base):
 
     person_id = Column(Integer, ForeignKey("persons.person_id"), nullable=False)
 
-    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True)
+    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=False)
 
 
     description = Column(Text, nullable=True)

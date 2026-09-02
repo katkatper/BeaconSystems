@@ -9,23 +9,18 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text as sql_text
-from database.connection import Base, engine
-from database.schema_maintenance import ensure_local_schema
+from database.connection import engine
 from config.settings import (
     API_REQUEST_TIMEOUT_SECONDS,
     CORS_ORIGINS,
-    ENABLE_LOCAL_SCHEMA_BOOTSTRAP,
     IS_PRODUCTION,
     validate_runtime_settings,
 )
 from  contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from fastapi import APIRouter
 
-# Import models before create_all so SQLAlchemy knows which tables belong
-# to the application metadata. Alembic migrations should be used for production.
-# create_all is helpful for local development only.
+# Import application models so SQLAlchemy/Alembic metadata includes all tables.
+# Alembic is the source of truth for schema changes.
 
 from models.external_record import ExternalRecord
 from models.user import User
@@ -49,10 +44,6 @@ from models.investigators import Investigators
 from models.IntegrationSource import IntegrationSource
 from models.partner_intake_record import PartnerIntakeRecord
 from models.match import Match
-from models.person import Person
-from models.case import Cases
-from models.alerts import Alerts
-from models.activity_log import ActivityLog
 from models.bolo_alert import BoloAlert
 from models.agency_exchange import AgencyExchange
 
@@ -86,21 +77,7 @@ from routes.geocoding_routes import router as geocoding_router
 # Register API areas. Each router owns one operational workflow such as cases,
 # evidence, legal authority, partner sources, BOLO alerts, or supervisor review.
 
-router = APIRouter()
 
-class PersonCreate(BaseModel):
-    name: str
-    age: int
-
-@router.post("/api/add-person")
-
-def add_person(person: PersonCreate):
-
-    return {
-        "message": "Person received",
-        "name": person.name,
-        "age": person.age
-    }
 
 @asynccontextmanager
 
@@ -189,12 +166,8 @@ app.add_middleware(
     expose_headers=["X-Request-ID", "X-Page-Limit", "X-Page-Offset", "X-Has-More", "X-Next-Cursor"],
 )
     
-# Local development table bootstrap. In AWS/GovCloud production, use Alembic
-# migrations instead so schema changes are reviewed, repeatable, and auditable.
 
-if ENABLE_LOCAL_SCHEMA_BOOTSTRAP:
-    Base.metadata.create_all(bind=engine)
-    ensure_local_schema(engine)
+
 app.include_router(users_router)
 app.include_router(sightings_router)
 app.include_router(cases_router)
@@ -215,6 +188,7 @@ app.include_router(audit_router)
 app.include_router(agency_exchange_router)
 app.include_router(security_router)
 app.include_router(geocoding_router)
+app.include_router(admin_log_router)
 
 # Lightweight health endpoint used to confirm the API process is reachable.
 

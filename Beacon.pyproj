@@ -26,7 +26,8 @@
     <Compile Include="ai_engine\face_recognition.py" />
     <Compile Include="ai_engine\main.py" />
     <Compile Include="ai_engine\pattern_detection.py" />
-    <Compile Include="ai_engine\test_rds.py" />
+    <Compile Include="ai_engine\check_rds_connection.py" />
+    <Compile Include="check_user_dependencies.py" />
     <Compile Include="database\__init__.py" />
     <Compile Include="models\bolo_alert.py" />
     <Compile Include="models\external_record.py" />
@@ -133,6 +134,7 @@
     <Content Include="ai_engine\requirements.txt" />
     <Content Include="Images\Beacon.png" />
     <Content Include="Pipfile" />
+    <Content Include="requirements-dev.txt" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

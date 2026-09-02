@@ -19,7 +19,7 @@ class User(Base):
 
     role = Column(String, default="viewer")  # ADMIN, INVESTIGATOR, ANALYST, VIEWER
 
-    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True)
+    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=False)
 
 
     is_active = Column(Boolean, default=True)

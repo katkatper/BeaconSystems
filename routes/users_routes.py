@@ -124,12 +124,12 @@ def mfa_otpauth_uri(user: User) -> str:
 # USER ROUTES WITH ACTIVITY LOGGING
 
 @router.post("/register")
-
 def register_user(
-
     data: UserCreate,
-
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role("platform_admin", "agency_admin")
+    ),
 ):
 
     existing_user = db.query(User).filter(
@@ -147,19 +147,14 @@ def register_user(
 
 
     new_user = User(
-
-        username=data.username,
-
-        email=data.email,
-
-        password_hash=hash_password(data.password),
-
-        role="admin",
-
-        password_changed_at=datetime.utcnow(),
-
-        must_change_password=False,
-    )
+    username=data.username,
+    email=data.email,
+    password_hash=hash_password(data.password),
+    role="investigator",
+    agency_id=current_user.agency_id,
+    password_changed_at=datetime.utcnow(),
+    must_change_password=False,
+)
 
 
     db.add(new_user)
