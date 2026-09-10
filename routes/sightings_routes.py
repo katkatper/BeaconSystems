@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from fastapi import Response
 from typing import List, Optional
@@ -194,7 +194,7 @@ def create_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "investigator", "supervisor")),
 ):
 
     assert_case_write_access(db, data.case_id, current_user)
@@ -317,7 +317,7 @@ def update_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "investigator", "supervisor")),
 ):
 
     sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()
@@ -420,7 +420,7 @@ def delete_sighting(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "investigator", "supervisor")),
 ):
 
     sighting = db.query(Sighting).filter(Sighting.sighting_id == sighting_id).first()

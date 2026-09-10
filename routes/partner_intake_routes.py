@@ -334,7 +334,7 @@ def list_partner_intake_records(
         current_user,
     )
 
-    if current_user.role == "admin" and agency_id is not None:
+    if current_user.role == "platform_admin" and agency_id is not None:
         query = query.filter(PartnerIntakeRecord.agency_id == agency_id)
 
     if status:
@@ -358,10 +358,10 @@ def list_partner_intake_records(
 def receive_partner_intake_record(
     data: PartnerIntakeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin")),
 ):
     source = get_approved_source(db, data.integration_source_id)
-    agency_id = current_user.agency_id if current_user.role != "admin" else data.agency_id
+    agency_id = current_user.agency_id if current_user.role != "platform_admin" else data.agency_id
 
     if agency_id is None:
         raise HTTPException(status_code=400, detail="Select an agency for this intake")
@@ -449,7 +449,7 @@ def attach_partner_intake_to_case(
     intake_id: int,
     data: PartnerIntakeAttach,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     intake = apply_partner_intake_agency_scope(
         db.query(PartnerIntakeRecord).filter(
@@ -555,7 +555,7 @@ def dismiss_partner_intake_record(
     intake_id: int,
     data: PartnerIntakeReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     intake = apply_partner_intake_agency_scope(
         db.query(PartnerIntakeRecord).filter(

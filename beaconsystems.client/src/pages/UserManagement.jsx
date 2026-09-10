@@ -19,14 +19,14 @@ function UserManagement() {
     });
     const token = localStorage.getItem("token");
     const currentRole = localStorage.getItem("role") || "viewer";
-    const roleOptions = currentRole === "admin"
+    const roleOptions = currentRole === "platform_admin"
         ? [
             ["investigator", "Investigator"],
             ["supervisor", "Supervisor"],
             ["analyst", "Analyst"],
             ["viewer", "Viewer"],
             ["agency_admin", "Agency Admin"],
-            ["admin", "Admin"],
+            ["platform_admin", "Admin"],
         ]
         : [
             ["investigator", "Investigator"],
@@ -46,7 +46,7 @@ function UserManagement() {
         return matchesSearch && matchesRole && matchesStatus;
     });
     const canManageUser = (user) => currentRole !== "supervisor" ||
-        !["admin", "agency_admin"].includes(user.role);
+        !["platform_admin", "agency_admin"].includes(user.role);
     const getApiErrorMessage = (errorData, fallback) => {
         if (Array.isArray(errorData.detail)) {
             return errorData.detail
@@ -276,7 +276,7 @@ function UserManagement() {
                             ))}
                         </select>
 
-                        {currentRole === "admin" && (
+                        {currentRole === "platform_admin" && (
                             <input
                                 type="number"
                                 min="1"

@@ -70,9 +70,9 @@ def create_external_record(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "investigator")),
 ):
-    if current_user.role != "admin" and case_id is None:
+    if current_user.role != "platform_admin" and case_id is None:
         raise HTTPException(
             status_code=400,
             detail="Agency users must link external records to an authorized case.",

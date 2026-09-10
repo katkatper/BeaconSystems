@@ -1,6 +1,6 @@
 import unittest
 
-from fastapi import Response
+from fastapi import HTTPException, Response
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -16,6 +16,11 @@ from models.user import User
 from security.tenant_scope import (
     apply_partner_intake_agency_scope,
     apply_person_agency_scope,
+)
+from security.user_management import (
+    apply_user_management_scope,
+    assert_role_assignment_access,
+    assert_user_management_access,
 )
 from services.pagination import PaginationParams, paginate_query
 
@@ -162,13 +167,58 @@ class TenantIsolationDatabaseTests(unittest.TestCase):
         self.assertEqual([item.intake_id for item in agency_a_intake], [1])
         self.assertEqual([item.intake_id for item in agency_b_intake], [2])
 
+    def test_agency_admin_user_scope_excludes_other_agencies(self):
+        agency_admin = User(
+            user_id=3003,
+            username="agency-admin-a",
+            email="agency-admin-a@example.test",
+            password_hash="test",
+            role="agency_admin",
+            agency_id=101,
+            is_active=True,
+        )
+
+        users = apply_user_management_scope(
+            self.db.query(User),
+            agency_admin,
+        ).all()
+
+        self.assertEqual([user.user_id for user in users], [1001])
+
+    def test_agency_admin_cannot_manage_cross_agency_user(self):
+        agency_admin = User(role="agency_admin", agency_id=101)
+
+        with self.assertRaises(HTTPException) as raised:
+            assert_user_management_access(agency_admin, self.supervisor_b)
+
+        self.assertEqual(raised.exception.status_code, 403)
+
+    def test_agency_admin_cannot_assign_platform_admin(self):
+        agency_admin = User(role="agency_admin", agency_id=101)
+
+        with self.assertRaises(HTTPException) as raised:
+            assert_role_assignment_access(agency_admin, "platform_admin")
+
+        self.assertEqual(raised.exception.status_code, 403)
+
+    def test_platform_admin_can_manage_users_across_agencies(self):
+        platform_admin = User(role="platform_admin", agency_id=101)
+
+        assert_user_management_access(platform_admin, self.supervisor_b)
+        users = apply_user_management_scope(
+            self.db.query(User),
+            platform_admin,
+        ).all()
+
+        self.assertEqual({user.user_id for user in users}, {1001, 2002})
+
     def test_admin_scope_can_cross_agencies(self):
         admin = User(
             user_id=9999,
             username="national-admin",
             email="national-admin@example.test",
             password_hash="test",
-            role="admin",
+            role="platform_admin",
             is_active=True,
         )
 

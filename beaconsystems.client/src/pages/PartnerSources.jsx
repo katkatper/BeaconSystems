@@ -110,8 +110,8 @@ function PartnerSources() {
     const [sourceStatusFilter, setSourceStatusFilter] = useState("all");
     const [sourceTypeFilter, setSourceTypeFilter] = useState("all");
     const role = localStorage.getItem("role");
-    const canCreatePartnerSource = role === "admin";
-    const canReceivePartnerData = role === "admin" || role === "agency_admin";
+    const canCreatePartnerSource = role === "platform_admin";
+    const canReceivePartnerData = role === "platform_admin" || role === "agency_admin";
     const showSupervisorPartnerView = !canCreatePartnerSource;
     const visibleItems = (key, items) =>
         (items || []).slice(0, expandedLists[key] ? 6 : 2);

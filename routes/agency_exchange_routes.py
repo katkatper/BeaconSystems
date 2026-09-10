@@ -61,7 +61,7 @@ def list_agency_exchanges(
     case_id: int | None = Query(default=None),
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     query = db.query(AgencyExchange)
 
@@ -97,19 +97,19 @@ def list_agency_exchanges(
 def create_agency_exchange(
     data: AgencyExchangeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     case = db.query(Cases).filter(Cases.case_id == data.case_id).first()
 
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    if current_user.role != "admin" and case.agency_id != current_user.agency_id:
+    if current_user.role != "platform_admin" and case.agency_id != current_user.agency_id:
         raise HTTPException(status_code=403, detail="Cannot create request for another agency")
 
     if data.status:
         status_value = data.status
-    elif current_user.role in {"admin", "agency_admin", "supervisor"}:
+    elif current_user.role in {"platform_admin", "agency_admin", "supervisor"}:
         status_value = "approved"
     else:
         status_value = "submitted"
@@ -175,7 +175,7 @@ def update_agency_exchange_status(
     exchange_id: int,
     data: AgencyExchangeStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     if data.status not in AGENCY_EXCHANGE_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid agency request status")
@@ -187,7 +187,7 @@ def update_agency_exchange_status(
 
     case = db.query(Cases).filter(Cases.case_id == exchange.case_id).first()
 
-    if current_user.role != "admin" and case and case.agency_id != current_user.agency_id:
+    if current_user.role != "platform_admin" and case and case.agency_id != current_user.agency_id:
         raise HTTPException(status_code=403, detail="Cannot update another agency request")
 
     old_status = exchange.status

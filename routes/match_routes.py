@@ -26,7 +26,7 @@ def run_matching(
     candidate_limit: int = Query(200, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role("admin", "agency_admin", "supervisor")
+        require_role("platform_admin", "agency_admin", "supervisor")
     ),
 ):
 
@@ -42,7 +42,7 @@ def run_matching(
         ExternalRecord.case_id,
         current_user,
     )
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         records = records.filter(ExternalRecord.agency_id == current_user.agency_id)
     records = records.order_by(ExternalRecord.created_at.desc()).limit(candidate_limit).all()
 
@@ -62,7 +62,7 @@ def run_matching(
 
                     agency_id=(
                         current_user.agency_id
-                        if current_user.role != "admin"
+                        if current_user.role != "platform_admin"
                         else record.agency_id
                     ),
 

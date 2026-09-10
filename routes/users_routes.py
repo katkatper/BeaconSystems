@@ -18,6 +18,12 @@ from database.connection import get_db
 from models.user import User
 from schemas.user_schema import MfaEnable, MfaLoginVerify, PasswordChange, UserCreate, UserLogin, UserResponse, UserRoleUpdate
 from security.auth import hash_password, verify_password, create_access_token, require_role, get_current_user
+from security.user_management import (
+    USER_MANAGER_ROLES,
+    apply_user_management_scope,
+    assert_role_assignment_access,
+    assert_user_management_access,
+)
 from services.activity_service import create_activity_log
 from services.pagination import PaginationParams, paginate_query
 
@@ -441,7 +447,7 @@ def update_user_role(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin"))
+    current_user: User = Depends(require_role(*USER_MANAGER_ROLES))
 ):
     user = db.query(User).filter(User.user_id == user_id).first()
 
@@ -449,12 +455,8 @@ def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-
-    allowed_roles = ["admin", "agency_admin", "supervisor", "investigator", "analyst", "viewer"]
-
-
-    if data.role not in allowed_roles:
-        raise HTTPException(status_code=400, detail="Invalid role")
+    assert_user_management_access(current_user, user)
+    assert_role_assignment_access(current_user, data.role)
 
 
     old_role = user.role
@@ -472,6 +474,8 @@ def update_user_role(
         db=db,
 
         user_id=current_user.user_id,
+
+        agency_id=current_user.agency_id,
 
         action="ROLE_UPDATE",
 
@@ -503,7 +507,7 @@ def deactivate_user(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin"))
+    current_user: User = Depends(require_role(*USER_MANAGER_ROLES))
 ):
 
     user = db.query(User).filter(User.user_id == user_id).first()
@@ -511,6 +515,7 @@ def deactivate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    assert_user_management_access(current_user, user)
 
     if user.user_id == current_user.user_id:
         raise HTTPException(status_code=400, detail="You cannot deactivate yourself")
@@ -528,6 +533,8 @@ def deactivate_user(
         db=db,
 
         user_id=current_user.user_id,
+
+        agency_id=current_user.agency_id,
 
         action="DEACTIVATE_USER",
 
@@ -558,7 +565,7 @@ def activate_user(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin"))
+    current_user: User = Depends(require_role(*USER_MANAGER_ROLES))
 ):
 
 
@@ -568,6 +575,7 @@ def activate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    assert_user_management_access(current_user, user)
 
     user.is_active = True
 
@@ -580,6 +588,8 @@ def activate_user(
         db=db,
 
         user_id=current_user.user_id,
+
+        agency_id=current_user.agency_id,
 
         action="ACTIVATE_USER",
 
@@ -614,12 +624,15 @@ def get_users(
     pagination: PaginationParams = Depends(),
 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin"))
+    current_user: User = Depends(require_role(*USER_MANAGER_ROLES))
 ):
 
 
     users = paginate_query(
-        db.query(User).order_by(User.username.asc()),
+        apply_user_management_scope(
+            db.query(User),
+            current_user,
+        ).order_by(User.username.asc()),
         pagination,
         response,
     )
@@ -629,6 +642,8 @@ def get_users(
         db=db,
 
         user_id=current_user.user_id,
+
+        agency_id=current_user.agency_id,
 
         action="VIEW_USERS",
 

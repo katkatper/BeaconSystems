@@ -77,7 +77,7 @@ def get_accessible_legal_request(
     if not request:
         raise HTTPException(status_code=404, detail="Legal request not found")
 
-    if current_user.role != "admin" and request.agency_id != current_user.agency_id:
+    if current_user.role != "platform_admin" and request.agency_id != current_user.agency_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return request
@@ -290,7 +290,7 @@ def get_legal_access_requests(
 ):
     query = db.query(LegalAccessRequest)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         query = query.filter(LegalAccessRequest.agency_id == current_user.agency_id)
 
     if status:
@@ -371,7 +371,7 @@ def review_legal_access_request(
     request_id: int,
     data: LegalAccessReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     allowed_statuses = {
         "draft",

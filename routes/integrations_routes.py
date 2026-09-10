@@ -31,7 +31,7 @@ class IntegrationSourceUpdate(BaseModel):
 def create_integration_source(
     data: IntegrationSourceCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_role("platform_admin")),
 ):
     allowed_source_types = {
         "hospital",
@@ -89,7 +89,7 @@ def get_integration_sources(
 ):
     query = db.query(IntegrationSource)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         query = query.filter(
             IntegrationSource.status == "approved",
             IntegrationSource.is_active == True,  # noqa: E712
@@ -107,7 +107,7 @@ def update_integration_source(
     source_id: int,
     data: IntegrationSourceUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_role("platform_admin")),
 ):
     allowed_statuses = {"pending", "approved", "denied", "suspended", "revoked"}
 

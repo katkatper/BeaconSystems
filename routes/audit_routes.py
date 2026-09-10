@@ -21,7 +21,7 @@ router = APIRouter(prefix="/audit", tags=["Audit & Compliance"])
 def get_audit_summary(
     limit: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     activity_query = db.query(ActivityLog)
     access_query = db.query(CaseAccessGrant)
@@ -31,7 +31,7 @@ def get_audit_summary(
 
     # Admin can review the whole system. Agency admins only see audit records
     # scoped to their agency where the table supports agency scoping.
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         activity_query = activity_query.filter(
             ActivityLog.agency_id == current_user.agency_id
         )
@@ -90,11 +90,11 @@ def search_audit_users(
     q: str = Query("", min_length=0),
     limit: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     query = db.query(User)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         query = query.filter(User.agency_id == current_user.agency_id)
 
     if q:
@@ -116,14 +116,14 @@ def get_user_audit_activity(
     user_id: int,
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     user = db.query(User).filter(User.user_id == user_id).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if current_user.role != "admin" and user.agency_id != current_user.agency_id:
+    if current_user.role != "platform_admin" and user.agency_id != current_user.agency_id:
         raise HTTPException(status_code=403, detail="User belongs to another agency")
 
     return {

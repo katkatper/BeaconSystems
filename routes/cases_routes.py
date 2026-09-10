@@ -52,7 +52,7 @@ def should_auto_approve_access(case: Cases, data: CaseAccessRequest, current_use
     status = (case.case_status or "").lower()
     reason_category = data.reason_category.strip().lower()
 
-    if current_user.role in {"admin", "agency_admin"}:
+    if current_user.role in {"platform_admin", "agency_admin"}:
         return True
 
     if current_user.role != "investigator":
@@ -239,11 +239,11 @@ def create_case(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     new_case = Cases(**case.model_dump())
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
 
         new_case.agency_id = current_user.agency_id
 
@@ -489,7 +489,7 @@ def update_case(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
 
 
@@ -521,7 +521,7 @@ def update_case(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
 
         update_data.pop("agency_id", None)
 
@@ -555,7 +555,7 @@ def update_case(
 def request_case_access_with_code(
     data: CaseAccessCodeRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("investigator", "agency_admin", "admin")),
+    current_user: User = Depends(require_role("investigator", "agency_admin", "platform_admin")),
 ):
     if len(data.reason.strip()) < 10:
         raise HTTPException(
@@ -582,7 +582,7 @@ def request_case_access_with_code(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    if current_user.role != "admin" and case.agency_id != current_user.agency_id:
+    if current_user.role != "platform_admin" and case.agency_id != current_user.agency_id:
         raise HTTPException(status_code=403, detail="Case belongs to another agency")
 
     existing_grant = db.query(CaseAccessGrant).filter(
@@ -624,7 +624,7 @@ def request_case_access_with_code(
 def request_case_access(
     data: CaseAccessRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("investigator", "agency_admin", "admin")),
+    current_user: User = Depends(require_role("investigator", "agency_admin", "platform_admin")),
 ):
     if len(data.reason.strip()) < 10:
         raise HTTPException(
@@ -637,7 +637,7 @@ def request_case_access(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    same_agency = current_user.role == "admin" or case.agency_id == current_user.agency_id
+    same_agency = current_user.role == "platform_admin" or case.agency_id == current_user.agency_id
 
     if not same_agency:
         create_activity_log(
@@ -722,7 +722,7 @@ def request_case_access(
 def archive_case(
     case_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     query = db.query(Cases).filter(Cases.case_id == case_id)
     query = apply_case_access_filter(query, current_user, include_grants=False)
@@ -764,7 +764,7 @@ def delete_case(
 
     db: Session = Depends(get_db),
 
-    current_user: User = Depends(require_role("admin", "agency_admin")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin")),
 ):
 
     query = db.query(Cases).filter(Cases.case_id == case_id)

@@ -59,7 +59,7 @@ TEAM_MEMBER_ROLES = {
 
 def get_supervisor_queue(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     now = datetime.utcnow()
     seven_days_ago = now - timedelta(days=7)
@@ -81,7 +81,7 @@ def get_supervisor_queue(
 # Admin can see all agencies. Agency admins are restricted to their own agency
 # to avoid cross-agency data exposure.
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         case_query = case_query.filter(Cases.agency_id == current_user.agency_id)
         legal_query = legal_query.filter(
             LegalAccessRequest.agency_id == current_user.agency_id
@@ -508,7 +508,7 @@ def get_supervisor_case(
 ):
     query = db.query(Cases).filter(Cases.case_id == case_id)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         query = query.filter(Cases.agency_id == current_user.agency_id)
 
     case = query.first()
@@ -523,7 +523,7 @@ def get_supervisor_case(
 def get_case_team(
     case_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     case = get_supervisor_case(db, case_id, current_user)
     lead = db.query(User).filter(User.user_id == case.investigator_id).first()
@@ -566,7 +566,7 @@ def assign_case_team_member(
     case_id: int,
     data: CaseTeamAssignment,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     case = get_supervisor_case(db, case_id, current_user)
     role = data.role.strip().lower()
@@ -579,7 +579,7 @@ def assign_case_team_member(
     if not user or not user.is_active:
         raise HTTPException(status_code=404, detail="Active user not found")
 
-    if current_user.role != "admin" and user.agency_id != current_user.agency_id:
+    if current_user.role != "platform_admin" and user.agency_id != current_user.agency_id:
         raise HTTPException(status_code=403, detail="Cannot assign a user from another agency")
 
     if user.user_id == case.investigator_id:
@@ -640,7 +640,7 @@ def remove_case_team_member(
     case_id: int,
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     case = get_supervisor_case(db, case_id, current_user)
     member = (
@@ -680,7 +680,7 @@ def get_reviewable_case_access_grant(
 ):
     query = db.query(CaseAccessGrant).filter(CaseAccessGrant.grant_id == grant_id)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         query = query.filter(
             CaseAccessGrant.case_id.in_(
                 db.query(Cases.case_id).filter(
@@ -702,7 +702,7 @@ def approve_case_access_request(
     grant_id: int,
     data: CaseAccessReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     grant = get_reviewable_case_access_grant(db, grant_id, current_user)
 
@@ -737,7 +737,7 @@ def deny_case_access_request(
     grant_id: int,
     data: CaseAccessReview,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     grant = get_reviewable_case_access_grant(db, grant_id, current_user)
 

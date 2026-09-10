@@ -237,7 +237,7 @@ def get_missing_person_registry(
 def upload_person_photo(
     request: Request,
     file: UploadFile = File(...),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     original_file_name = Path(file.filename or "missing-person-photo").name
     validate_upload(
@@ -374,7 +374,7 @@ def create_person(
     data: PersonCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     person_data = data.model_dump()
     person_data["risk_level"] = infer_missing_person_risk(person_data)
@@ -429,7 +429,7 @@ def update_person(
     person_id: int,
     data: PersonUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "investigator", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "investigator", "supervisor")),
 ):
     person = apply_person_agency_scope(
         db.query(Person).filter(Person.person_id == person_id),
@@ -456,7 +456,7 @@ def update_person(
 def delete_person(
     person_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_role("platform_admin")),
 ):
     person = db.query(Person).filter(Person.person_id == person_id).first()
 

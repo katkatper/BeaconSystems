@@ -33,7 +33,7 @@ function Navbar() {
         ["Administration", "/administration", "A"],
     ];
     const navLinks = {
-        admin: navigation,
+        platform_admin: navigation,
         agency_admin: navigation,
         supervisor: navigation.filter(([label]) =>
             !["Users", "Administration"].includes(label)
@@ -49,8 +49,8 @@ function Navbar() {
         ),
     };
     const roleLabels = {
-        admin: "Administrator",
-        agency_admin: "Supervisor",
+        platform_admin: "Platform Administrator",
+        agency_admin: "Agency Administrator",
         supervisor: "Supervisor",
         investigator: "Detective",
         analyst: "Analyst",

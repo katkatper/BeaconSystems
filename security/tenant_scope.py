@@ -6,7 +6,7 @@ from models.user import User
 
 def apply_person_agency_scope(query, current_user: User):
     """Restrict person records to cases owned by the caller's agency."""
-    if current_user.role == "admin":
+    if current_user.role == "platform_admin":
         return query
 
     return query.filter(
@@ -16,7 +16,7 @@ def apply_person_agency_scope(query, current_user: User):
 
 def apply_partner_intake_agency_scope(query, current_user: User):
     """Restrict partner intake records to their explicit tenant owner."""
-    if current_user.role == "admin":
+    if current_user.role == "platform_admin":
         return query
 
     return query.filter(PartnerIntakeRecord.agency_id == current_user.agency_id)

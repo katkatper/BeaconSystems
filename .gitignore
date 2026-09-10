@@ -5,6 +5,9 @@ dist/
 .vs/
 .vscode/
 .env
+.env.*
+!.env.example
+!**/.env.example
 __pycache__/
 *.py[cod]
 
@@ -12,4 +15,8 @@ __pycache__/
 packages/
 
 .venv/
+.venv-*/
+venv/
+venv-*/
 uploads/
+*.zip

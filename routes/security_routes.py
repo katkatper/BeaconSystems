@@ -29,7 +29,7 @@ router = APIRouter(prefix="/security", tags=["Security"])
 @router.get("/posture")
 def get_security_posture(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
 ):
     since_24h = datetime.utcnow() - timedelta(hours=24)
 
@@ -37,7 +37,7 @@ def get_security_posture(
     activity_query = db.query(ActivityLog)
     access_query = db.query(CaseAccessGrant)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         user_query = user_query.filter(User.agency_id == current_user.agency_id)
         activity_query = activity_query.filter(ActivityLog.agency_id == current_user.agency_id)
         access_query = access_query.filter(CaseAccessGrant.agency_id == current_user.agency_id)
@@ -60,7 +60,7 @@ def get_security_posture(
     evidence_query = db.query(Evidence)
     chain_query = db.query(EvidenceChain)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         agency_case_ids = [
             case_id
             for case_id, in (

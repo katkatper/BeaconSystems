@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiGet } from "../api.jsx";
 import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
@@ -18,7 +18,7 @@ function Dashboard() {
     const role = localStorage.getItem("role") || "viewer";
     const username = localStorage.getItem("username") || "Beacon User";
     const dashboardProfiles = {
-        admin: {
+        platform_admin: {
             title: "Command Center",
             greeting: `Administrator overview for ${username}`,
             showBolos: true,
@@ -131,7 +131,7 @@ function Dashboard() {
     }, [role]);
 
     useEffect(() => {
-        if (!["admin", "agency_admin", "supervisor"].includes(role)) {
+        if (!["platform_admin", "agency_admin", "supervisor"].includes(role)) {
             return;
         }
 
@@ -171,7 +171,7 @@ function Dashboard() {
         return () => clearInterval(interval);
     }, []);
 
-    const isCommandRole = ["admin", "agency_admin", "supervisor"].includes(role);
+    const isCommandRole = ["platform_admin", "agency_admin", "supervisor"].includes(role);
     const commandDashboard = supervisorQueue?.command_dashboard || {};
     const stallRiskSummary = supervisorQueue?.stall_risk_summary || {};
     const leadSummary = supervisorQueue?.lead_summary || {};

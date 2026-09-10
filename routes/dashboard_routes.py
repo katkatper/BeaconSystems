@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
@@ -64,7 +64,7 @@ def get_dashboard_summary(
     evidence_query = db.query(Evidence)
     access_query = db.query(CaseAccessGrant)
 
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         alert_query = alert_query.filter(
             Alerts.recipient_agency_id == current_user.agency_id
         )
@@ -150,7 +150,7 @@ def get_dashboard_summary(
     ).count()
 
     personnel_query = db.query(User).filter(User.is_active == True)  # noqa: E712
-    if current_user.role != "admin":
+    if current_user.role != "platform_admin":
         personnel_query = personnel_query.filter(User.agency_id == current_user.agency_id)
     current_personnel = personnel_query.count()
 

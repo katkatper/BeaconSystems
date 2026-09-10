@@ -62,7 +62,7 @@ def get_timeline_events(
 def create_timeline_event(
     data: TimelineEventCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     assert_case_write_access(db, data.case_id, current_user)
 

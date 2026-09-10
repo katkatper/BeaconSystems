@@ -17,11 +17,11 @@ class AuthorizationContractTests(unittest.TestCase):
         source = route_source("supervisor_routes.py")
 
         self.assertIn(
-            'require_role("admin", "agency_admin", "supervisor")',
+            'require_role("platform_admin", "agency_admin", "supervisor")',
             source,
         )
         self.assertNotIn(
-            'require_role("admin", "agency_admin", "supervisor", "investigator")',
+            'require_role("platform_admin", "agency_admin", "supervisor", "investigator")',
             source,
         )
         self.assertIn("CaseAccessGrant.case_id.in_", source)
@@ -49,14 +49,21 @@ class AuthorizationContractTests(unittest.TestCase):
             "LegalAccessRequest.agency_id == current_user.agency_id",
             legal_source,
         )
-        self.assertIn("User.agency_id == current_user.agency_id", user_source)
+        self.assertIn("apply_user_management_scope", user_source)
+        user_management_source = (
+            REPOSITORY_ROOT / "security" / "user_management.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "User.agency_id == current_user.agency_id",
+            user_management_source,
+        )
         self.assertIn("apply_related_case_access_filter", bolo_source)
 
     def test_matching_is_authenticated_bounded_and_tenant_scoped(self):
         source = route_source("match_routes.py")
 
         self.assertIn(
-            'require_role("admin", "agency_admin", "supervisor")',
+            'require_role("platform_admin", "agency_admin", "supervisor")',
             source,
         )
         self.assertIn("apply_person_agency_scope", source)
@@ -77,9 +84,9 @@ class AuthorizationContractTests(unittest.TestCase):
     def test_integration_configuration_is_admin_only(self):
         source = route_source("integrations_routes.py")
 
-        self.assertIn('current_user: User = Depends(require_role("admin"))', source)
+        self.assertIn('current_user: User = Depends(require_role("platform_admin"))', source)
         self.assertNotIn(
-            'require_role("admin", "agency_admin")',
+            'require_role("platform_admin", "agency_admin")',
             source,
         )
         self.assertIn('IntegrationSource.status == "approved"', source)

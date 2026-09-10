@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from fastapi import Response
 from sqlalchemy import func
@@ -59,7 +59,7 @@ def create_alerts(
     confidence_score: float | None = None,
 
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     assert_case_write_access(db, case_id, current_user)
 
@@ -129,7 +129,7 @@ def update_alert(
     alert_id: int,
     data: AlertUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "agency_admin", "supervisor", "investigator")),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor", "investigator")),
 ):
     alert = db.query(Alerts).filter(Alerts.alert_id == alert_id).first()
 
