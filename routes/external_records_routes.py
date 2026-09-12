@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from database.connection import get_db
 
+from models.agencies import Agencies
 from models.external_record import ExternalRecord
 from models.user import User
 
@@ -68,6 +69,8 @@ def create_external_record(
 
     case_id: int | None = None,
 
+    agency_id: int | None = None,
+
     db: Session = Depends(get_db),
 
     current_user: User = Depends(require_role("platform_admin", "agency_admin", "investigator")),
@@ -78,13 +81,30 @@ def create_external_record(
             detail="Agency users must link external records to an authorized case.",
         )
 
+    if current_user.role != "platform_admin" and agency_id is not None:
+        raise HTTPException(
+            status_code=403,
+            detail="Only platform administrators can select an agency.",
+        )
+
     authorized_case = None
     if case_id is not None:
         authorized_case = assert_case_write_access(db, case_id, current_user)
 
+    owner_agency_id = authorized_case.agency_id if authorized_case else agency_id
+    if owner_agency_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="An agency or authorized case is required.",
+        )
+    if not db.query(Agencies).filter(
+        Agencies.agency_id == owner_agency_id
+    ).first():
+        raise HTTPException(status_code=400, detail="Unknown agency")
+
     record = ExternalRecord(
 
-        agency_id=authorized_case.agency_id if authorized_case else None,
+        agency_id=owner_agency_id,
 
         integration_source_id=integration_source_id,
 

@@ -2,6 +2,8 @@ import ast
 import unittest
 from pathlib import Path
 
+from database.security_posture import database_role_violations
+
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,6 +40,31 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("pool_size=DATABASE_POOL_SIZE", source)
         self.assertIn("max_overflow=DATABASE_MAX_OVERFLOW", source)
         self.assertIn('"slow_database_query"', source)
+
+    def test_production_database_role_rejects_rls_bypasses(self):
+        violations = database_role_violations(
+            is_superuser=True,
+            bypasses_rls=True,
+            owned_tables=["cases"],
+            unprotected_tables=["alerts"],
+        )
+
+        self.assertEqual(len(violations), 4)
+        self.assertTrue(any("superuser" in item for item in violations))
+        self.assertTrue(any("BYPASSRLS" in item for item in violations))
+        self.assertTrue(any("cases" in item for item in violations))
+        self.assertTrue(any("alerts" in item for item in violations))
+
+    def test_alembic_uses_a_separate_migration_database_url(self):
+        migration_environment = (
+            REPOSITORY_ROOT / "migrations" / "env.py"
+        ).read_text(encoding="utf-8-sig")
+        example_environment = (
+            REPOSITORY_ROOT / ".env.example"
+        ).read_text(encoding="utf-8-sig")
+
+        self.assertIn("MIGRATION_DATABASE_URL", migration_environment)
+        self.assertIn("MIGRATION_DATABASE_URL", example_environment)
 
     def test_frontend_pages_do_not_hard_code_a_local_api_host(self):
         pages_directory = REPOSITORY_ROOT / "beaconsystems.client" / "src" / "pages"

@@ -11,7 +11,7 @@ class ExternalRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True, index=True)
+    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=False, index=True)
 
 
     integration_source_id = Column(Integer, ForeignKey("integration_sources.id"))

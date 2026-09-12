@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from config.settings import PARTNER_WEBHOOK_TOKEN
 from database.connection import get_db
+from database.tenant_context import configure_tenant_session
 from models.IntegrationSource import IntegrationSource
 from models.agencies import Agencies
 from models.case import Cases
@@ -418,6 +419,12 @@ def receive_automated_partner_intake_record(
 
     if not db.query(Agencies).filter(Agencies.agency_id == data.agency_id).first():
         raise HTTPException(status_code=404, detail="Agency not found")
+
+    configure_tenant_session(
+        db,
+        agency_id=data.agency_id,
+        platform_admin=False,
+    )
 
     intake = create_intake_record(
         db=db,

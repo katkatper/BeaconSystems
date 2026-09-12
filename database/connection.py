@@ -74,6 +74,9 @@ def record_query_duration(connection, cursor, statement, parameters, context, ex
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+# Register transaction hooks that restore tenant settings after a commit.
+from database import tenant_context  # noqa: E402, F401
+
 
 def get_db():
     db = SessionLocal()

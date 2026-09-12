@@ -1,5 +1,7 @@
 from logging.config import fileConfig
-from database.connection import Base, DATABASE_URL
+import os
+
+from database.connection import Base, DATABASE_URL as APPLICATION_DATABASE_URL
 from sqlalchemy import create_engine
 from sqlalchemy import pool
 
@@ -47,6 +49,10 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
+MIGRATION_DATABASE_URL = os.getenv(
+    "MIGRATION_DATABASE_URL",
+    APPLICATION_DATABASE_URL,
+)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -67,7 +73,7 @@ def run_migrations_offline() -> None:
 
     """
     context.configure(
-        url=DATABASE_URL,
+        url=MIGRATION_DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -85,7 +91,7 @@ def run_migrations_online() -> None:
 
     """
     connectable = create_engine(
-        DATABASE_URL,
+        MIGRATION_DATABASE_URL,
         poolclass=pool.NullPool,
     )
 

@@ -13,6 +13,83 @@ def route_source(file_name: str) -> str:
 
 
 class AuthorizationContractTests(unittest.TestCase):
+    def test_authenticated_sessions_establish_postgres_tenant_context(self):
+        auth_source = (
+            REPOSITORY_ROOT / "security" / "auth.py"
+        ).read_text(encoding="utf-8-sig")
+        context_source = (
+            REPOSITORY_ROOT / "database" / "tenant_context.py"
+        ).read_text(encoding="utf-8-sig")
+
+        self.assertIn("configure_tenant_session(", auth_source)
+        self.assertIn('@event.listens_for(Session, "after_begin")', context_source)
+        self.assertIn("set_config(:key, :value, true)", context_source)
+
+    def test_row_level_security_covers_direct_tenant_tables(self):
+        migration_source = (
+            REPOSITORY_ROOT
+            / "migrations"
+            / "versions"
+            / "b28e4f7a93c2_add_tenant_row_level_security.py"
+        ).read_text(encoding="utf-8-sig")
+
+        for table_name in [
+            "cases",
+            "alerts",
+            "bolo_alerts",
+            "case_access_grants",
+            "case_team_members",
+            "external_records",
+            "legal_access_requests",
+            "matches",
+            "partner_intake_records",
+        ]:
+            self.assertIn(f'("{table_name}",', migration_source)
+
+        self.assertIn("ENABLE ROW LEVEL SECURITY", migration_source)
+        self.assertIn("WITH CHECK", migration_source)
+        self.assertIn("beacon.platform_admin", migration_source)
+        self.assertIn("beacon.agency_id", migration_source)
+
+    def test_operational_tenant_owners_are_required(self):
+        model_files = {
+            "alerts.py": "recipient_agency_id",
+            "bolo_alert.py": "agency_id",
+            "case_access_grant.py": "agency_id",
+            "case_team_member.py": "agency_id",
+            "external_record.py": "agency_id",
+            "legal_access_request.py": "agency_id",
+            "match.py": "agency_id",
+            "partner_intake_record.py": "agency_id",
+        }
+
+        for file_name, column_name in model_files.items():
+            source = (REPOSITORY_ROOT / "models" / file_name).read_text(
+                encoding="utf-8-sig"
+            )
+            tree = ast.parse(source)
+            assignments = [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == column_name
+                    for target in node.targets
+                )
+            ]
+            self.assertEqual(len(assignments), 1, file_name)
+            call = assignments[0].value
+            nullable = next(
+                (
+                    keyword.value.value
+                    for keyword in call.keywords
+                    if keyword.arg == "nullable"
+                    and isinstance(keyword.value, ast.Constant)
+                ),
+                None,
+            )
+            self.assertIs(nullable, False, file_name)
+
     def test_supervisor_actions_exclude_investigators_and_scope_by_case_agency(self):
         source = route_source("supervisor_routes.py")
 

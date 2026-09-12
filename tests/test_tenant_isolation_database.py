@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from database.connection import Base
+from database.tenant_context import configure_tenant_session
 from models.IntegrationSource import IntegrationSource
 from models.agencies import Agencies
 from models.case import Cases
@@ -211,6 +212,26 @@ class TenantIsolationDatabaseTests(unittest.TestCase):
         ).all()
 
         self.assertEqual({user.user_id for user in users}, {1001, 2002})
+
+    def test_tenant_context_is_attached_to_the_database_session(self):
+        configure_tenant_session(
+            self.db,
+            agency_id=101,
+            platform_admin=False,
+        )
+
+        self.assertEqual(self.db.info["tenant_agency_id"], 101)
+        self.assertIs(self.db.info["tenant_platform_admin"], False)
+
+    def test_platform_context_can_operate_without_an_agency(self):
+        configure_tenant_session(
+            self.db,
+            agency_id=None,
+            platform_admin=True,
+        )
+
+        self.assertIsNone(self.db.info["tenant_agency_id"])
+        self.assertIs(self.db.info["tenant_platform_admin"], True)
 
     def test_admin_scope_can_cross_agencies(self):
         admin = User(

@@ -9,7 +9,7 @@ class LegalAccessRequest(Base):
     request_id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=True)
     person_id = Column(Integer, ForeignKey("persons.person_id"), nullable=True)
-    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True)
+    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=False)
     requested_by_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     reviewed_by_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     assigned_investigator_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)

@@ -16,7 +16,7 @@ class Alerts(Base):
     person_id= Column(Integer, ForeignKey('persons.person_id'))
 
 
-    recipient_agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True)
+    recipient_agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=False)
 
     alert_type= Column(String(100))
 

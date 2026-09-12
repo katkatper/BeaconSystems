@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text as sql_text
 from database.connection import engine
+from database.security_posture import validate_database_security
 from config.settings import (
     API_REQUEST_TIMEOUT_SECONDS,
     CORS_ORIGINS,
@@ -83,6 +84,9 @@ from routes.geocoding_routes import router as geocoding_router
 
 async def lifespan(app: FastAPI):
     print("Starting up...")
+
+    if IS_PRODUCTION:
+        validate_database_security(engine)
 
 
     yield

@@ -11,7 +11,7 @@ class CaseTeamMember(Base):
     team_member_id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, index=True)
-    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True)
+    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=False)
 
     role = Column(String(50), default="support_investigator", nullable=False)
     status = Column(String(50), default="active", nullable=False)

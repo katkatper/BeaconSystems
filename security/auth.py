@@ -12,6 +12,7 @@ from config.settings import (
     SECRET_KEY,
 )
 from database.connection import get_db
+from database.tenant_context import configure_tenant_session
 from models.user import User
 
 
@@ -108,6 +109,12 @@ def get_current_user(
             detail="User not found or inactive",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    configure_tenant_session(
+        db,
+        agency_id=user.agency_id,
+        platform_admin=user.role == "platform_admin",
+    )
 
     return user
 

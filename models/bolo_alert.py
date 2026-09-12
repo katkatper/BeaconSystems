@@ -10,7 +10,7 @@ class BoloAlert(Base):
 
     bolo_id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=False)
-    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=True)
+    agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=False)
     created_by = Column(Integer, ForeignKey("users.user_id"), nullable=False)
 
     title = Column(String(255), nullable=False)
