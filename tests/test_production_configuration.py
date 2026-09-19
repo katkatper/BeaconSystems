@@ -29,6 +29,8 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("CORS_ORIGINS cannot contain '*' in production", source)
         self.assertIn("ENABLE_LOCAL_SCHEMA_BOOTSTRAP must be false", source)
         self.assertIn("SECRET_KEY must contain at least 32 characters", source)
+        self.assertIn("JWT_ISSUER is required in production", source)
+        self.assertIn("JWT_AUDIENCE is required in production", source)
 
     def test_database_pool_uses_health_checks_and_bounded_capacity(self):
         source = (REPOSITORY_ROOT / "database" / "connection.py").read_text(

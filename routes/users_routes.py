@@ -4,20 +4,38 @@ import hmac
 import secrets
 import struct
 import time
+import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi import Response
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
 
-from config.settings import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
+from config.settings import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    JWT_AUDIENCE,
+    JWT_ISSUER,
+    IS_PRODUCTION,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    SECRET_KEY,
+)
 from database.connection import get_db
 from models.user import User
+from models.auth_session import AuthSession
 from schemas.user_schema import MfaEnable, MfaLoginVerify, PasswordChange, UserCreate, UserLogin, UserResponse, UserRoleUpdate
-from security.auth import hash_password, verify_password, create_access_token, require_role, get_current_user
+from security.auth import (
+    create_access_token,
+    decode_access_token,
+    get_current_user,
+    hash_password,
+    oauth2_scheme,
+    require_role,
+    verify_password,
+)
 from security.user_management import (
     USER_MANAGER_ROLES,
     apply_user_management_scope,
@@ -82,13 +100,45 @@ def verify_totp(secret: Optional[str], code: str) -> bool:
     return False
 
 
-def build_login_response(user: User, password_change_required: bool, password_expires_at: datetime):
+def build_login_response(
+    db: Session,
+    user: User,
+    request: Request,
+    response: Response,
+    password_change_required: bool,
+    password_expires_at: datetime,
+):
     session_expires_at = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    refresh_token = secrets.token_urlsafe(48)
+    session_id = str(uuid.uuid4())
+    db.add(AuthSession(
+        session_id=session_id,
+        user_id=user.user_id,
+        expires_at=session_expires_at,
+        last_seen_at=datetime.utcnow(),
+        ip_address=request.client.host if request.client else None,
+        user_agent=(request.headers.get("user-agent") or "")[:512] or None,
+        refresh_token_hash=hashlib.sha256(refresh_token.encode()).hexdigest(),
+        refresh_expires_at=refresh_expires_at,
+    ))
+    db.commit()
     token = create_access_token({
-        "sub": user.username,
-        "user_id": user.user_id,
+        "sub": str(user.user_id),
+        "username": user.username,
         "role": user.role,
+        "auth_version": user.auth_version,
+        "sid": session_id,
     })
+    response.set_cookie(
+        key="beacon_refresh",
+        value=refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        samesite="strict",
+        path="/users",
+    )
 
     return {
         "access_token": token,
@@ -104,21 +154,24 @@ def build_login_response(user: User, password_change_required: bool, password_ex
     }
 
 
-def verify_mfa_login_token(token: str) -> str:
+def verify_mfa_login_token(token: str) -> tuple[int, int]:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            audience=JWT_AUDIENCE,
+            issuer=JWT_ISSUER,
+        )
+        user_id = int(payload.get("sub"))
+        auth_version = int(payload.get("auth_version"))
+    except (JWTError, TypeError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA challenge")
 
-    if payload.get("purpose") != "mfa":
+    if payload.get("token_type") != "mfa" or user_id <= 0 or auth_version < 0:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA challenge")
 
-    username = payload.get("sub")
-
-    if not username:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA challenge")
-
-    return username
+    return user_id, auth_version
 
 
 def mfa_otpauth_uri(user: User) -> str:
@@ -197,6 +250,10 @@ def login(
 
     data: UserLogin,
 
+    request: Request,
+
+    response: Response,
+
     db: Session = Depends(get_db)
 ):
 
@@ -217,12 +274,13 @@ def login(
     if user.mfa_enabled:
         mfa_token = create_access_token(
             {
-                "sub": user.username,
-                "user_id": user.user_id,
+                "sub": str(user.user_id),
+                "username": user.username,
                 "role": user.role,
-                "purpose": "mfa",
+                "auth_version": user.auth_version,
             },
             expires_delta=timedelta(minutes=5),
+            token_type="mfa",
         )
 
         create_activity_log(
@@ -269,7 +327,7 @@ def login(
 
     db.commit()
 
-    return build_login_response(user, password_change_required, password_expires_at)
+    return build_login_response(db, user, request, response, password_change_required, password_expires_at)
 
 
 @router.get("/mfa/setup")
@@ -352,12 +410,14 @@ def disable_mfa(
 @router.post("/mfa/verify")
 def verify_mfa_login(
     data: MfaLoginVerify,
+    request: Request,
+    response: Response,
     db: Session = Depends(get_db)
 ):
-    username = verify_mfa_login_token(data.mfa_token)
-    user = db.query(User).filter(User.username == username).first()
+    user_id, auth_version = verify_mfa_login_token(data.mfa_token)
+    user = db.query(User).filter(User.user_id == user_id).first()
 
-    if not user or not user.is_active:
+    if not user or not user.is_active or user.auth_version != auth_version:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
     if not verify_totp(user.mfa_secret, data.code):
@@ -379,7 +439,143 @@ def verify_mfa_login(
 
     db.commit()
 
-    return build_login_response(user, password_change_required, password_expires_at)
+    return build_login_response(db, user, request, response, password_change_required, password_expires_at)
+
+
+@router.post("/refresh")
+def refresh_session(request: Request, response: Response, db: Session = Depends(get_db)):
+    refresh_token = request.cookies.get("beacon_refresh")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh session is unavailable")
+
+    token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+    auth_session = db.query(AuthSession).filter(
+        AuthSession.refresh_token_hash == token_hash,
+        AuthSession.revoked_at.is_(None),
+        AuthSession.refresh_expires_at > datetime.utcnow(),
+    ).first()
+    if not auth_session:
+        response.delete_cookie("beacon_refresh", path="/users")
+        raise HTTPException(status_code=401, detail="Refresh session is invalid")
+
+    user = db.query(User).filter(User.user_id == auth_session.user_id).first()
+    if not user or not user.is_active:
+        auth_session.revoked_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    rotated_token = secrets.token_urlsafe(48)
+    auth_session.refresh_token_hash = hashlib.sha256(rotated_token.encode()).hexdigest()
+    auth_session.last_seen_at = datetime.utcnow()
+    db.commit()
+    response.set_cookie(
+        key="beacon_refresh", value=rotated_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        httponly=True, secure=IS_PRODUCTION, samesite="strict", path="/users",
+    )
+    return {
+        "access_token": create_access_token({
+            "sub": str(user.user_id), "username": user.username,
+            "role": user.role, "auth_version": user.auth_version,
+            "sid": auth_session.session_id,
+        }),
+        "token_type": "bearer",
+        "session_expires_at": f"{(datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).isoformat()}Z",
+    }
+
+
+@router.post("/logout")
+def logout(
+    response: Response,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        session_id = str(decode_access_token(token).get("sid") or "")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid authentication")
+
+    auth_session = db.query(AuthSession).filter(
+        AuthSession.session_id == session_id,
+        AuthSession.user_id == current_user.user_id,
+        AuthSession.revoked_at.is_(None),
+    ).first()
+    if auth_session:
+        auth_session.revoked_at = datetime.utcnow()
+        db.commit()
+
+    response.delete_cookie("beacon_refresh", path="/users")
+
+    return {"message": "Logged out"}
+
+
+def current_session_id(token: str) -> str:
+    try:
+        return str(decode_access_token(token).get("sid") or "")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid authentication")
+
+
+@router.get("/sessions")
+def list_sessions(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    active_session_id = current_session_id(token)
+    sessions = db.query(AuthSession).filter(
+        AuthSession.user_id == current_user.user_id,
+        AuthSession.revoked_at.is_(None),
+        AuthSession.refresh_expires_at > datetime.utcnow(),
+    ).order_by(AuthSession.last_seen_at.desc()).all()
+    return [{
+        "session_id": item.session_id,
+        "created_at": item.created_at,
+        "last_seen_at": item.last_seen_at,
+        "expires_at": item.refresh_expires_at,
+        "ip_address": item.ip_address,
+        "user_agent": item.user_agent,
+        "is_current": item.session_id == active_session_id,
+    } for item in sessions]
+
+
+@router.post("/sessions/{session_id}/revoke")
+def revoke_session(
+    session_id: str,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    auth_session = db.query(AuthSession).filter(
+        AuthSession.session_id == session_id,
+        AuthSession.user_id == current_user.user_id,
+        AuthSession.revoked_at.is_(None),
+    ).first()
+    if not auth_session:
+        raise HTTPException(status_code=404, detail="Active session not found")
+    auth_session.revoked_at = datetime.utcnow()
+    db.commit()
+    return {"message": "Session revoked", "current_session": session_id == current_session_id(token)}
+
+
+@router.post("/sessions/revoke-others")
+def revoke_other_sessions(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    active_session_id = current_session_id(token)
+    sessions = db.query(AuthSession).filter(
+        AuthSession.user_id == current_user.user_id,
+        AuthSession.session_id != active_session_id,
+        AuthSession.revoked_at.is_(None),
+    ).all()
+    now = datetime.utcnow()
+    for item in sessions:
+        item.revoked_at = now
+    db.commit()
+    return {"message": "Other sessions revoked", "revoked_count": len(sessions)}
 
 
 @router.put("/change-password")
@@ -408,6 +604,8 @@ def change_password(
     current_user.password_changed_at = datetime.utcnow()
 
     current_user.must_change_password = False
+
+    current_user.auth_version += 1
 
     db.commit()
 
@@ -462,6 +660,8 @@ def update_user_role(
     old_role = user.role
 
     user.role = data.role
+
+    user.auth_version += 1
 
 
     db.commit()
@@ -523,6 +723,8 @@ def deactivate_user(
 
     user.is_active = False
 
+    user.auth_version += 1
+
     db.commit()
 
     db.refresh(user)
@@ -578,6 +780,8 @@ def activate_user(
     assert_user_management_access(current_user, user)
 
     user.is_active = True
+
+    user.auth_version += 1
 
     db.commit()
 

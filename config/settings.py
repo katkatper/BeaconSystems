@@ -51,6 +51,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+JWT_ISSUER = os.getenv("JWT_ISSUER", "beacon-api").strip()
+JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "beacon-web").strip()
 PARTNER_WEBHOOK_TOKEN = os.getenv("PARTNER_WEBHOOK_TOKEN")
 EVIDENCE_ENCRYPTION_ENABLED = os.getenv("EVIDENCE_ENCRYPTION_ENABLED", "false").lower() == "true"
 EVIDENCE_ENCRYPTION_KEY_ID = os.getenv("EVIDENCE_ENCRYPTION_KEY_ID", "local-storage")
@@ -75,6 +78,15 @@ def validate_runtime_settings() -> None:
 
     if not SECRET_KEY or len(SECRET_KEY) < 32:
         errors.append("SECRET_KEY must contain at least 32 characters")
+
+    if not JWT_ISSUER:
+        errors.append("JWT_ISSUER is required in production")
+
+    if not JWT_AUDIENCE:
+        errors.append("JWT_AUDIENCE is required in production")
+
+    if ACCESS_TOKEN_EXPIRE_MINUTES <= 0 or REFRESH_TOKEN_EXPIRE_DAYS <= 0:
+        errors.append("Token expiration settings must be greater than zero")
 
     if not CORS_ORIGINS:
         errors.append("CORS_ORIGINS must list approved production frontend origins")

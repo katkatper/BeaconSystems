@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { apiGet } from "../api.jsx";
+import { apiGet, apiPost } from "../api.jsx";
 import { getUnviewedCount, subscribeToReadState } from "../commandCenterState.js";
 
 const globalSearchTargets = [
@@ -86,7 +86,12 @@ function Navbar() {
         );
     }, [searchTerm]);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await apiPost("/users/logout", {});
+        } catch (err) {
+            console.error("Could not revoke the server session", err);
+        }
         localStorage.clear();
         navigate("/login");
     };

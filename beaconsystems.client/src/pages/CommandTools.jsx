@@ -32,6 +32,8 @@ function CommandTools() {
     const [mfaSetup, setMfaSetup] = useState(null);
     const [mfaCode, setMfaCode] = useState("");
     const [mfaMessage, setMfaMessage] = useState("");
+    const [sessions, setSessions] = useState([]);
+    const [sessionMessage, setSessionMessage] = useState("");
     const [, setReadStateVersion] = useState(0);
     const username = localStorage.getItem("username") || "Beacon User";
     const role = localStorage.getItem("role") || "viewer";
@@ -79,6 +81,56 @@ function CommandTools() {
     useEffect(() => subscribeToReadState(() => {
         setReadStateVersion((current) => current + 1);
     }), []);
+
+    const loadSessions = async () => {
+        try {
+            setSessions(await apiGet("/users/sessions"));
+        } catch (err) {
+            console.error(err);
+            setSessionMessage("Could not load active sessions.");
+        }
+    };
+
+    useEffect(() => {
+        if (!isProfile) return undefined;
+        let isMounted = true;
+        apiGet("/users/sessions")
+            .then((data) => {
+                if (isMounted) setSessions(data);
+            })
+            .catch((err) => {
+                console.error(err);
+                if (isMounted) setSessionMessage("Could not load active sessions.");
+            });
+        return () => {
+            isMounted = false;
+        };
+    }, [isProfile]);
+
+    const revokeSession = async (sessionId, isCurrent) => {
+        try {
+            await apiPost(`/users/sessions/${sessionId}/revoke`, {});
+            if (isCurrent) {
+                localStorage.clear();
+                window.location.assign("/login");
+                return;
+            }
+            setSessionMessage("Session revoked.");
+            await loadSessions();
+        } catch (err) {
+            setSessionMessage(err.message || "Could not revoke session.");
+        }
+    };
+
+    const revokeOtherSessions = async () => {
+        try {
+            const result = await apiPost("/users/sessions/revoke-others", {});
+            setSessionMessage(`${result.revoked_count} other session(s) revoked.`);
+            await loadSessions();
+        } catch (err) {
+            setSessionMessage(err.message || "Could not revoke other sessions.");
+        }
+    };
 
     const startMfaSetup = async () => {
         setMfaMessage("");
@@ -237,6 +289,29 @@ function CommandTools() {
                         )}
 
                         {mfaMessage && <p className="login-message">{mfaMessage}</p>}
+                    </section>
+
+                    <section className="beacon-panel mfa-setup-panel">
+                        <div className="audit-panel-heading">
+                            <span>Security</span>
+                            <strong>Active Sessions</strong>
+                        </div>
+                        <p>Review devices signed in to your Beacon account.</p>
+                        <div className="session-status-list">
+                            {sessions.map((item) => (
+                                <span key={item.session_id}>
+                                    <strong>{item.is_current ? "Current session" : "Other session"}</strong>
+                                    {item.ip_address || "Unknown address"} · {new Date(item.last_seen_at).toLocaleString()}
+                                    <button type="button" onClick={() => revokeSession(item.session_id, item.is_current)}>
+                                        Revoke
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                        {sessions.length > 1 && (
+                            <button type="button" onClick={revokeOtherSessions}>Revoke Other Sessions</button>
+                        )}
+                        {sessionMessage && <p className="login-message">{sessionMessage}</p>}
                     </section>
                 </div>
             )}

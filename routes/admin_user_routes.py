@@ -120,6 +120,7 @@ def update_user_role(
     assert_role_assignment_access(current_user, role)
 
     user.role = role
+    user.auth_version += 1
     db.commit()
     db.refresh(user)
 
@@ -143,6 +144,7 @@ def update_user_agency(
         raise HTTPException(status_code=404, detail="User not found")
 
     user.agency_id = agency_id
+    user.auth_version += 1
     db.commit()
     db.refresh(user)
 
@@ -174,6 +176,7 @@ def update_user_status(
         )
 
     user.is_active = is_active
+    user.auth_version += 1
     db.commit()
     db.refresh(user)
 
@@ -207,6 +210,7 @@ def reset_user_password(
     user.password_hash = hash_password(data.temporary_password)
     user.password_changed_at = datetime.utcnow()
     user.must_change_password = True
+    user.auth_version += 1
     db.commit()
     db.refresh(user)
 

@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import uuid
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -9,11 +10,14 @@ from sqlalchemy.orm import Session
 from config.settings import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
+    JWT_AUDIENCE,
+    JWT_ISSUER,
     SECRET_KEY,
 )
 from database.connection import get_db
 from database.tenant_context import configure_tenant_session
 from models.user import User
+from models.auth_session import AuthSession
 
 
 if not SECRET_KEY:
@@ -49,16 +53,23 @@ def verify_password(password: str, hashed: str) -> bool:
 def create_access_token(
     data: dict,
     expires_delta: timedelta | None = None,
+    token_type: str = "access",
 ) -> str:
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + (
+    now = datetime.now(timezone.utc)
+    expire = now + (
         expires_delta
         or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
 
     to_encode.update({
         "exp": expire,
+        "iat": now,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "jti": str(uuid.uuid4()),
+        "token_type": token_type,
     })
 
     return jwt.encode(
@@ -66,6 +77,19 @@ def create_access_token(
         SECRET_KEY,
         algorithm=ALGORITHM,
     )
+
+
+def decode_access_token(token: str) -> dict:
+    payload = jwt.decode(
+        token,
+        SECRET_KEY,
+        algorithms=[ALGORITHM],
+        audience=JWT_AUDIENCE,
+        issuer=JWT_ISSUER,
+    )
+    if payload.get("token_type") != "access":
+        raise JWTError("Invalid token type")
+    return payload
 
 
 # -------------------------------------------------------------------
@@ -83,32 +107,43 @@ def get_current_user(
     )
 
     try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
-        )
+        payload = decode_access_token(token)
 
-        username = payload.get("sub")
+        user_id = int(payload.get("sub"))
+        auth_version = int(payload.get("auth_version"))
+        session_id = str(payload.get("sid") or "")
 
-        if not username:
+        if user_id <= 0 or auth_version < 0 or not session_id:
             raise credentials_exception
 
-    except JWTError:
+    except (JWTError, TypeError, ValueError):
         raise credentials_exception
 
     user = (
         db.query(User)
-        .filter(User.username == username)
+        .filter(User.user_id == user_id)
         .first()
     )
 
-    if user is None or not user.is_active:
+    if (
+        user is None
+        or not user.is_active
+        or user.auth_version != auth_version
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    auth_session = db.query(AuthSession).filter(
+        AuthSession.session_id == session_id,
+        AuthSession.user_id == user.user_id,
+        AuthSession.revoked_at.is_(None),
+        AuthSession.expires_at > datetime.utcnow(),
+    ).first()
+    if auth_session is None:
+        raise credentials_exception
 
     configure_tenant_session(
         db,

@@ -44,11 +44,29 @@ async function parseResponse(response) {
     return response;
 }
 
-export async function apiRequest(path, options = {}) {
-    const response = await fetch(apiUrl(path), {
+export async function apiRequest(path, options = {}, allowRefresh = true) {
+    let response = await fetch(apiUrl(path), {
         ...options,
+        credentials: "include",
         headers: authHeaders(options.headers || {}),
     });
+
+    if (response.status === 401 && allowRefresh && path !== "/users/refresh") {
+        const refreshResponse = await fetch(apiUrl("/users/refresh"), {
+            method: "POST",
+            credentials: "include",
+        });
+        if (refreshResponse.ok) {
+            const refreshed = await refreshResponse.json();
+            localStorage.setItem("token", refreshed.access_token);
+            localStorage.setItem("session_expires_at", refreshed.session_expires_at);
+            response = await fetch(apiUrl(path), {
+                ...options,
+                credentials: "include",
+                headers: authHeaders(options.headers || {}),
+            });
+        }
+    }
 
     return parseResponse(response);
 }

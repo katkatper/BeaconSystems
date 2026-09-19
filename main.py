@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from models.external_record import ExternalRecord
 from models.user import User
+from models.auth_session import AuthSession
 from models.sighting import Sighting
 from models.case import Cases
 from models.alerts import Alerts
@@ -164,7 +165,7 @@ app.add_middleware(
         if IS_PRODUCTION
         else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
     ),
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["X-Request-ID", "X-Page-Limit", "X-Page-Offset", "X-Has-More", "X-Next-Cursor"],

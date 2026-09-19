@@ -70,6 +70,7 @@ function Login({ onLogin }) {
         try {
             const response = await fetch(apiUrl("/users/login"), {
                 method: "POST",
+                credentials: "include",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -106,6 +107,7 @@ function Login({ onLogin }) {
         try {
             const response = await fetch(apiUrl("/users/mfa/verify"), {
                 method: "POST",
+                credentials: "include",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -158,11 +160,12 @@ function Login({ onLogin }) {
                 throw new Error(data.detail || "Password update failed");
             }
 
-            if (onLogin) {
-                onLogin(pendingToken);
-            }
-
-            navigate(getLandingPath(localStorage.getItem("role")));
+            localStorage.clear();
+            setPendingToken("");
+            setPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+            setMessage("Password updated. Sign in again to start a new secure session.");
         } catch (err) {
             console.error(err);
             setError(err.message || "Could not update password");

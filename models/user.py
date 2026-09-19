@@ -37,3 +37,6 @@ class User(Base):
     mfa_verified_at = Column(DateTime, nullable=True)
 
     last_login_at = Column(DateTime, nullable=True)
+
+    # Incrementing this value immediately invalidates every older token.
+    auth_version = Column(Integer, nullable=False, default=0)
