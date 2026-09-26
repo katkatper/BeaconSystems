@@ -31,6 +31,30 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("SECRET_KEY must contain at least 32 characters", source)
         self.assertIn("JWT_ISSUER is required in production", source)
         self.assertIn("JWT_AUDIENCE is required in production", source)
+        self.assertIn("TRUSTED_HOSTS must list approved production hostnames", source)
+        self.assertIn("TRUSTED_HOSTS cannot contain '*' in production", source)
+        self.assertIn("HSTS_MAX_AGE_SECONDS must be at least 31536000", source)
+
+    def test_api_perimeter_has_security_headers_and_bounded_cors(self):
+        main_source = (REPOSITORY_ROOT / "main.py").read_text(encoding="utf-8")
+        middleware_source = (
+            REPOSITORY_ROOT / "security" / "http_middleware.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("TrustedHostMiddleware", main_source)
+        self.assertIn('docs_url=None if IS_PRODUCTION else "/docs"', main_source)
+        self.assertNotIn('allow_methods=["*"]', main_source)
+        self.assertNotIn('allow_headers=["*"]', main_source)
+        for header in [
+            "Cache-Control",
+            "Content-Security-Policy",
+            "Permissions-Policy",
+            "Referrer-Policy",
+            "Strict-Transport-Security",
+            "X-Content-Type-Options",
+            "X-Frame-Options",
+        ]:
+            self.assertIn(header, middleware_source)
 
     def test_database_pool_uses_health_checks_and_bounded_capacity(self):
         source = (REPOSITORY_ROOT / "database" / "connection.py").read_text(

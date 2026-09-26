@@ -20,3 +20,6 @@ venv/
 venv-*/
 uploads/
 *.zip
+
+# Beacon business, compliance, and company documentation is maintained privately.
+docs/

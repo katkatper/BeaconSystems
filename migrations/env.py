@@ -19,6 +19,7 @@ from models.data_sources import Data_Source
 from models.evidence import Evidence
 from models.leads import Leads
 from models.user import User
+from models.auth_session import AuthSession
 from models.timeline_events import Timeline_Event
 from models.investigators import Investigators
 from models.IntegrationSource import IntegrationSource

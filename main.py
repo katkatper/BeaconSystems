@@ -14,11 +14,15 @@ from database.security_posture import validate_database_security
 from config.settings import (
     API_REQUEST_TIMEOUT_SECONDS,
     CORS_ORIGINS,
+    HSTS_MAX_AGE_SECONDS,
     IS_PRODUCTION,
+    TRUSTED_HOSTS,
     validate_runtime_settings,
 )
 from  contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from security.http_middleware import SecurityHeadersMiddleware
 
 # Import application models so SQLAlchemy/Alembic metadata includes all tables.
 # Alembic is the source of truth for schema changes.
@@ -96,7 +100,13 @@ async def lifespan(app: FastAPI):
    
 validate_runtime_settings()
 
-app = FastAPI(title="Beacon API", lifespan=lifespan)
+app = FastAPI(
+    title="Beacon API",
+    lifespan=lifespan,
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+)
 
 request_logger = logging.getLogger("beacon.requests")
 request_logger.setLevel(logging.INFO)
@@ -166,9 +176,25 @@ app.add_middleware(
         else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
     ),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     expose_headers=["X-Request-ID", "X-Page-Limit", "X-Page-Offset", "X-Has-More", "X-Next-Cursor"],
+)
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=(
+        TRUSTED_HOSTS
+        if TRUSTED_HOSTS
+        else ["localhost", "127.0.0.1", "testserver"]
+    ),
+)
+
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    enable_hsts=IS_PRODUCTION,
+    hsts_max_age=HSTS_MAX_AGE_SECONDS,
+    enable_strict_csp=IS_PRODUCTION,
 )
     
 

@@ -27,6 +27,8 @@ def env_csv(name: str) -> list[str]:
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 IS_PRODUCTION = ENVIRONMENT in {"production", "prod"}
 CORS_ORIGINS = env_csv("CORS_ORIGINS")
+TRUSTED_HOSTS = env_csv("TRUSTED_HOSTS")
+HSTS_MAX_AGE_SECONDS = int(os.getenv("HSTS_MAX_AGE_SECONDS", "31536000"))
 ENABLE_LOCAL_SCHEMA_BOOTSTRAP = env_bool(
     "ENABLE_LOCAL_SCHEMA_BOOTSTRAP",
     default=ENVIRONMENT in {"development", "dev", "test"},
@@ -93,6 +95,15 @@ def validate_runtime_settings() -> None:
 
     if "*" in CORS_ORIGINS:
         errors.append("CORS_ORIGINS cannot contain '*' in production")
+
+    if not TRUSTED_HOSTS:
+        errors.append("TRUSTED_HOSTS must list approved production hostnames")
+
+    if "*" in TRUSTED_HOSTS:
+        errors.append("TRUSTED_HOSTS cannot contain '*' in production")
+
+    if HSTS_MAX_AGE_SECONDS < 31536000:
+        errors.append("HSTS_MAX_AGE_SECONDS must be at least 31536000 in production")
 
     if ENABLE_LOCAL_SCHEMA_BOOTSTRAP:
         errors.append("ENABLE_LOCAL_SCHEMA_BOOTSTRAP must be false in production")

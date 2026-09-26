@@ -1,0 +1,84 @@
+name: Production release gates
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: beacon_ci
+          POSTGRES_USER: beacon_ci
+          POSTGRES_PASSWORD: beacon_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U beacon_ci -d beacon_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg2://beacon_ci:beacon_ci_password@127.0.0.1:5432/beacon_ci
+      MIGRATION_DATABASE_URL: postgresql+psycopg2://beacon_ci:beacon_ci_password@127.0.0.1:5432/beacon_ci
+      SECRET_KEY: ci-only-secret-key-with-at-least-32-characters
+      JWT_ISSUER: beacon-api-ci
+      JWT_AUDIENCE: beacon-web-ci
+      ENABLE_LOCAL_SCHEMA_BOOTSTRAP: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Verify repository hygiene
+        run: python scripts/check_repository_hygiene.py
+      - name: Require one migration head
+        run: test "$(alembic heads | wc -l)" -eq 1
+      - name: Apply migrations to PostgreSQL
+        run: alembic upgrade head
+      - name: Run backend and isolation tests
+        run: python -m pytest tests -q -p no:cacheprovider
+      - name: Verify application import
+        run: python -c "import main"
+      - name: Build production API image
+        run: docker build --tag beacon-api:${{ github.sha }} .
+      - name: Verify production image runtime metadata
+        run: |
+          test "$(docker image inspect beacon-api:${{ github.sha }} --format '{{.Config.User}}')" = "10001:10001"
+          test "$(docker image inspect beacon-api:${{ github.sha }} --format '{{json .Config.Healthcheck}}')" != "null"
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: beaconsystems.client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: beaconsystems.client/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Lint frontend
+        run: npm run lint
+      - name: Build production frontend
+        run: npm run build

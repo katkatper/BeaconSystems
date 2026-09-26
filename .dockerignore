@@ -1,0 +1,25 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+.venv
+.venv-*
+.vs
+.vscode
+__pycache__
+*.py[cod]
+*.zip
+.pytest_cache
+node_modules
+dist
+uploads
+docs
+beacon-client
+beaconsystems.client
+BeaconSystems
+BeaconSystems.Server
+my-app
+packages
+tests
+Utility Logger
