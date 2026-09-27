@@ -269,8 +269,14 @@ function CommandTools() {
                                 <div className="mfa-secret-box">
                                     <span>Issuer: {mfaSetup.issuer}</span>
                                     <span>Account: {mfaSetup.account}</span>
-                                    <strong>{mfaSetup.secret}</strong>
-                                    <small>{mfaSetup.otpauth_uri}</small>
+                                    {mfaSetup.enabled ? (
+                                        <strong>MFA is enabled. The enrollment secret is hidden.</strong>
+                                    ) : (
+                                        <>
+                                            <strong>{mfaSetup.secret}</strong>
+                                            <small>{mfaSetup.otpauth_uri}</small>
+                                        </>
+                                    )}
                                 </div>
 
                                 <form onSubmit={mfaSetup.enabled ? disableMfa : enableMfa}>

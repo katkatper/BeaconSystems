@@ -2,6 +2,7 @@ from sqlalchemy import text
 
 
 RLS_TABLES = (
+    "activity_log",
     "cases",
     "alerts",
     "bolo_alerts",

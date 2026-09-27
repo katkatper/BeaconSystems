@@ -26,6 +26,16 @@ git archive --format=zip --output BeaconSystems-source.zip HEAD
 
 The repository-hygiene workflow performs the tracked-file check on every push and pull request.
 
+## Audit records
+
+Beacon audit rows are tenant-scoped with PostgreSQL Row-Level Security and are
+append-only: application operations cannot update or delete an existing audit
+event. Each committed event is also emitted as sanitized JSON through the
+`beacon.security.audit` logger for collection by the production log router.
+Configure the deployment platform to retain that stream in approved centralized
+storage; the application intentionally excludes free-form event details from the
+external stream to reduce disclosure risk.
+
 ## PostgreSQL tenant isolation
 
 Authenticated requests attach `beacon.agency_id` and `beacon.platform_admin`

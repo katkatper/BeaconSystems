@@ -77,6 +77,7 @@ class AuthenticationContractTests(unittest.TestCase):
         self.assertIn("hashlib.sha256(refresh_token.encode()).hexdigest()", routes_source)
         self.assertIn("httponly=True", routes_source)
         self.assertIn('credentials: "include"', client_source)
+        self.assertIn("validate_cookie_request_origin(request)", routes_source)
 
     def test_users_can_review_and_revoke_their_sessions(self):
         routes_source = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")
@@ -84,6 +85,30 @@ class AuthenticationContractTests(unittest.TestCase):
         self.assertIn('@router.post("/sessions/{session_id}/revoke")', routes_source)
         self.assertIn('@router.post("/sessions/revoke-others")', routes_source)
         self.assertIn("AuthSession.user_id == current_user.user_id", routes_source)
+
+    def test_authentication_entry_points_are_rate_limited(self):
+        routes_source = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")
+        limiter_source = (REPOSITORY_ROOT / "security" / "rate_limit.py").read_text(encoding="utf-8")
+        settings_source = (REPOSITORY_ROOT / "config" / "settings.py").read_text(encoding="utf-8")
+
+        ast.parse(limiter_source)
+        self.assertGreaterEqual(routes_source.count("enforce_rate_limit("), 3)
+        self.assertIn('namespace="login"', routes_source)
+        self.assertIn('namespace="mfa"', routes_source)
+        self.assertIn('namespace="refresh"', routes_source)
+        self.assertIn("RATE_LIMIT_REDIS_URL is required in production", settings_source)
+        self.assertIn("HTTP_429_TOO_MANY_REQUESTS", limiter_source)
+        self.assertIn("HTTP_503_SERVICE_UNAVAILABLE", limiter_source)
+
+    def test_mfa_secrets_are_encrypted_and_not_redisclosed_after_enrollment(self):
+        routes_source = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")
+        encryption_source = (REPOSITORY_ROOT / "security" / "field_encryption.py").read_text(encoding="utf-8")
+
+        ast.parse(encryption_source)
+        self.assertIn("encrypt_mfa_secret(secret)", routes_source)
+        self.assertIn("decrypt_mfa_secret", routes_source)
+        self.assertIn("if current_user.mfa_enabled", routes_source)
+        self.assertIn('ENCRYPTED_PREFIX = "enc:v1:"', encryption_source)
 
     def test_no_hard_coded_development_signing_key_remains(self):
         offenders = []

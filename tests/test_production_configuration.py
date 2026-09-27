@@ -27,6 +27,10 @@ class ProductionConfigurationTests(unittest.TestCase):
 
         self.assertIn("validate_runtime_settings", source)
         self.assertIn("CORS_ORIGINS cannot contain '*' in production", source)
+        self.assertIn(
+            "CORS_ORIGINS entries must be HTTPS origins without paths in production",
+            source,
+        )
         self.assertIn("ENABLE_LOCAL_SCHEMA_BOOTSTRAP must be false", source)
         self.assertIn("SECRET_KEY must contain at least 32 characters", source)
         self.assertIn("JWT_ISSUER is required in production", source)
@@ -34,6 +38,8 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("TRUSTED_HOSTS must list approved production hostnames", source)
         self.assertIn("TRUSTED_HOSTS cannot contain '*' in production", source)
         self.assertIn("HSTS_MAX_AGE_SECONDS must be at least 31536000", source)
+        self.assertIn("MFA_SECRET_ENCRYPTION_KEY is required in production", source)
+        self.assertIn("MFA_SECRET_ENCRYPTION_KEY must be a valid Fernet key", source)
 
     def test_api_perimeter_has_security_headers_and_bounded_cors(self):
         main_source = (REPOSITORY_ROOT / "main.py").read_text(encoding="utf-8")

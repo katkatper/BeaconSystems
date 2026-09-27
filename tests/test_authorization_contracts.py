@@ -51,6 +51,29 @@ class AuthorizationContractTests(unittest.TestCase):
         self.assertIn("beacon.platform_admin", migration_source)
         self.assertIn("beacon.agency_id", migration_source)
 
+    def test_audit_log_is_tenant_scoped_append_only_and_exported(self):
+        migration_source = (
+            REPOSITORY_ROOT
+            / "migrations"
+            / "versions"
+            / "f6c28db137ba_protect_audit_log.py"
+        ).read_text(encoding="utf-8")
+        posture_source = (
+            REPOSITORY_ROOT / "database" / "security_posture.py"
+        ).read_text(encoding="utf-8")
+        activity_source = (
+            REPOSITORY_ROOT / "services" / "activity_service.py"
+        ).read_text(encoding="utf-8")
+        login_source = route_source("users_routes.py")
+
+        self.assertIn("ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY", migration_source)
+        self.assertIn("beacon_activity_log_append_only", migration_source)
+        self.assertIn("BEFORE UPDATE OR DELETE", migration_source)
+        self.assertIn('"activity_log"', posture_source)
+        self.assertIn('"event": "beacon_audit_event"', activity_source)
+        self.assertNotIn('"details": log.details', activity_source)
+        self.assertGreaterEqual(login_source.count("configure_tenant_session("), 2)
+
     def test_operational_tenant_owners_are_required(self):
         model_files = {
             "alerts.py": "recipient_agency_id",

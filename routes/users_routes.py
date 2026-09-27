@@ -20,10 +20,17 @@ from config.settings import (
     JWT_AUDIENCE,
     JWT_ISSUER,
     IS_PRODUCTION,
+    LOGIN_RATE_LIMIT_ATTEMPTS,
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    MFA_RATE_LIMIT_ATTEMPTS,
+    MFA_RATE_LIMIT_WINDOW_SECONDS,
     REFRESH_TOKEN_EXPIRE_DAYS,
+    REFRESH_RATE_LIMIT_ATTEMPTS,
+    REFRESH_RATE_LIMIT_WINDOW_SECONDS,
     SECRET_KEY,
 )
 from database.connection import get_db
+from database.tenant_context import configure_tenant_session
 from models.user import User
 from models.auth_session import AuthSession
 from schemas.user_schema import MfaEnable, MfaLoginVerify, PasswordChange, UserCreate, UserLogin, UserResponse, UserRoleUpdate
@@ -36,6 +43,9 @@ from security.auth import (
     require_role,
     verify_password,
 )
+from security.csrf import validate_cookie_request_origin
+from security.field_encryption import decrypt_mfa_secret, encrypt_mfa_secret
+from security.rate_limit import client_address, enforce_rate_limit
 from security.user_management import (
     USER_MANAGER_ROLES,
     apply_user_management_scope,
@@ -174,11 +184,11 @@ def verify_mfa_login_token(token: str) -> tuple[int, int]:
     return user_id, auth_version
 
 
-def mfa_otpauth_uri(user: User) -> str:
+def mfa_otpauth_uri(user: User, secret: str) -> str:
     account = quote(f"{MFA_ISSUER}:{user.username}")
     issuer = quote(MFA_ISSUER)
 
-    return f"otpauth://totp/{account}?secret={user.mfa_secret}&issuer={issuer}&digits={MFA_DIGITS}&period={MFA_STEP_SECONDS}"
+    return f"otpauth://totp/{account}?secret={secret}&issuer={issuer}&digits={MFA_DIGITS}&period={MFA_STEP_SECONDS}"
 
 # USER ROUTES WITH ACTIVITY LOGGING
 
@@ -256,6 +266,13 @@ def login(
 
     db: Session = Depends(get_db)
 ):
+    enforce_rate_limit(
+        request,
+        namespace="login",
+        identifier=f"{client_address(request)}:{data.username.strip().lower()}",
+        limit=LOGIN_RATE_LIMIT_ATTEMPTS,
+        window_seconds=LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    )
 
     user = db.query(User).filter(User.username == data.username).first()
 
@@ -267,6 +284,12 @@ def login(
 
     if not user.is_active:
         raise HTTPException(status_code=403, detail="User account is inactive")
+
+    configure_tenant_session(
+        db,
+        agency_id=user.agency_id,
+        platform_admin=user.role == "platform_admin",
+    )
 
 
     password_change_required, password_expires_at = password_expiration_for(user)
@@ -335,15 +358,28 @@ def get_mfa_setup(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if current_user.mfa_enabled:
+        return {
+            "enabled": True,
+            "issuer": MFA_ISSUER,
+            "account": current_user.username,
+        }
+
     if not current_user.mfa_secret:
-        current_user.mfa_secret = generate_mfa_secret()
+        secret = generate_mfa_secret()
+        current_user.mfa_secret = encrypt_mfa_secret(secret)
         db.commit()
         db.refresh(current_user)
+    else:
+        secret, was_plaintext = decrypt_mfa_secret(current_user.mfa_secret)
+        if was_plaintext:
+            current_user.mfa_secret = encrypt_mfa_secret(secret)
+            db.commit()
 
     return {
-        "enabled": bool(current_user.mfa_enabled),
-        "secret": current_user.mfa_secret,
-        "otpauth_uri": mfa_otpauth_uri(current_user),
+        "enabled": False,
+        "secret": secret,
+        "otpauth_uri": mfa_otpauth_uri(current_user, secret),
         "issuer": MFA_ISSUER,
         "account": current_user.username,
     }
@@ -356,11 +392,14 @@ def enable_mfa(
     current_user: User = Depends(get_current_user)
 ):
     if not current_user.mfa_secret:
-        current_user.mfa_secret = generate_mfa_secret()
+        current_user.mfa_secret = encrypt_mfa_secret(generate_mfa_secret())
 
-    if not verify_totp(current_user.mfa_secret, data.code):
+    secret, was_plaintext = decrypt_mfa_secret(current_user.mfa_secret)
+    if not verify_totp(secret, data.code):
         raise HTTPException(status_code=400, detail="Invalid MFA code")
 
+    if was_plaintext:
+        current_user.mfa_secret = encrypt_mfa_secret(secret)
     current_user.mfa_enabled = True
     current_user.mfa_verified_at = datetime.utcnow()
 
@@ -385,7 +424,11 @@ def disable_mfa(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if not verify_totp(current_user.mfa_secret, data.code):
+    if not current_user.mfa_secret:
+        raise HTTPException(status_code=400, detail="MFA is not configured")
+
+    secret, _ = decrypt_mfa_secret(current_user.mfa_secret)
+    if not verify_totp(secret, data.code):
         raise HTTPException(status_code=400, detail="Invalid MFA code")
 
     current_user.mfa_enabled = False
@@ -414,18 +457,37 @@ def verify_mfa_login(
     response: Response,
     db: Session = Depends(get_db)
 ):
+    enforce_rate_limit(
+        request,
+        namespace="mfa",
+        identifier=f"{client_address(request)}:{data.mfa_token}",
+        limit=MFA_RATE_LIMIT_ATTEMPTS,
+        window_seconds=MFA_RATE_LIMIT_WINDOW_SECONDS,
+    )
     user_id, auth_version = verify_mfa_login_token(data.mfa_token)
     user = db.query(User).filter(User.user_id == user_id).first()
 
     if not user or not user.is_active or user.auth_version != auth_version:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
-    if not verify_totp(user.mfa_secret, data.code):
+    configure_tenant_session(
+        db,
+        agency_id=user.agency_id,
+        platform_admin=user.role == "platform_admin",
+    )
+
+    if not user.mfa_secret:
+        raise HTTPException(status_code=401, detail="MFA is not configured")
+
+    secret, was_plaintext = decrypt_mfa_secret(user.mfa_secret)
+    if not verify_totp(secret, data.code):
         raise HTTPException(status_code=400, detail="Invalid MFA code")
 
     password_change_required, password_expires_at = password_expiration_for(user)
     user.last_login_at = datetime.utcnow()
     user.mfa_verified_at = datetime.utcnow()
+    if was_plaintext:
+        user.mfa_secret = encrypt_mfa_secret(secret)
 
     create_activity_log(
         db=db,
@@ -444,6 +506,14 @@ def verify_mfa_login(
 
 @router.post("/refresh")
 def refresh_session(request: Request, response: Response, db: Session = Depends(get_db)):
+    validate_cookie_request_origin(request)
+    enforce_rate_limit(
+        request,
+        namespace="refresh",
+        identifier=client_address(request),
+        limit=REFRESH_RATE_LIMIT_ATTEMPTS,
+        window_seconds=REFRESH_RATE_LIMIT_WINDOW_SECONDS,
+    )
     refresh_token = request.cookies.get("beacon_refresh")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh session is unavailable")
