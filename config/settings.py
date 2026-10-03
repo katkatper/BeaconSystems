@@ -43,15 +43,22 @@ DATABASE_POOL_RECYCLE_SECONDS = int(
 )
 DATABASE_SLOW_QUERY_MS = float(os.getenv("DATABASE_SLOW_QUERY_MS", "500"))
 API_REQUEST_TIMEOUT_SECONDS = float(os.getenv("API_REQUEST_TIMEOUT_SECONDS", "30"))
+AWS_CONNECT_TIMEOUT_SECONDS = float(os.getenv("AWS_CONNECT_TIMEOUT_SECONDS", "5"))
+AWS_READ_TIMEOUT_SECONDS = float(os.getenv("AWS_READ_TIMEOUT_SECONDS", "10"))
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
 OBJECT_STORAGE_BACKEND = os.getenv("OBJECT_STORAGE_BACKEND", "local").strip().lower()
 OBJECT_STORAGE_BUCKET = os.getenv("OBJECT_STORAGE_BUCKET", "").strip()
 OBJECT_STORAGE_PREFIX = os.getenv("OBJECT_STORAGE_PREFIX", "beacon").strip().strip("/")
 OBJECT_STORAGE_LOCAL_ROOT = os.getenv("OBJECT_STORAGE_LOCAL_ROOT", "uploads").strip()
+OBJECT_STORAGE_KMS_KEY_ID = os.getenv("OBJECT_STORAGE_KMS_KEY_ID", "").strip()
+OBJECT_STORAGE_EXPECTED_OWNER = os.getenv("OBJECT_STORAGE_EXPECTED_OWNER", "").strip()
 OBJECT_STORAGE_SIGNED_URL_TTL_SECONDS = int(
     os.getenv("OBJECT_STORAGE_SIGNED_URL_TTL_SECONDS", "300")
 )
 RATE_LIMIT_REDIS_URL = os.getenv("RATE_LIMIT_REDIS_URL", "").strip()
+RATE_LIMIT_REDIS_TIMEOUT_SECONDS = float(
+    os.getenv("RATE_LIMIT_REDIS_TIMEOUT_SECONDS", "5")
+)
 LOGIN_RATE_LIMIT_ATTEMPTS = int(os.getenv("LOGIN_RATE_LIMIT_ATTEMPTS", "10"))
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(
     os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300")
@@ -157,8 +164,23 @@ def validate_runtime_settings() -> None:
     if not OBJECT_STORAGE_BUCKET:
         errors.append("OBJECT_STORAGE_BUCKET is required in production")
 
+    if not OBJECT_STORAGE_KMS_KEY_ID:
+        errors.append("OBJECT_STORAGE_KMS_KEY_ID is required in production")
+
+    if (
+        not OBJECT_STORAGE_EXPECTED_OWNER
+        or len(OBJECT_STORAGE_EXPECTED_OWNER) != 12
+        or not OBJECT_STORAGE_EXPECTED_OWNER.isdigit()
+    ):
+        errors.append(
+            "OBJECT_STORAGE_EXPECTED_OWNER must be a 12 digit AWS account ID in production"
+        )
+
     if API_REQUEST_TIMEOUT_SECONDS <= 0:
         errors.append("API_REQUEST_TIMEOUT_SECONDS must be greater than zero")
+
+    if AWS_CONNECT_TIMEOUT_SECONDS <= 0 or AWS_READ_TIMEOUT_SECONDS <= 0:
+        errors.append("AWS connection and read timeouts must be greater than zero")
 
     if MAX_UPLOAD_BYTES <= 0:
         errors.append("MAX_UPLOAD_BYTES must be greater than zero")
@@ -167,6 +189,9 @@ def validate_runtime_settings() -> None:
         errors.append("RATE_LIMIT_REDIS_URL is required in production")
     elif not RATE_LIMIT_REDIS_URL.lower().startswith("rediss://"):
         errors.append("RATE_LIMIT_REDIS_URL must use TLS (rediss://) in production")
+
+    if RATE_LIMIT_REDIS_TIMEOUT_SECONDS <= 0:
+        errors.append("RATE_LIMIT_REDIS_TIMEOUT_SECONDS must be greater than zero")
 
     rate_limit_values = {
         "LOGIN_RATE_LIMIT_ATTEMPTS": LOGIN_RATE_LIMIT_ATTEMPTS,

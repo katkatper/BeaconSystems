@@ -7,13 +7,38 @@ from fastapi import HTTPException, Request, status
 from redis import Redis
 from redis.exceptions import RedisError
 
-from config.settings import IS_PRODUCTION, RATE_LIMIT_REDIS_URL
+from config.settings import (
+    IS_PRODUCTION,
+    RATE_LIMIT_REDIS_TIMEOUT_SECONDS,
+    RATE_LIMIT_REDIS_URL,
+)
 
 
 logger = logging.getLogger("beacon.security")
-_redis_client = Redis.from_url(RATE_LIMIT_REDIS_URL) if RATE_LIMIT_REDIS_URL else None
+_redis_client = (
+    Redis.from_url(
+        RATE_LIMIT_REDIS_URL,
+        socket_connect_timeout=RATE_LIMIT_REDIS_TIMEOUT_SECONDS,
+        socket_timeout=RATE_LIMIT_REDIS_TIMEOUT_SECONDS,
+        health_check_interval=30,
+    )
+    if RATE_LIMIT_REDIS_URL
+    else None
+)
 _local_counts: dict[str, tuple[int, int]] = {}
 _local_lock = threading.Lock()
+
+
+def validate_rate_limit_backend() -> None:
+    if _redis_client is None:
+        raise RuntimeError("Production authentication rate limiter is not configured")
+    try:
+        if not _redis_client.ping():
+            raise RuntimeError("Production authentication rate limiter did not respond")
+    except RedisError as exc:
+        raise RuntimeError(
+            "Production authentication rate limiter is unavailable"
+        ) from exc
 
 
 def client_address(request: Request) -> str:

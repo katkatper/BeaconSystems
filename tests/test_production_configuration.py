@@ -38,6 +38,8 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("TRUSTED_HOSTS must list approved production hostnames", source)
         self.assertIn("TRUSTED_HOSTS cannot contain '*' in production", source)
         self.assertIn("HSTS_MAX_AGE_SECONDS must be at least 31536000", source)
+        self.assertIn("OBJECT_STORAGE_KMS_KEY_ID is required in production", source)
+        self.assertIn("RATE_LIMIT_REDIS_TIMEOUT_SECONDS must be greater than zero", source)
         self.assertIn("MFA_SECRET_ENCRYPTION_KEY is required in production", source)
         self.assertIn("MFA_SECRET_ENCRYPTION_KEY must be a valid Fernet key", source)
 

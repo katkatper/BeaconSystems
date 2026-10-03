@@ -49,6 +49,11 @@ class AuthenticationRateLimitTests(unittest.TestCase):
         self.assertNotIn("sensitive-user", key)
         self.assertTrue(key.startswith("beacon:rate-limit:login:"))
 
+    def test_production_backend_validation_pings_redis(self):
+        backend = SimpleNamespace(ping=lambda: True)
+        with patch.object(rate_limit, "_redis_client", backend):
+            rate_limit.validate_rate_limit_backend()
+
 
 if __name__ == "__main__":
     unittest.main()

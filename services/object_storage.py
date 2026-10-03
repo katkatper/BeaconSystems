@@ -6,10 +6,14 @@ from pathlib import Path
 from typing import BinaryIO
 from uuid import uuid4
 
+from botocore.exceptions import BotoCoreError, ClientError
+
 from config.aws_config import get_s3_client
 from config.settings import (
     OBJECT_STORAGE_BACKEND,
     OBJECT_STORAGE_BUCKET,
+    OBJECT_STORAGE_EXPECTED_OWNER,
+    OBJECT_STORAGE_KMS_KEY_ID,
     OBJECT_STORAGE_LOCAL_ROOT,
     OBJECT_STORAGE_PREFIX,
     OBJECT_STORAGE_SIGNED_URL_TTL_SECONDS,
@@ -33,6 +37,8 @@ class ObjectStorage:
         self.local_root = Path(OBJECT_STORAGE_LOCAL_ROOT).resolve()
         self.bucket = OBJECT_STORAGE_BUCKET
         self.prefix = OBJECT_STORAGE_PREFIX
+        self.kms_key_id = OBJECT_STORAGE_KMS_KEY_ID
+        self.expected_owner = OBJECT_STORAGE_EXPECTED_OWNER
         self._s3 = get_s3_client() if self.backend == "s3" else None
 
     @staticmethod
@@ -53,6 +59,38 @@ class ObjectStorage:
         ]
         return "/".join(part for part in parts if part)
 
+    def validate_production_access(self) -> None:
+        if self.backend != "s3" or self._s3 is None:
+            raise RuntimeError("Production object storage is not configured for S3")
+        params = {"Bucket": self.bucket}
+        if self.expected_owner:
+            params["ExpectedBucketOwner"] = self.expected_owner
+        try:
+            self._s3.head_bucket(**params)
+            public_access = self._s3.get_public_access_block(**params)[
+                "PublicAccessBlockConfiguration"
+            ]
+            required_public_blocks = (
+                "BlockPublicAcls",
+                "IgnorePublicAcls",
+                "BlockPublicPolicy",
+                "RestrictPublicBuckets",
+            )
+            if not all(public_access.get(name) is True for name in required_public_blocks):
+                raise RuntimeError(
+                    "Production evidence bucket must block every form of public access"
+                )
+
+            versioning = self._s3.get_bucket_versioning(**params)
+            if versioning.get("Status") != "Enabled":
+                raise RuntimeError(
+                    "Production evidence bucket versioning must be enabled"
+                )
+        except (BotoCoreError, ClientError) as exc:
+            raise RuntimeError(
+                "Production evidence bucket is unavailable or owned by another account"
+            ) from exc
+
     def put(self, stream: BinaryIO, key: str, content_type: str | None = None) -> StoredObject:
         digest = hashlib.sha256()
 
@@ -64,7 +102,12 @@ class ObjectStorage:
                     digest.update(chunk)
                     buffered.write(chunk)
                 buffered.seek(0)
-                extra = {"ServerSideEncryption": "AES256"}
+                extra = {
+                    "ServerSideEncryption": "aws:kms",
+                    "SSEKMSKeyId": self.kms_key_id,
+                }
+                if self.expected_owner:
+                    extra["ExpectedBucketOwner"] = self.expected_owner
                 if content_type:
                     extra["ContentType"] = content_type
                 self._s3.upload_fileobj(buffered, self.bucket, key, ExtraArgs=extra)
@@ -90,6 +133,8 @@ class ObjectStorage:
         if self.backend != "s3":
             raise RuntimeError("Signed URLs are available only for S3 storage")
         params = {"Bucket": self.bucket, "Key": key}
+        if self.expected_owner:
+            params["ExpectedBucketOwner"] = self.expected_owner
         if download_name:
             content_type = mimetypes.guess_type(download_name)[0] or "application/octet-stream"
             params["ResponseContentType"] = content_type

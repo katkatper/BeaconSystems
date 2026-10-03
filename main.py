@@ -23,6 +23,8 @@ from  contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from security.http_middleware import SecurityHeadersMiddleware
+from security.rate_limit import validate_rate_limit_backend
+from services.object_storage import object_storage
 
 # Import application models so SQLAlchemy/Alembic metadata includes all tables.
 # Alembic is the source of truth for schema changes.
@@ -92,6 +94,8 @@ async def lifespan(app: FastAPI):
 
     if IS_PRODUCTION:
         validate_database_security(engine)
+        validate_rate_limit_backend()
+        object_storage.validate_production_access()
 
 
     yield
