@@ -33,6 +33,7 @@ class ProductionConfigurationTests(unittest.TestCase):
         )
         self.assertIn("ENABLE_LOCAL_SCHEMA_BOOTSTRAP must be false", source)
         self.assertIn("SECRET_KEY must contain at least 32 characters", source)
+        self.assertIn("BEACON_CASE_ACCESS_CODE must contain at least 16 characters", source)
         self.assertIn("JWT_ISSUER is required in production", source)
         self.assertIn("JWT_AUDIENCE is required in production", source)
         self.assertIn("TRUSTED_HOSTS must list approved production hostnames", source)

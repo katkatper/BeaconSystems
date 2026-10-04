@@ -4,9 +4,7 @@ from fastapi import Response
 from typing import List, Optional
 from datetime import datetime
 from database.connection import get_db
-from models import timeline_events
 from models.sighting import Sighting
-from models.case import Cases
 from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import (
@@ -21,6 +19,7 @@ from services.alert_service import create_alert
 from services.geocoding_fields import apply_geocode_result
 from services.geocoding_service import geocode_address
 from services.pagination import paginate_query_values
+from services.sighting_confidence import calculate_sighting_confidence
 
 # CREATE APIRouter INSTANCE WITH PREFIX AND TAGS
 
@@ -34,79 +33,6 @@ def apply_geocode_metadata(target, geocoded):
         include_coordinates=False,
         clear_when_missing=True,
     )
-
-
-def calculate_sighting_confidence(description: str | None, location: str | None, geocoded=None) -> float:
-    text = f"{description or ''} {location or ''}".lower()
-    score = 0.35
-
-    high_confidence_terms = [
-        "confirmed",
-        "identified",
-        "license plate",
-        "plate",
-        "photo",
-        "video",
-        "cctv",
-        "camera",
-        "lpr",
-        "facial recognition",
-        "positive id",
-        "same clothes",
-    ]
-    medium_confidence_terms = [
-        "witness",
-        "saw",
-        "seen",
-        "reported",
-        "vehicle",
-        "direction",
-        "walking",
-        "running",
-        "near",
-        "matching description",
-    ]
-    low_confidence_terms = [
-        "possible",
-        "maybe",
-        "unknown",
-        "unclear",
-        "unconfirmed",
-        "similar",
-        "rumor",
-    ]
-
-    for term in high_confidence_terms:
-        if term in text:
-            score += 0.12
-
-    for term in medium_confidence_terms:
-        if term in text:
-            score += 0.06
-
-    for term in low_confidence_terms:
-        if term in text:
-            score -= 0.07
-
-    if geocoded:
-        accuracy = geocoded.get("accuracy")
-
-        if accuracy in {"rooftop", "known_address", "provided_coordinates"}:
-            score += 0.14
-        elif accuracy in {"street", "known_place", "place"}:
-            score += 0.1
-        elif accuracy in {"city_estimate", "area"}:
-            score -= 0.06
-
-        geocode_score = geocoded.get("score")
-
-        if geocode_score is not None:
-            score += max(-0.05, min(0.1, (float(geocode_score) - 80) / 200))
-
-    if len(text.strip()) < 24:
-        score -= 0.08
-
-    return round(max(0.1, min(0.95, score)), 2)
 
 
 @router.get("/test")

@@ -84,6 +84,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 JWT_ISSUER = os.getenv("JWT_ISSUER", "beacon-api").strip()
 JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "beacon-web").strip()
 PARTNER_WEBHOOK_TOKEN = os.getenv("PARTNER_WEBHOOK_TOKEN")
+CASE_ACCESS_CODE = os.getenv("BEACON_CASE_ACCESS_CODE", "").strip()
 EVIDENCE_ENCRYPTION_ENABLED = os.getenv("EVIDENCE_ENCRYPTION_ENABLED", "false").lower() == "true"
 EVIDENCE_ENCRYPTION_KEY_ID = os.getenv("EVIDENCE_ENCRYPTION_KEY_ID", "local-storage")
 SPLUNK_HEC_URL = os.getenv("SPLUNK_HEC_URL")
@@ -107,6 +108,9 @@ def validate_runtime_settings() -> None:
 
     if not SECRET_KEY or len(SECRET_KEY) < 32:
         errors.append("SECRET_KEY must contain at least 32 characters")
+
+    if len(CASE_ACCESS_CODE) < 16:
+        errors.append("BEACON_CASE_ACCESS_CODE must contain at least 16 characters")
 
     if not MFA_SECRET_ENCRYPTION_KEY:
         errors.append("MFA_SECRET_ENCRYPTION_KEY is required in production")

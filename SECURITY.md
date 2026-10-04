@@ -90,3 +90,11 @@ Set `DATABASE_URL` to the restricted application role. Supply
 `MIGRATION_DATABASE_URL` only to Alembic or the deployment migration job. Beacon
 validates the runtime role and all required tenant policies during production
 startup and refuses to serve traffic when the database posture is unsafe.
+
+## Case access codes
+
+Code-based case access has no built-in or demonstration fallback. Store
+`BEACON_CASE_ACCESS_CODE` in the deployment secret manager and use a randomly
+generated value of at least 16 characters. Beacon refuses production startup
+when it is missing or too short. Rotate the code after suspected disclosure and
+review the corresponding case-access audit events.

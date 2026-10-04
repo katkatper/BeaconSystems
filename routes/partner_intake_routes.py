@@ -23,6 +23,7 @@ from services.activity_service import create_activity_log
 from services.geocoding_fields import apply_geocode_result, copy_geocode_fields
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
+from services.partner_matching import normalize_text, score_case_match, split_subject_name
 
 
 router = APIRouter(prefix="/partner-intake", tags=["Partner Intake"])
@@ -64,122 +65,12 @@ LEGAL_AUTHORITY_TYPES = {
 }
 
 
-def normalize_text(value: Any) -> str:
-    if value is None:
-        return ""
-
-    return str(value).strip().lower()
-
-
-def text_tokens(value: str) -> set[str]:
-    normalized = "".join(
-        character if character.isalnum() else " "
-        for character in normalize_text(value)
-    )
-    return {
-        token
-        for token in normalized.split()
-        if len(token) > 2
-        and token not in {"the", "and", "for", "with", "near", "from"}
-    }
-
-
-def split_subject_name(subject_name: str | None):
-    if not subject_name:
-        return None, None
-
-    parts = subject_name.strip().split()
-
-    if len(parts) == 1:
-        return parts[0], None
-
-    return parts[0], " ".join(parts[1:])
-
-
 def apply_geocode_fields(target, geocoded: dict[str, Any] | None) -> None:
     apply_geocode_result(target, geocoded)
 
 
 def copy_intake_geocode_fields(external_record: ExternalRecord, intake: PartnerIntakeRecord) -> None:
     copy_geocode_fields(external_record, intake)
-
-
-def score_case_match(case: Cases, data: PartnerIntakeCreate) -> tuple[int, list[str]]:
-    person = case.person
-    raw_data = data.raw_data or {}
-    score = 0
-    reasons: list[str] = []
-
-    subject = normalize_text(data.subject_name)
-    summary = normalize_text(data.summary)
-    location = normalize_text(data.location)
-    raw_blob = normalize_text(raw_data)
-    search_blob = " ".join([subject, summary, location, raw_blob])
-
-    first_name = normalize_text(person.first_name if person else "")
-    last_name = normalize_text(person.last_name if person else "")
-    full_name = " ".join(part for part in [first_name, last_name] if part)
-
-    if full_name and full_name in search_blob:
-        score += 45
-        reasons.append("full name matched")
-    else:
-        if first_name and first_name in search_blob:
-            score += 18
-            reasons.append("first name matched")
-        if last_name and last_name in search_blob:
-            score += 25
-            reasons.append("last name matched")
-
-    partner_age = raw_data.get("age") if isinstance(raw_data, dict) else None
-    if partner_age and person and person.age and int(partner_age) == int(person.age):
-        score += 12
-        reasons.append("age matched")
-
-    for label, value in [
-        ("eye color", person.eye_color if person else None),
-        ("hair color", person.hair_color if person else None),
-        ("risk level", person.risk_level if person else None),
-    ]:
-        normalized_value = normalize_text(value)
-        if normalized_value and normalized_value in search_blob:
-            score += 8
-            reasons.append(f"{label} matched")
-
-    case_locations = " ".join(
-        normalize_text(value)
-        for value in [
-            case.last_seen_location,
-            person.last_seen_location if person else "",
-        ]
-    )
-    location_overlap = text_tokens(location).intersection(text_tokens(case_locations))
-    if location_overlap:
-        score += min(15, len(location_overlap) * 5)
-        reasons.append("location overlapped")
-
-    case_context = " ".join(
-        normalize_text(value)
-        for value in [
-            case.case_number,
-            case.title,
-            case.description,
-            case.notes,
-            person.description if person else "",
-            person.scars if person else "",
-            person.tattoos if person else "",
-            person.medical_conditions if person else "",
-        ]
-    )
-    keyword_overlap = text_tokens(summary).intersection(text_tokens(case_context))
-    if keyword_overlap:
-        score += min(20, len(keyword_overlap) * 4)
-        reasons.append("description keywords overlapped")
-
-    if normalize_text(case.case_status) in {"closed", "cold"}:
-        reasons.append(f"{case.case_status.lower()} case considered")
-
-    return min(score, 100), reasons
 
 
 def find_best_case_match(db: Session, data: PartnerIntakeCreate, agency_id: int):

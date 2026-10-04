@@ -1,7 +1,3 @@
-import os
-import json
-import re
-from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
@@ -17,8 +13,11 @@ from models.sighting import Sighting
 from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import apply_case_access_filter, get_authorized_case
+from security.case_access_requests import case_access_code_matches, decide_case_access
 from schemas.case_schema import CaseCreate, CaseUpdate, CaseResponse, MessageResponse
 from services.activity_service import create_activity_log
+from services.case_correlation import build_case_correlations
+from services.clock import utc_now
 from services.pagination import PaginationParams, paginate_query, paginate_query_values
 
 
@@ -35,39 +34,6 @@ class CaseAccessRequest(BaseModel):
     case_id: int
     reason_category: str
     reason: str
-
-
-AUTO_APPROVED_REASON_CATEGORIES = {
-    "assisting_investigator",
-    "shift_coverage",
-    "supervisor_directed",
-    "linked_person_overlap",
-    "emergency_field_support",
-    "evidence_intake_support",
-    "court_preparation",
-}
-
-
-def should_auto_approve_access(case: Cases, data: CaseAccessRequest, current_user: User):
-    status = (case.case_status or "").lower()
-    reason_category = data.reason_category.strip().lower()
-
-    if current_user.role in {"platform_admin", "agency_admin"}:
-        return True
-
-    if current_user.role != "investigator":
-        return False
-
-    if current_user.agency_id != case.agency_id:
-        return False
-
-    if status in {"closed", "archived"}:
-        return False
-
-    if reason_category not in AUTO_APPROVED_REASON_CATEGORIES:
-        return False
-
-    return len(data.reason.strip()) >= 20
 
 
 def attach_case_list_display_fields(cases: list[Cases], db: Session):
@@ -99,29 +65,6 @@ def attach_case_list_display_fields(cases: list[Cases], db: Session):
         case.investigator_name = investigator.username if investigator else None
 
     return cases
-
-
-def normalize_correlation_value(value: str | None) -> str:
-    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
-
-
-def parse_associate_names(raw_value: str | None) -> set[str]:
-    if not raw_value:
-        return set()
-    try:
-        parsed = json.loads(raw_value)
-        entries = parsed if isinstance(parsed, list) else [parsed]
-        return {
-            normalize_correlation_value(entry.get("name") or entry.get("associate"))
-            for entry in entries
-            if isinstance(entry, dict) and (entry.get("name") or entry.get("associate"))
-        }
-    except (TypeError, ValueError, json.JSONDecodeError):
-        return {
-            normalize_correlation_value(entry.split("|")[0])
-            for entry in raw_value.split(";")
-            if entry.strip()
-        }
 
 
 @router.get("/by-person/{person_id}", response_model=List[CaseResponse])
@@ -293,8 +236,6 @@ def get_case_correlations(
         .all()
     )
     accessible_case_ids = [case.case_id for case in accessible_cases]
-    other_cases = [case for case in accessible_cases if case.case_id != case_id]
-    case_lookup = {case.case_id: case for case in accessible_cases}
     people = {
         person.person_id: person
         for person in db.query(Person).filter(
@@ -303,7 +244,7 @@ def get_case_correlations(
     }
     target_person = people.get(target_case.person_id)
     if not target_person:
-        return {"case_id": case_id, "generated_at": datetime.utcnow(), "correlations": []}
+        return {"case_id": case_id, "generated_at": utc_now(), "correlations": []}
 
     sightings = (
         db.query(Sighting)
@@ -319,139 +260,16 @@ def get_case_correlations(
         .limit(2000)
         .all()
     )
-    target_sightings = [item for item in sightings if item.case_id == case_id]
-    target_records = [item for item in external_records if item.case_id == case_id]
-    correlations = []
-    seen_keys = set()
-
-    target_locations = {}
-    for label, value in [
-        ("Last seen location", target_person.last_seen_location),
-        ("Home address", target_person.primary_address),
-        *[("Sighting location", item.location) for item in target_sightings],
-        *[("External intelligence location", item.geocoded_address or item.location) for item in target_records],
-    ]:
-        normalized = normalize_correlation_value(value)
-        if normalized:
-            target_locations[normalized] = (label, value)
-
-    for other_case in other_cases:
-        other_person = people.get(other_case.person_id)
-        if not other_person:
-            continue
-        other_sightings = [item for item in sightings if item.case_id == other_case.case_id]
-        other_records = [item for item in external_records if item.case_id == other_case.case_id]
-        other_locations = [
-            ("Last seen location", other_person.last_seen_location),
-            ("Home address", other_person.primary_address),
-            *[("Sighting location", item.location) for item in other_sightings],
-            *[("External intelligence location", item.geocoded_address or item.location) for item in other_records],
-        ]
-
-        for other_label, other_value in other_locations:
-            normalized = normalize_correlation_value(other_value)
-            if not normalized or normalized not in target_locations:
-                continue
-            key = ("shared_location", other_case.case_id, normalized)
-            if key in seen_keys:
-                continue
-            seen_keys.add(key)
-            target_label, displayed_value = target_locations[normalized]
-            is_repeated_sighting = target_label == "Sighting location" and other_label == "Sighting location"
-            correlations.append({
-                "id": f"shared-location-{other_case.case_id}-{len(correlations)}",
-                "type": "shared_location",
-                "title": "Two investigations share a reported location",
-                "summary": f"{target_case.case_number} and {other_case.case_number} both reference {displayed_value}.",
-                "linked_case_id": other_case.case_id,
-                "linked_case_number": other_case.case_number,
-                "confidence": 0.94 if is_repeated_sighting else 0.86,
-                "explanation": "Exact normalized location match across authorized case records.",
-                "evidence": [
-                    {"case_number": target_case.case_number, "source": target_label, "value": displayed_value},
-                    {"case_number": other_case.case_number, "source": other_label, "value": other_value},
-                ],
-            })
-
-        target_vehicle = normalize_correlation_value(target_person.vehicles)
-        other_vehicle = normalize_correlation_value(other_person.vehicles)
-        if target_vehicle and target_vehicle == other_vehicle:
-            correlations.append({
-                "id": f"shared-vehicle-{other_case.case_id}",
-                "type": "shared_vehicle",
-                "title": "Vehicle appears in separate investigations",
-                "summary": f"{target_case.case_number} and {other_case.case_number} contain the same vehicle intelligence.",
-                "linked_case_id": other_case.case_id,
-                "linked_case_number": other_case.case_number,
-                "confidence": 0.92,
-                "explanation": "Exact normalized vehicle description match. Investigators should verify plate, VIN, and ownership before acting.",
-                "evidence": [
-                    {"case_number": target_case.case_number, "source": "Person vehicle intelligence", "value": target_person.vehicles},
-                    {"case_number": other_case.case_number, "source": "Person vehicle intelligence", "value": other_person.vehicles},
-                ],
-            })
-
-        target_associates = parse_associate_names(target_person.known_associates)
-        other_associates = parse_associate_names(other_person.known_associates)
-        other_person_name = normalize_correlation_value(f"{other_person.first_name} {other_person.last_name}")
-        target_person_name = normalize_correlation_value(f"{target_person.first_name} {target_person.last_name}")
-        shared_associates = target_associates.intersection(other_associates)
-        direct_overlap = (
-            {other_person_name} if other_person_name in target_associates else set()
-        ) | ({target_person_name} if target_person_name in other_associates else set())
-        associate_matches = shared_associates | direct_overlap
-        if associate_matches:
-            correlations.append({
-                "id": f"shared-associate-{other_case.case_id}",
-                "type": "shared_associate",
-                "title": "Associate appears in another active investigation",
-                "summary": f"A person relationship overlaps {target_case.case_number} and {other_case.case_number}.",
-                "linked_case_id": other_case.case_id,
-                "linked_case_number": other_case.case_number,
-                "confidence": 0.9,
-                "explanation": "Exact normalized associate-name match across authorized person profiles.",
-                "evidence": [
-                    {"case_number": target_case.case_number, "source": "Known associates", "value": target_person.known_associates},
-                    {"case_number": other_case.case_number, "source": "Known associates", "value": other_person.known_associates},
-                ],
-            })
-
-    identifying_terms = [target_person.scars, target_person.tattoos, target_person.medical_conditions]
-    for record in external_records:
-        if record.case_id == case_id or "hospital" not in str(record.record_type or "").lower():
-            continue
-        factors = []
-        if target_person.age is not None and record.age == target_person.age:
-            factors.append("age")
-        record_text = str(record.notes or "").lower()
-        for term in identifying_terms:
-            if term and str(term).lower() in record_text:
-                factors.append("distinguishing characteristic")
-                break
-        if not factors:
-            continue
-        linked_case = case_lookup.get(record.case_id)
-        confidence = 0.62 + (0.18 if "age" in factors else 0) + (0.15 if len(factors) > 1 else 0)
-        correlations.append({
-            "id": f"hospital-match-{record.id}",
-            "type": "hospital_demographic_match",
-            "title": "Hospital record may match the missing person",
-            "summary": f"A hospital inquiry matches {', '.join(factors)} for {target_case.case_number}.",
-            "linked_case_id": record.case_id,
-            "linked_case_number": linked_case.case_number if linked_case else None,
-            "confidence": min(confidence, 0.95),
-            "explanation": "Demographic and distinguishing-characteristic comparison; identity is not confirmed.",
-            "evidence": [
-                {"case_number": target_case.case_number, "source": "Missing person profile", "value": f"Age {target_person.age}; {target_person.scars or ''} {target_person.tattoos or ''}".strip()},
-                {"case_number": linked_case.case_number if linked_case else "Hospital record", "source": record.record_type, "value": record.notes or record.location},
-            ],
-        })
-
-    correlations.sort(key=lambda item: item["confidence"], reverse=True)
     return {
         "case_id": case_id,
-        "generated_at": datetime.utcnow(),
-        "correlations": correlations[:20],
+        "generated_at": utc_now(),
+        "correlations": build_case_correlations(
+            target_case,
+            accessible_cases,
+            people,
+            sightings,
+            external_records,
+        ),
     }
 
 
@@ -563,9 +381,7 @@ def request_case_access_with_code(
             detail="A specific access reason is required",
         )
 
-    expected_code = os.getenv("BEACON_CASE_ACCESS_CODE", "BEACON-DEMO-CODE")
-
-    if data.access_code != expected_code:
+    if not case_access_code_matches(data.access_code):
         create_activity_log(
             db=db,
             user_id=current_user.user_id,
@@ -657,10 +473,12 @@ def request_case_access(
             detail="Cross-agency access requires a formal partner/legal workflow",
         )
 
-    auto_approved = should_auto_approve_access(case, data, current_user)
-    status = "active" if auto_approved else "pending"
-    approval_type = "auto" if auto_approved else "manual"
-    expires_at = datetime.utcnow() + timedelta(hours=24) if auto_approved else None
+    decision = decide_case_access(
+        case,
+        current_user,
+        reason_category=data.reason_category,
+        reason=data.reason,
+    )
 
     existing_grant = db.query(CaseAccessGrant).filter(
         CaseAccessGrant.case_id == data.case_id,
@@ -671,9 +489,9 @@ def request_case_access(
     if existing_grant:
         existing_grant.reason = data.reason
         existing_grant.reason_category = data.reason_category
-        existing_grant.status = status
-        existing_grant.approval_type = approval_type
-        existing_grant.expires_at = expires_at
+        existing_grant.status = decision.status
+        existing_grant.approval_type = decision.approval_type
+        existing_grant.expires_at = decision.expires_at
         existing_grant.revoked_at = None
         db.commit()
         db.refresh(existing_grant)
@@ -685,15 +503,15 @@ def request_case_access(
             agency_id=current_user.agency_id,
             reason=data.reason,
             reason_category=data.reason_category,
-            status=status,
-            approval_type=approval_type,
-            expires_at=expires_at,
+            status=decision.status,
+            approval_type=decision.approval_type,
+            expires_at=decision.expires_at,
         )
         db.add(grant)
         db.commit()
         db.refresh(grant)
 
-    action = "CASE_ACCESS_AUTO_APPROVED" if auto_approved else "CASE_ACCESS_REVIEW_REQUIRED"
+    action = "CASE_ACCESS_AUTO_APPROVED" if decision.auto_approved else "CASE_ACCESS_REVIEW_REQUIRED"
 
     create_activity_log(
         db=db,
@@ -708,7 +526,7 @@ def request_case_access(
         ),
     )
 
-    if auto_approved:
+    if decision.auto_approved:
         return {
             "message": "Case access auto-approved for 24 hours and logged",
         }
