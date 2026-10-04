@@ -26,6 +26,21 @@ git archive --format=zip --output BeaconSystems-source.zip HEAD
 
 The repository-hygiene workflow performs the tracked-file check on every push and pull request.
 
+## Automated security checks
+
+The production release-gates workflow blocks a pull request or `master` build
+when backend tests, source analysis, or dependency audits fail. Bandit scans the
+Python application for medium- and high-severity findings, `pip-audit` checks
+the pinned production dependencies, and `npm audit` checks frontend production
+dependencies at moderate severity or higher.
+
+The Python audit narrowly ignores `PYSEC-2026-1325` because it affects ECDSA
+operations in the transitive `ecdsa` package, while Beacon explicitly signs and
+verifies tokens with HMAC SHA-256 (`HS256`). The advisory currently has no fixed
+release. Remove this exception if Beacon adopts an ECDSA algorithm, if a fixed
+dependency path becomes available, or if the authentication implementation
+changes. Do not add broad audit exclusions.
+
 ## Audit records
 
 Beacon audit rows are tenant-scoped with PostgreSQL Row-Level Security and are

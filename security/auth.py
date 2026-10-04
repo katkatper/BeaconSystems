@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 import uuid
 
 from fastapi import Depends, HTTPException, status
@@ -18,6 +18,7 @@ from database.connection import get_db
 from database.tenant_context import configure_tenant_session
 from models.user import User
 from models.auth_session import AuthSession
+from services.clock import utc_now, utc_now_aware
 
 
 if not SECRET_KEY:
@@ -57,7 +58,7 @@ def create_access_token(
 ) -> str:
     to_encode = data.copy()
 
-    now = datetime.now(timezone.utc)
+    now = utc_now_aware()
     expire = now + (
         expires_delta
         or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -140,7 +141,7 @@ def get_current_user(
         AuthSession.session_id == session_id,
         AuthSession.user_id == user.user_id,
         AuthSession.revoked_at.is_(None),
-        AuthSession.expires_at > datetime.utcnow(),
+        AuthSession.expires_at > utc_now(),
     ).first()
     if auth_session is None:
         raise credentials_exception

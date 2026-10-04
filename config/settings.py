@@ -43,6 +43,9 @@ DATABASE_POOL_RECYCLE_SECONDS = int(
 )
 DATABASE_SLOW_QUERY_MS = float(os.getenv("DATABASE_SLOW_QUERY_MS", "500"))
 API_REQUEST_TIMEOUT_SECONDS = float(os.getenv("API_REQUEST_TIMEOUT_SECONDS", "30"))
+EXTERNAL_API_TIMEOUT_SECONDS = float(
+    os.getenv("EXTERNAL_API_TIMEOUT_SECONDS", "10")
+)
 AWS_CONNECT_TIMEOUT_SECONDS = float(os.getenv("AWS_CONNECT_TIMEOUT_SECONDS", "5"))
 AWS_READ_TIMEOUT_SECONDS = float(os.getenv("AWS_READ_TIMEOUT_SECONDS", "10"))
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
@@ -179,11 +182,21 @@ def validate_runtime_settings() -> None:
     if API_REQUEST_TIMEOUT_SECONDS <= 0:
         errors.append("API_REQUEST_TIMEOUT_SECONDS must be greater than zero")
 
+    if EXTERNAL_API_TIMEOUT_SECONDS <= 0:
+        errors.append("EXTERNAL_API_TIMEOUT_SECONDS must be greater than zero")
+
     if AWS_CONNECT_TIMEOUT_SECONDS <= 0 or AWS_READ_TIMEOUT_SECONDS <= 0:
         errors.append("AWS connection and read timeouts must be greater than zero")
 
     if MAX_UPLOAD_BYTES <= 0:
         errors.append("MAX_UPLOAD_BYTES must be greater than zero")
+
+    if ARCGIS_GEOCODING_ENABLED:
+        parsed_arcgis_url = urlsplit(ARCGIS_GEOCODE_URL)
+        if parsed_arcgis_url.scheme != "https" or not parsed_arcgis_url.netloc:
+            errors.append("ARCGIS_GEOCODE_URL must use HTTPS in production")
+        if not ARCGIS_API_KEY:
+            errors.append("ARCGIS_API_KEY is required when ArcGIS geocoding is enabled")
 
     if not RATE_LIMIT_REDIS_URL:
         errors.append("RATE_LIMIT_REDIS_URL is required in production")

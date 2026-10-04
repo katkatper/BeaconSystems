@@ -1,7 +1,7 @@
 import re
 import json
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import urlopen
 
 from config.settings import (
@@ -122,6 +122,10 @@ def _geocode_with_arcgis(value: str):
     if not ARCGIS_GEOCODING_ENABLED or not ARCGIS_API_KEY:
         return None
 
+    parsed_endpoint = urlsplit(ARCGIS_GEOCODE_URL)
+    if parsed_endpoint.scheme != "https" or not parsed_endpoint.netloc:
+        return None
+
     query = {
         "f": "json",
         "SingleLine": value,
@@ -133,7 +137,11 @@ def _geocode_with_arcgis(value: str):
     request_url = f"{ARCGIS_GEOCODE_URL}?{urlencode(query)}"
 
     try:
-        with urlopen(request_url, timeout=ARCGIS_GEOCODE_TIMEOUT_SECONDS) as response:
+        # The configured endpoint is constrained to an absolute HTTPS URL above.
+        with urlopen(  # nosec B310
+            request_url,
+            timeout=ARCGIS_GEOCODE_TIMEOUT_SECONDS,
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except (HTTPError, URLError, TimeoutError, ValueError, OSError):
         return None

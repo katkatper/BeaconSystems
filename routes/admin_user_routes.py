@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
-from datetime import datetime
 
 from database.connection import get_db
 from models.user import User
@@ -10,10 +9,15 @@ from security.user_management import (
     USER_MANAGER_ROLES,
     apply_user_management_scope,
     assert_role_assignment_access,
-    assert_user_management_access,
 )
 from services.activity_service import create_activity_log
+from services.clock import utc_now
 from services.pagination import PaginationParams, paginate_query
+from services.user_administration import (
+    assign_user_role,
+    get_managed_user,
+    set_user_active,
+)
 
 router = APIRouter(prefix="/admin/users", tags=["Admin Users"])
 
@@ -63,7 +67,7 @@ def create_user(
         role=data.role,
         agency_id=agency_id,
         is_active=True,
-        password_changed_at=datetime.utcnow(),
+        password_changed_at=utc_now(),
         must_change_password=True,
     )
 
@@ -111,16 +115,9 @@ def update_user_role(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(*USER_MANAGER_ROLES)),
 ):
-    user = db.query(User).filter(User.user_id == user_id).first()
+    user = get_managed_user(db, current_user, user_id)
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    assert_user_management_access(current_user, user)
-    assert_role_assignment_access(current_user, role)
-
-    user.role = role
-    user.auth_version += 1
+    assign_user_role(current_user, user, role)
     db.commit()
     db.refresh(user)
 
@@ -138,10 +135,7 @@ def update_user_agency(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("platform_admin")),
 ):
-    user = db.query(User).filter(User.user_id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = get_managed_user(db, current_user, user_id)
 
     user.agency_id = agency_id
     user.auth_version += 1
@@ -162,21 +156,9 @@ def update_user_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(*USER_MANAGER_ROLES)),
 ):
-    user = db.query(User).filter(User.user_id == user_id).first()
+    user = get_managed_user(db, current_user, user_id)
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    assert_user_management_access(current_user, user)
-
-    if user.user_id == current_user.user_id and not is_active:
-        raise HTTPException(
-            status_code=400,
-            detail="You cannot deactivate yourself",
-        )
-
-    user.is_active = is_active
-    user.auth_version += 1
+    set_user_active(current_user, user, is_active)
     db.commit()
     db.refresh(user)
 
@@ -200,15 +182,10 @@ def reset_user_password(
             detail="Temporary password must be at least 12 characters",
         )
 
-    user = db.query(User).filter(User.user_id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    assert_user_management_access(current_user, user)
+    user = get_managed_user(db, current_user, user_id)
 
     user.password_hash = hash_password(data.temporary_password)
-    user.password_changed_at = datetime.utcnow()
+    user.password_changed_at = utc_now()
     user.must_change_password = True
     user.auth_version += 1
     db.commit()

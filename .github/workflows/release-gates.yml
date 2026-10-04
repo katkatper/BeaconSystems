@@ -48,12 +48,24 @@ jobs:
         run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Verify repository hygiene
         run: python scripts/check_repository_hygiene.py
+      - name: Audit Python dependencies
+        # python-jose currently installs ecdsa, but Beacon signs only with HS256.
+        # PYSEC-2026-1325 affects ECDSA operations and has no fixed release.
+        run: python -m pip_audit -r requirements.txt --progress-spinner off --ignore-vuln PYSEC-2026-1325
+      - name: Scan Python source for security issues
+        run: python -m bandit -r config database integrations models routes security services -ll
+      - name: Reject critical Python correctness errors
+        run: python -m ruff check config database integrations models routes schemas security services main.py scripts tests --select E9,F63,F7,F82
       - name: Require one migration head
         run: test "$(alembic heads | wc -l)" -eq 1
       - name: Apply migrations to PostgreSQL
         run: alembic upgrade head
-      - name: Run backend and isolation tests
-        run: python -m pytest tests -q -p no:cacheprovider
+      - name: Run backend and isolation tests with coverage floor
+        run: >-
+          python -m pytest tests -q -p no:cacheprovider
+          --cov=config --cov=database --cov=integrations --cov=models
+          --cov=routes --cov=schemas --cov=security --cov=services
+          --cov-fail-under=19 --cov-report=term
       - name: Verify application import
         run: python -c "import main"
       - name: Build production API image
@@ -80,5 +92,7 @@ jobs:
         run: npm ci
       - name: Lint frontend
         run: npm run lint
+      - name: Audit frontend production dependencies
+        run: npm audit --omit=dev --audit-level=moderate
       - name: Build production frontend
         run: npm run build

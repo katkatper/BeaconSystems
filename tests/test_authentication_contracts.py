@@ -1,11 +1,19 @@
 import ast
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock
 
+from fastapi import HTTPException
 from jose import JWTError, jwt
 
 from config.settings import ALGORITHM, JWT_AUDIENCE, JWT_ISSUER, SECRET_KEY
 from security.auth import create_access_token
+from services.user_administration import (
+    assign_user_role,
+    get_managed_user,
+    set_user_active,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -52,11 +60,64 @@ class AuthenticationContractTests(unittest.TestCase):
         self.assertIn("User.user_id == user_id", auth_source)
 
     def test_security_sensitive_user_changes_revoke_older_tokens(self):
-        user_routes = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")
-        admin_routes = (REPOSITORY_ROOT / "routes" / "admin_user_routes.py").read_text(encoding="utf-8")
+        actor = SimpleNamespace(
+            user_id=1,
+            agency_id=10,
+            role="platform_admin",
+        )
+        target = SimpleNamespace(
+            user_id=2,
+            agency_id=20,
+            role="investigator",
+            is_active=True,
+            auth_version=3,
+        )
 
-        self.assertGreaterEqual(user_routes.count("auth_version += 1"), 4)
-        self.assertGreaterEqual(admin_routes.count("auth_version += 1"), 4)
+        previous_role = assign_user_role(actor, target, "supervisor")
+        self.assertEqual(previous_role, "investigator")
+        self.assertEqual(target.role, "supervisor")
+        self.assertEqual(target.auth_version, 4)
+
+        set_user_active(actor, target, False)
+        self.assertFalse(target.is_active)
+        self.assertEqual(target.auth_version, 5)
+
+    def test_user_administration_prevents_self_deactivation(self):
+        actor = SimpleNamespace(
+            user_id=1,
+            agency_id=10,
+            role="platform_admin",
+            is_active=True,
+            auth_version=0,
+        )
+
+        with self.assertRaises(HTTPException) as raised:
+            set_user_active(actor, actor, False)
+
+        self.assertEqual(raised.exception.status_code, 400)
+        self.assertTrue(actor.is_active)
+        self.assertEqual(actor.auth_version, 0)
+
+    def test_managed_user_lookup_applies_tenant_authorization(self):
+        actor = SimpleNamespace(
+            user_id=1,
+            agency_id=10,
+            role="agency_admin",
+        )
+        target = SimpleNamespace(
+            user_id=2,
+            agency_id=10,
+            role="investigator",
+        )
+        db = Mock()
+        db.query.return_value.filter.return_value.first.return_value = target
+
+        self.assertIs(get_managed_user(db, actor, 2), target)
+
+        db.query.return_value.filter.return_value.first.return_value = None
+        with self.assertRaises(HTTPException) as raised:
+            get_managed_user(db, actor, 999)
+        self.assertEqual(raised.exception.status_code, 404)
 
     def test_authenticated_requests_require_an_active_server_session(self):
         auth_source = (REPOSITORY_ROOT / "security" / "auth.py").read_text(encoding="utf-8")
@@ -72,9 +133,11 @@ class AuthenticationContractTests(unittest.TestCase):
 
     def test_refresh_tokens_are_hashed_rotated_and_http_only(self):
         routes_source = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")
+        sessions_source = (REPOSITORY_ROOT / "security" / "sessions.py").read_text(encoding="utf-8")
         client_source = (REPOSITORY_ROOT / "beaconsystems.client" / "src" / "api.jsx").read_text(encoding="utf-8")
         self.assertIn('@router.post("/refresh")', routes_source)
-        self.assertIn("hashlib.sha256(refresh_token.encode()).hexdigest()", routes_source)
+        self.assertIn('hashlib.sha256(token.encode("utf-8")).hexdigest()', sessions_source)
+        self.assertIn("rotate_refresh_token(auth_session", routes_source)
         self.assertIn("httponly=True", routes_source)
         self.assertIn('credentials: "include"', client_source)
         self.assertIn("validate_cookie_request_origin(request)", routes_source)

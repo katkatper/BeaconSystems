@@ -20,6 +20,7 @@ from security.auth import get_current_user, require_role
 from security.case_access import assert_case_write_access
 from security.tenant_scope import apply_partner_intake_agency_scope
 from services.activity_service import create_activity_log
+from services.geocoding_fields import apply_geocode_result, copy_geocode_fields
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
 
@@ -96,26 +97,11 @@ def split_subject_name(subject_name: str | None):
 
 
 def apply_geocode_fields(target, geocoded: dict[str, Any] | None) -> None:
-    if not geocoded:
-        return
-
-    target.latitude = geocoded.get("latitude")
-    target.longitude = geocoded.get("longitude")
-    target.geocode_provider = geocoded.get("provider")
-    target.geocode_accuracy = geocoded.get("accuracy")
-    target.geocode_score = geocoded.get("score")
-    target.geocoded_address = geocoded.get("formatted_address")
-    target.geocoded_at = datetime.utcnow()
+    apply_geocode_result(target, geocoded)
 
 
 def copy_intake_geocode_fields(external_record: ExternalRecord, intake: PartnerIntakeRecord) -> None:
-    external_record.latitude = intake.latitude
-    external_record.longitude = intake.longitude
-    external_record.geocode_provider = intake.geocode_provider
-    external_record.geocode_accuracy = intake.geocode_accuracy
-    external_record.geocode_score = intake.geocode_score
-    external_record.geocoded_address = intake.geocoded_address
-    external_record.geocoded_at = intake.geocoded_at
+    copy_geocode_fields(external_record, intake)
 
 
 def score_case_match(case: Cases, data: PartnerIntakeCreate) -> tuple[int, list[str]]:

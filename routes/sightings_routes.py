@@ -18,6 +18,7 @@ from services.activity_service import create_activity_log
 from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
 from models.timeline_events import Timeline_Event
 from services.alert_service import create_alert
+from services.geocoding_fields import apply_geocode_result
 from services.geocoding_service import geocode_address
 from services.pagination import paginate_query_values
 
@@ -27,11 +28,12 @@ router = APIRouter(prefix="/sightings", tags=["Sightings"])
 
 
 def apply_geocode_metadata(target, geocoded):
-    target.geocode_provider = geocoded.get("provider") if geocoded else None
-    target.geocode_accuracy = geocoded.get("accuracy") if geocoded else None
-    target.geocode_score = geocoded.get("score") if geocoded else None
-    target.geocoded_address = geocoded.get("formatted_address") if geocoded else None
-    target.geocoded_at = datetime.utcnow() if geocoded else None
+    apply_geocode_result(
+        target,
+        geocoded,
+        include_coordinates=False,
+        clear_when_missing=True,
+    )
 
 
 def calculate_sighting_confidence(description: str | None, location: str | None, geocoded=None) -> float:

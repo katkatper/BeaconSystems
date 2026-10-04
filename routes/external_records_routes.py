@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -18,6 +17,7 @@ from security.case_access import (
     assert_case_write_access,
     get_authorized_case,
 )
+from services.geocoding_fields import apply_geocode_result
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
 
@@ -34,17 +34,7 @@ router = APIRouter(
 
 
 def apply_geocode_fields(record: ExternalRecord, location: str | None) -> None:
-    geocoded = geocode_address(location)
-    if not geocoded:
-        return
-
-    record.latitude = geocoded.get("latitude")
-    record.longitude = geocoded.get("longitude")
-    record.geocode_provider = geocoded.get("provider")
-    record.geocode_accuracy = geocoded.get("accuracy")
-    record.geocode_score = geocoded.get("score")
-    record.geocoded_address = geocoded.get("formatted_address")
-    record.geocoded_at = datetime.utcnow()
+    apply_geocode_result(record, geocode_address(location))
 
 
 @router.post("/")

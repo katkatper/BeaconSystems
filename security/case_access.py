@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from fastapi import HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -8,6 +6,7 @@ from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
 from models.case_team_member import CaseTeamMember
 from models.user import User
+from services.clock import utc_now
 
 
 # Case access is Beacon's core need-to-know boundary.
@@ -53,7 +52,7 @@ def apply_case_access_filter(
                     CaseAccessGrant.status == "active",
                     or_(
                         CaseAccessGrant.expires_at.is_(None),
-                        CaseAccessGrant.expires_at > datetime.utcnow(),
+                        CaseAccessGrant.expires_at > utc_now(),
                     ),
                 )
             )

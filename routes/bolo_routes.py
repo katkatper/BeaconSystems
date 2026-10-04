@@ -13,6 +13,7 @@ from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import apply_related_case_access_filter, assert_case_write_access
 from services.activity_service import create_activity_log
+from services.geocoding_fields import apply_geocode_result
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
 
@@ -85,23 +86,7 @@ def resolve_case_for_bolo(db: Session, case_identifier: int | str, current_user:
 
 def apply_geocode_fields(bolo: BoloAlert, location: str | None) -> None:
     geocoded = geocode_address(location)
-    if not geocoded:
-        bolo.latitude = None
-        bolo.longitude = None
-        bolo.geocode_provider = None
-        bolo.geocode_accuracy = None
-        bolo.geocode_score = None
-        bolo.geocoded_address = None
-        bolo.geocoded_at = None
-        return
-
-    bolo.latitude = geocoded.get("latitude")
-    bolo.longitude = geocoded.get("longitude")
-    bolo.geocode_provider = geocoded.get("provider")
-    bolo.geocode_accuracy = geocoded.get("accuracy")
-    bolo.geocode_score = geocoded.get("score")
-    bolo.geocoded_address = geocoded.get("formatted_address")
-    bolo.geocoded_at = datetime.utcnow()
+    apply_geocode_result(bolo, geocoded, clear_when_missing=True)
 
 
 @router.get("/")

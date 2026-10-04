@@ -1,18 +1,9 @@
-import base64
-import hashlib
-import hmac
-import secrets
-import struct
-import time
-import uuid
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi import Response
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from typing import Optional
 
 from config.settings import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -45,69 +36,45 @@ from security.auth import (
 )
 from security.csrf import validate_cookie_request_origin
 from security.field_encryption import decrypt_mfa_secret, encrypt_mfa_secret
+from security.mfa import (
+    MFA_ISSUER,
+    build_otpauth_uri,
+    generate_mfa_secret,
+    verify_totp,
+)
 from security.rate_limit import client_address, enforce_rate_limit
+from security.sessions import (
+    create_auth_session,
+    refresh_token_hash,
+    revoke_auth_session,
+    rotate_refresh_token,
+    serialize_auth_session,
+)
 from security.user_management import (
     USER_MANAGER_ROLES,
     apply_user_management_scope,
-    assert_role_assignment_access,
-    assert_user_management_access,
 )
 from services.activity_service import create_activity_log
+from services.clock import utc_now
 from services.pagination import PaginationParams, paginate_query
+from services.user_administration import (
+    assign_user_role,
+    get_managed_user,
+    set_user_active,
+)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 PASSWORD_ROTATION_DAYS = 120
-MFA_ISSUER = "Beacon"
-MFA_STEP_SECONDS = 30
-MFA_DIGITS = 6
 
 
 def password_expiration_for(user: User):
-    password_changed_at = user.password_changed_at or user.created_at or datetime.utcnow()
+    now = utc_now()
+    password_changed_at = user.password_changed_at or user.created_at or now
     password_expires_at = password_changed_at + timedelta(days=PASSWORD_ROTATION_DAYS)
-    password_change_required = user.must_change_password or datetime.utcnow() >= password_expires_at
+    password_change_required = user.must_change_password or now >= password_expires_at
 
     return password_change_required, password_expires_at
-
-
-def generate_mfa_secret() -> str:
-    return base64.b32encode(secrets.token_bytes(20)).decode("utf-8").rstrip("=")
-
-
-def normalized_mfa_secret(secret: str) -> str:
-    return secret + ("=" * (-len(secret) % 8))
-
-
-def generate_totp(secret: str, for_time: Optional[float] = None) -> str:
-    key = base64.b32decode(normalized_mfa_secret(secret), casefold=True)
-    counter = int((for_time or time.time()) // MFA_STEP_SECONDS)
-    message = struct.pack(">Q", counter)
-    digest = hmac.new(key, message, hashlib.sha1).digest()
-    offset = digest[-1] & 0x0F
-    code = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
-
-    return str(code % (10 ** MFA_DIGITS)).zfill(MFA_DIGITS)
-
-
-def verify_totp(secret: Optional[str], code: str) -> bool:
-    if not secret:
-        return False
-
-    clean_code = "".join(character for character in code if character.isdigit())
-
-    if len(clean_code) != MFA_DIGITS:
-        return False
-
-    now = time.time()
-
-    for window in range(-1, 2):
-        expected = generate_totp(secret, now + (window * MFA_STEP_SECONDS))
-
-        if hmac.compare_digest(expected, clean_code):
-            return True
-
-    return False
 
 
 def build_login_response(
@@ -118,27 +85,19 @@ def build_login_response(
     password_change_required: bool,
     password_expires_at: datetime,
 ):
-    session_expires_at = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    refresh_expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    refresh_token = secrets.token_urlsafe(48)
-    session_id = str(uuid.uuid4())
-    db.add(AuthSession(
-        session_id=session_id,
-        user_id=user.user_id,
-        expires_at=session_expires_at,
-        last_seen_at=datetime.utcnow(),
+    auth_session, refresh_token = create_auth_session(
+        user.user_id,
         ip_address=request.client.host if request.client else None,
-        user_agent=(request.headers.get("user-agent") or "")[:512] or None,
-        refresh_token_hash=hashlib.sha256(refresh_token.encode()).hexdigest(),
-        refresh_expires_at=refresh_expires_at,
-    ))
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.add(auth_session)
     db.commit()
     token = create_access_token({
         "sub": str(user.user_id),
         "username": user.username,
         "role": user.role,
         "auth_version": user.auth_version,
-        "sid": session_id,
+        "sid": auth_session.session_id,
     })
     response.set_cookie(
         key="beacon_refresh",
@@ -160,7 +119,7 @@ def build_login_response(
         "mfa_enabled": bool(user.mfa_enabled),
         "password_change_required": password_change_required,
         "password_expires_at": password_expires_at.isoformat(),
-        "session_expires_at": f"{session_expires_at.isoformat()}Z",
+        "session_expires_at": f"{auth_session.expires_at.isoformat()}Z",
     }
 
 
@@ -185,10 +144,7 @@ def verify_mfa_login_token(token: str) -> tuple[int, int]:
 
 
 def mfa_otpauth_uri(user: User, secret: str) -> str:
-    account = quote(f"{MFA_ISSUER}:{user.username}")
-    issuer = quote(MFA_ISSUER)
-
-    return f"otpauth://totp/{account}?secret={secret}&issuer={issuer}&digits={MFA_DIGITS}&period={MFA_STEP_SECONDS}"
+    return build_otpauth_uri(user.username, secret)
 
 # USER ROUTES WITH ACTIVITY LOGGING
 
@@ -221,7 +177,7 @@ def register_user(
     password_hash=hash_password(data.password),
     role="investigator",
     agency_id=current_user.agency_id,
-    password_changed_at=datetime.utcnow(),
+    password_changed_at=utc_now(),
     must_change_password=False,
 )
 
@@ -330,7 +286,7 @@ def login(
             "password_expires_at": password_expires_at.isoformat(),
         }
 
-    user.last_login_at = datetime.utcnow()
+    user.last_login_at = utc_now()
 
     create_activity_log(
 
@@ -401,7 +357,7 @@ def enable_mfa(
     if was_plaintext:
         current_user.mfa_secret = encrypt_mfa_secret(secret)
     current_user.mfa_enabled = True
-    current_user.mfa_verified_at = datetime.utcnow()
+    current_user.mfa_verified_at = utc_now()
 
     create_activity_log(
         db=db,
@@ -484,8 +440,8 @@ def verify_mfa_login(
         raise HTTPException(status_code=400, detail="Invalid MFA code")
 
     password_change_required, password_expires_at = password_expiration_for(user)
-    user.last_login_at = datetime.utcnow()
-    user.mfa_verified_at = datetime.utcnow()
+    user.last_login_at = utc_now()
+    user.mfa_verified_at = utc_now()
     if was_plaintext:
         user.mfa_secret = encrypt_mfa_secret(secret)
 
@@ -518,11 +474,12 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh session is unavailable")
 
-    token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+    now = utc_now()
+    token_hash = refresh_token_hash(refresh_token)
     auth_session = db.query(AuthSession).filter(
         AuthSession.refresh_token_hash == token_hash,
         AuthSession.revoked_at.is_(None),
-        AuthSession.refresh_expires_at > datetime.utcnow(),
+        AuthSession.refresh_expires_at > now,
     ).first()
     if not auth_session:
         response.delete_cookie("beacon_refresh", path="/users")
@@ -530,13 +487,11 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
 
     user = db.query(User).filter(User.user_id == auth_session.user_id).first()
     if not user or not user.is_active:
-        auth_session.revoked_at = datetime.utcnow()
+        revoke_auth_session(auth_session, now=now)
         db.commit()
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
-    rotated_token = secrets.token_urlsafe(48)
-    auth_session.refresh_token_hash = hashlib.sha256(rotated_token.encode()).hexdigest()
-    auth_session.last_seen_at = datetime.utcnow()
+    rotated_token = rotate_refresh_token(auth_session, now=now)
     db.commit()
     response.set_cookie(
         key="beacon_refresh", value=rotated_token,
@@ -550,7 +505,7 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
             "sid": auth_session.session_id,
         }),
         "token_type": "bearer",
-        "session_expires_at": f"{(datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).isoformat()}Z",
+        "session_expires_at": f"{(now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).isoformat()}Z",
     }
 
 
@@ -572,7 +527,7 @@ def logout(
         AuthSession.revoked_at.is_(None),
     ).first()
     if auth_session:
-        auth_session.revoked_at = datetime.utcnow()
+        revoke_auth_session(auth_session)
         db.commit()
 
     response.delete_cookie("beacon_refresh", path="/users")
@@ -597,17 +552,9 @@ def list_sessions(
     sessions = db.query(AuthSession).filter(
         AuthSession.user_id == current_user.user_id,
         AuthSession.revoked_at.is_(None),
-        AuthSession.refresh_expires_at > datetime.utcnow(),
+        AuthSession.refresh_expires_at > utc_now(),
     ).order_by(AuthSession.last_seen_at.desc()).all()
-    return [{
-        "session_id": item.session_id,
-        "created_at": item.created_at,
-        "last_seen_at": item.last_seen_at,
-        "expires_at": item.refresh_expires_at,
-        "ip_address": item.ip_address,
-        "user_agent": item.user_agent,
-        "is_current": item.session_id == active_session_id,
-    } for item in sessions]
+    return [serialize_auth_session(item, active_session_id) for item in sessions]
 
 
 @router.post("/sessions/{session_id}/revoke")
@@ -624,7 +571,7 @@ def revoke_session(
     ).first()
     if not auth_session:
         raise HTTPException(status_code=404, detail="Active session not found")
-    auth_session.revoked_at = datetime.utcnow()
+    revoke_auth_session(auth_session)
     db.commit()
     return {"message": "Session revoked", "current_session": session_id == current_session_id(token)}
 
@@ -641,9 +588,9 @@ def revoke_other_sessions(
         AuthSession.session_id != active_session_id,
         AuthSession.revoked_at.is_(None),
     ).all()
-    now = datetime.utcnow()
+    now = utc_now()
     for item in sessions:
-        item.revoked_at = now
+        revoke_auth_session(item, now=now)
     db.commit()
     return {"message": "Other sessions revoked", "revoked_count": len(sessions)}
 
@@ -671,7 +618,7 @@ def change_password(
 
     current_user.password_hash = hash_password(data.new_password)
 
-    current_user.password_changed_at = datetime.utcnow()
+    current_user.password_changed_at = utc_now()
 
     current_user.must_change_password = False
 
@@ -717,21 +664,9 @@ def update_user_role(
 
     current_user: User = Depends(require_role(*USER_MANAGER_ROLES))
 ):
-    user = db.query(User).filter(User.user_id == user_id).first()
+    user = get_managed_user(db, current_user, user_id)
 
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    assert_user_management_access(current_user, user)
-    assert_role_assignment_access(current_user, data.role)
-
-
-    old_role = user.role
-
-    user.role = data.role
-
-    user.auth_version += 1
+    old_role = assign_user_role(current_user, user, data.role)
 
 
     db.commit()
@@ -779,21 +714,9 @@ def deactivate_user(
 
     current_user: User = Depends(require_role(*USER_MANAGER_ROLES))
 ):
+    user = get_managed_user(db, current_user, user_id)
 
-    user = db.query(User).filter(User.user_id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    assert_user_management_access(current_user, user)
-
-    if user.user_id == current_user.user_id:
-        raise HTTPException(status_code=400, detail="You cannot deactivate yourself")
-
-
-    user.is_active = False
-
-    user.auth_version += 1
+    set_user_active(current_user, user, False)
 
     db.commit()
 
@@ -839,19 +762,9 @@ def activate_user(
 
     current_user: User = Depends(require_role(*USER_MANAGER_ROLES))
 ):
+    user = get_managed_user(db, current_user, user_id)
 
-
-    user = db.query(User).filter(User.user_id == user_id).first()
-
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    assert_user_management_access(current_user, user)
-
-    user.is_active = True
-
-    user.auth_version += 1
+    set_user_active(current_user, user, True)
 
     db.commit()
 

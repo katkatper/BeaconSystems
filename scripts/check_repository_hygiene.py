@@ -8,6 +8,7 @@ from pathlib import PurePosixPath
 
 
 FORBIDDEN_PARTS = {
+    ".bin",
     ".venv",
     "venv",
     "node_modules",
@@ -16,6 +17,7 @@ FORBIDDEN_PARTS = {
     "bin",
     "obj",
 }
+FORBIDDEN_PART_PREFIXES = (".venv-", "node_modules_", "venv-")
 FORBIDDEN_SUFFIXES = {".pyc", ".pyo", ".zip"}
 
 
@@ -41,7 +43,9 @@ def forbidden_tracked(path_text: str) -> bool:
     ):
         return True
 
-    if parts & FORBIDDEN_PARTS:
+    if parts & FORBIDDEN_PARTS or any(
+        part.startswith(FORBIDDEN_PART_PREFIXES) for part in path.parts
+    ):
         return True
 
     return path.suffix.lower() in FORBIDDEN_SUFFIXES

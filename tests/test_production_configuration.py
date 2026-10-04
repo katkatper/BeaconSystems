@@ -40,6 +40,8 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("HSTS_MAX_AGE_SECONDS must be at least 31536000", source)
         self.assertIn("OBJECT_STORAGE_KMS_KEY_ID is required in production", source)
         self.assertIn("RATE_LIMIT_REDIS_TIMEOUT_SECONDS must be greater than zero", source)
+        self.assertIn("EXTERNAL_API_TIMEOUT_SECONDS must be greater than zero", source)
+        self.assertIn("ARCGIS_GEOCODE_URL must use HTTPS in production", source)
         self.assertIn("MFA_SECRET_ENCRYPTION_KEY is required in production", source)
         self.assertIn("MFA_SECRET_ENCRYPTION_KEY must be a valid Fernet key", source)
 
