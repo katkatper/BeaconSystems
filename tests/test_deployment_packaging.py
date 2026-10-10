@@ -64,7 +64,7 @@ class DeploymentPackagingTests(unittest.TestCase):
         self.assertIn("python -m pip_audit", workflow)
         self.assertIn("python -m bandit", workflow)
         self.assertIn("python -m ruff check", workflow)
-        self.assertIn("--cov-fail-under=23", workflow)
+        self.assertIn("--cov-fail-under=24", workflow)
         self.assertIn("npm audit --omit=dev --audit-level=moderate", workflow)
         self.assertIn("bandit==", development_requirements)
         self.assertIn("pip-audit==", development_requirements)

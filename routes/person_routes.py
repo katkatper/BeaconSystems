@@ -1,11 +1,9 @@
-from datetime import datetime, time
 import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi import Response
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -23,92 +21,70 @@ from schemas.person_schema import (
     PersonUpdate,
 )
 from services.activity_service import create_activity_log
+from services.case_numbering import (
+    missing_person_case_prefix,
+    select_missing_person_case_number,
+)
+from services.clock import utc_now
 from services.geocoding_service import geocode_address
 from services.pagination import paginate_query_values
 from services.object_storage import object_storage
+from services.person_filters import apply_person_query_filters
+from services.person_risk import infer_missing_person_risk
 from services.upload_validation import validate_upload
 
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
 
 ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+REGISTRY_SEARCH_COLUMNS = (Person.first_name, Person.last_name)
+INTERNAL_PERSON_SEARCH_COLUMNS = (
+    Person.first_name,
+    Person.last_name,
+    Person.status,
+    Person.risk_level,
+    Person.last_seen_location,
+    Person.primary_address,
+    Person.housing_status,
+    Person.school_name,
+    Person.school_address,
+    Person.employer_name,
+    Person.work_address,
+    Person.employment_status,
+    Person.medical_conditions,
+    Person.description,
+)
 
 
-def infer_missing_person_risk(data: dict) -> str:
-    current_risk = (data.get("risk_level") or "medium").lower()
-    age = data.get("age")
-    housing_status = (data.get("housing_status") or "").lower()
-    risk_text = " ".join(
-        str(data.get(field) or "")
-        for field in [
-            "description",
-            "medical_conditions",
-            "scars",
-            "tattoos",
-            "last_seen_location",
-        ]
-    ).lower()
-    critical_terms = [
-        "autism",
-        "alzheimer",
-        "dementia",
-        "diabetic",
-        "insulin",
-        "medication",
-        "medicine",
-        "needs meds",
-        "life saving",
-        "lifesaving",
-        "wheelchair",
-        "disability",
-        "disabled",
-        "nonverbal",
-        "cognitive",
-        "developmental",
-    ]
-    high_terms = [
-        "elderly",
-        "child",
-        "minor",
-        "runaway",
-        "pregnant",
-        "injured",
-        "hospital",
-        "danger",
-        "impaired",
-        "limp",
-    ]
-
-    if age is not None and (age <= 12 or age >= 65):
-        return "critical"
-
-    if any(term in risk_text for term in critical_terms):
-        return "critical"
-
-    if age is not None and age < 18:
-        return "high"
-
-    if housing_status in {"homeless", "unhoused", "transient"}:
-        return "high" if current_risk != "critical" else current_risk
-
-    if any(term in risk_text for term in high_terms):
-        return "high" if current_risk not in {"critical"} else current_risk
-
-    return current_risk
+def apply_person_collection_filters(query, *, q, reported_on, search_columns):
+    try:
+        return apply_person_query_filters(
+            query,
+            search_text=q,
+            search_columns=search_columns,
+            reported_on=reported_on,
+            created_at_column=Person.created_at,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="reported_on must be YYYY-MM-DD",
+        ) from exc
 
 
 def build_missing_person_case_number(db: Session, person_id: int) -> str:
-    year = datetime.utcnow().year
-    base_number = f"MP-{year}-{person_id:06d}"
-
-    if not db.query(Cases).filter(Cases.case_number == base_number).first():
-        return base_number
-
-    suffix = 2
-    while db.query(Cases).filter(Cases.case_number == f"{base_number}-{suffix}").first():
-        suffix += 1
-
-    return f"{base_number}-{suffix}"
+    opened_at = utc_now()
+    base_number = missing_person_case_prefix(person_id, opened_at)
+    matching_rows = (
+        db.query(Cases.case_number)
+        .filter(Cases.case_number.like(f"{base_number}%"))
+        .all()
+    )
+    return select_missing_person_case_number(
+        person_id,
+        (case_number for (case_number,) in matching_rows),
+        opened_at,
+    )
 
 
 def has_coordinate_pair(latitude, longitude) -> bool:
@@ -202,28 +178,12 @@ def get_missing_person_registry(
         else:
             query = query.filter(Person.risk_level == risk_level)
 
-    if q:
-        search = f"%{q.strip()}%"
-        query = query.filter(
-            or_(
-                Person.first_name.ilike(search),
-                Person.last_name.ilike(search),
-            )
-        )
-
-    if reported_on:
-        try:
-            report_day = datetime.strptime(reported_on, "%Y-%m-%d").date()
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=400,
-                detail="reported_on must be YYYY-MM-DD",
-            ) from exc
-
-        query = query.filter(
-            Person.created_at >= datetime.combine(report_day, time.min),
-            Person.created_at <= datetime.combine(report_day, time.max),
-        )
+    query = apply_person_collection_filters(
+        query,
+        q=q,
+        reported_on=reported_on,
+        search_columns=REGISTRY_SEARCH_COLUMNS,
+    )
 
     return paginate_query_values(
         query.order_by(Person.created_at.desc()),
@@ -312,37 +272,12 @@ def get_persons(
     if risk_level:
         query = query.filter(Person.risk_level == risk_level)
 
-    if q:
-        search = f"%{q.strip()}%"
-        query = query.filter(
-            or_(
-                Person.first_name.ilike(search),
-                Person.last_name.ilike(search),
-                Person.status.ilike(search),
-                Person.risk_level.ilike(search),
-                Person.last_seen_location.ilike(search),
-                Person.primary_address.ilike(search),
-                Person.housing_status.ilike(search),
-                Person.school_name.ilike(search),
-                Person.school_address.ilike(search),
-                Person.employer_name.ilike(search),
-                Person.work_address.ilike(search),
-                Person.employment_status.ilike(search),
-                Person.medical_conditions.ilike(search),
-                Person.description.ilike(search),
-            )
-        )
-
-    if reported_on:
-        try:
-            report_day = datetime.strptime(reported_on, "%Y-%m-%d").date()
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="reported_on must be YYYY-MM-DD") from exc
-
-        query = query.filter(
-            Person.created_at >= datetime.combine(report_day, time.min),
-            Person.created_at <= datetime.combine(report_day, time.max),
-        )
+    query = apply_person_collection_filters(
+        query,
+        q=q,
+        reported_on=reported_on,
+        search_columns=INTERNAL_PERSON_SEARCH_COLUMNS,
+    )
 
     return paginate_query_values(
         query.order_by(Person.created_at.desc()),
@@ -398,7 +333,7 @@ def create_person(
         description=new_person.description,
         notes="Automatically created from missing person intake.",
         case_status="open",
-        date_opened=datetime.utcnow(),
+        date_opened=utc_now(),
     )
 
     db.add(new_case)
