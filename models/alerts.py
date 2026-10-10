@@ -8,6 +8,7 @@ class Alerts(Base):
     __tablename__ = 'alerts'
     __table_args__ = (
         Index("ix_alerts_case_created", "case_id", "created_at"),
+        Index("ix_alerts_recipient_created", "recipient_agency_id", "created_at"),
     )
 
     alert_id = Column(Integer, primary_key=True, index=True)

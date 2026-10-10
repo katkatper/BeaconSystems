@@ -123,13 +123,13 @@ class AuthenticationContractTests(unittest.TestCase):
         auth_source = (REPOSITORY_ROOT / "security" / "auth.py").read_text(encoding="utf-8")
         routes_source = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")
         migration_source = (
-            REPOSITORY_ROOT / "migrations" / "versions" / "d4a06b9e15f8_add_auth_sessions.py"
+            REPOSITORY_ROOT / "migrations" / "versions" / "601d95116833_create_beacon_production_baseline.py"
         ).read_text(encoding="utf-8")
 
         self.assertIn('payload.get("sid")', auth_source)
         self.assertIn("AuthSession.revoked_at.is_(None)", auth_source)
         self.assertIn('@router.post("/logout")', routes_source)
-        self.assertIn('"auth_sessions"', migration_source)
+        self.assertIn("op.create_table('auth_sessions'", migration_source)
 
     def test_refresh_tokens_are_hashed_rotated_and_http_only(self):
         routes_source = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")

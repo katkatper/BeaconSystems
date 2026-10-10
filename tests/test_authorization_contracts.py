@@ -30,7 +30,7 @@ class AuthorizationContractTests(unittest.TestCase):
             REPOSITORY_ROOT
             / "migrations"
             / "versions"
-            / "b28e4f7a93c2_add_tenant_row_level_security.py"
+            / "f2cc04888254_apply_beacon_database_security_controls.py"
         ).read_text(encoding="utf-8-sig")
 
         for table_name in [
@@ -56,7 +56,7 @@ class AuthorizationContractTests(unittest.TestCase):
             REPOSITORY_ROOT
             / "migrations"
             / "versions"
-            / "f6c28db137ba_protect_audit_log.py"
+            / "f2cc04888254_apply_beacon_database_security_controls.py"
         ).read_text(encoding="utf-8")
         posture_source = (
             REPOSITORY_ROOT / "database" / "security_posture.py"
@@ -66,7 +66,8 @@ class AuthorizationContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         login_source = route_source("users_routes.py")
 
-        self.assertIn("ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY", migration_source)
+        self.assertIn('("activity_log", "agency_id")', migration_source)
+        self.assertIn("ENABLE ROW LEVEL SECURITY", migration_source)
         self.assertIn("beacon_activity_log_append_only", migration_source)
         self.assertIn("BEFORE UPDATE OR DELETE", migration_source)
         self.assertIn('"activity_log"', posture_source)

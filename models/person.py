@@ -1,10 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Float
+from sqlalchemy import Column, Integer, String, DateTime, Text, Float, Index
 from database.connection import Base
 from datetime import datetime
 from sqlalchemy.orm import relationship
 
 class Person(Base):
     __tablename__ = "persons"
+    __table_args__ = (
+        Index("ix_persons_status_created", "status", "created_at"),
+    )
 
     person_id = Column(Integer, primary_key=True, index=True)
 

@@ -7,15 +7,14 @@ MIGRATION_PATH = (
     REPOSITORY_ROOT
     / "migrations"
     / "versions"
-    / "a7d31c9e4b20_add_dashboard_query_indexes.py"
+    / "601d95116833_create_beacon_production_baseline.py"
 )
 
 
-def test_dashboard_index_migration_extends_current_head_and_is_reversible():
+def test_dashboard_indexes_are_in_the_reversible_baseline():
     source = MIGRATION_PATH.read_text(encoding="utf-8")
     ast.parse(source)
 
-    assert 'down_revision = "f6c28db137ba"' in source
     assert "op.create_index" in source
     assert "op.drop_index" in source
 
@@ -33,10 +32,7 @@ def test_dashboard_indexes_cover_observed_filter_and_sort_paths():
     for index_name in expected_indexes:
         assert index_name in source
 
-    # Leads are used by the application but are not yet represented in the
-    # Alembic-managed schema. Do not reference a table that clean deployments
-    # cannot create.
-    assert "ix_leads_case_status" not in source
+    assert "ix_leads_case_status" in source
 
 
 def test_dashboard_indexes_are_declared_in_model_metadata():

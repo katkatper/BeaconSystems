@@ -115,16 +115,22 @@ class ProductionConfigurationTests(unittest.TestCase):
 
         self.assertEqual(offenders, [])
 
-    def test_phase_zero_migration_merges_to_one_schema_head(self):
-        source = (
+    def test_production_migrations_have_one_linear_head(self):
+        baseline = (
             REPOSITORY_ROOT
             / "migrations"
             / "versions"
-            / "fe5f60718293_merge_phase_zero_migration_heads.py"
+            / "601d95116833_create_beacon_production_baseline.py"
+        ).read_text(encoding="utf-8")
+        security = (
+            REPOSITORY_ROOT
+            / "migrations"
+            / "versions"
+            / "f2cc04888254_apply_beacon_database_security_controls.py"
         ).read_text(encoding="utf-8")
 
-        self.assertIn('"c2d3e4f5a6b7"', source)
-        self.assertIn('"fd4e5f607182"', source)
+        self.assertIn("down_revision: Union[str, Sequence[str], None] = None", baseline)
+        self.assertIn("down_revision: Union[str, Sequence[str], None] = '601d95116833'", security)
 
 
 if __name__ == "__main__":

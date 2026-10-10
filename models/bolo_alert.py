@@ -1,12 +1,15 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
 
 from database.connection import Base
 
 
 class BoloAlert(Base):
     __tablename__ = "bolo_alerts"
+    __table_args__ = (
+        Index("ix_bolo_alerts_agency_status_created", "agency_id", "status", "created_at"),
+    )
 
     bolo_id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=False)

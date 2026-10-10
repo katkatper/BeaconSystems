@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Float
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Float, Index
 from database.connection import Base
 from datetime import datetime
 
@@ -8,6 +8,9 @@ from datetime import datetime
 class Evidence(Base):
 
     __tablename__ = "evidence"
+    __table_args__ = (
+        Index("ix_evidence_case_created", "case_id", "created_at"),
+    )
 
 
     evidence_id = Column(Integer, primary_key=True, index=True)

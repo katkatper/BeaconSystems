@@ -146,9 +146,8 @@ class PhaseOneFoundationTests(unittest.TestCase):
         self.assertIn("validate_rate_limit_backend()", source)
         self.assertIn("object_storage.validate_production_access()", source)
 
-    def test_phase_one_indexes_follow_phase_zero_head(self):
-        source = (REPOSITORY_ROOT / "migrations" / "versions" / "0a6f708294b1_add_phase_one_query_indexes.py").read_text(encoding="utf-8")
-        self.assertIn('down_revision = "fe5f60718293"', source)
+    def test_phase_one_indexes_are_preserved_in_the_baseline(self):
+        source = (REPOSITORY_ROOT / "migrations" / "versions" / "601d95116833_create_beacon_production_baseline.py").read_text(encoding="utf-8")
         self.assertIn("ix_cases_agency_status_updated", source)
         self.assertIn("ix_evidence_case_created", source)
 

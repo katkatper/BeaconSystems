@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, Text, Index
 from database.connection import Base
 from datetime import datetime
 
@@ -6,6 +6,9 @@ from datetime import datetime
 class ActivityLog(Base):
 
     __tablename__ = "activity_log"
+    __table_args__ = (
+        Index("ix_activity_log_agency_created", "agency_id", "timestamp"),
+    )
 
 
     id = Column(Integer, primary_key=True, index=True)

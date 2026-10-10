@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Index
 from database.connection import Base
 from datetime import datetime
 from sqlalchemy.orm import relationship
@@ -7,6 +7,9 @@ from sqlalchemy.orm import relationship
 class Cases(Base):
 
     __tablename__ = "cases"
+    __table_args__ = (
+        Index("ix_cases_agency_status_updated", "agency_id", "case_status", "updated_at"),
+    )
 
     case_id = Column(Integer, primary_key=True, index=True)
 
