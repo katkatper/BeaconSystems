@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiGet } from "../api.jsx";
 import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
+import { useVisiblePolling } from "../hooks/useVisiblePolling.js";
 import OperationsMap from "./OperationsMap.jsx";
 
 
@@ -91,76 +92,37 @@ function Dashboard() {
     };
     const profile = dashboardProfiles[role] || dashboardProfiles.viewer;
 
-    // Refresh the dashboard summary so command-center data stays current while
-    // the user keeps the page open.
+    // Poll only while Beacon is visible, and never overlap a slow request.
+    useVisiblePolling(async (isActive) => {
+        if (!localStorage.getItem("token")) return;
 
-    useEffect(() => {
-        let isMounted = true;
-
-        const loadSummary = async () => {
-            if (!localStorage.getItem("token")) return;
-
-            try {
-                const data = await apiGet("/dashboard/summary");
-
-                if (isMounted) {
-                    setSummary(data);
-                    setError("");
-                }
-            } catch (err) {
-                console.error(err);
-
-                if (isMounted) {
-                    setError(
-                        role === "supervisor"
-                            ? ""
-                            : err.message || "Could not load dashboard summary"
-                    );
-                }
+        try {
+            const data = await apiGet("/dashboard/summary");
+            if (isActive()) {
+                setSummary(data);
+                setError("");
             }
-        };
-
-        const timer = setTimeout(loadSummary, 0);
-        const interval = setInterval(loadSummary, 10000);
-
-        return () => {
-            isMounted = false;
-            clearTimeout(timer);
-            clearInterval(interval);
-        };
-    }, [role]);
-
-    useEffect(() => {
-        if (!["platform_admin", "agency_admin", "supervisor"].includes(role)) {
-            return;
+        } catch (err) {
+            console.error(err);
+            if (isActive()) {
+                setError(
+                    role === "supervisor"
+                        ? ""
+                        : err.message || "Could not load dashboard summary"
+                );
+            }
         }
+    }, 30000);
 
-        let isMounted = true;
-
-        const loadSupervisorQueue = async () => {
-            try {
-                const data = await apiGet("/supervisor/queue");
-
-                if (isMounted) {
-                    setSupervisorQueue(data);
-                }
-            } catch (err) {
-                console.error(err);
-
-                if (isMounted) {
-                    setSupervisorQueue(null);
-                }
-            }
-        };
-
-        loadSupervisorQueue();
-        const interval = setInterval(loadSupervisorQueue, 30000);
-
-        return () => {
-            isMounted = false;
-            clearInterval(interval);
-        };
-    }, [role]);
+    useVisiblePolling(async (isActive) => {
+        try {
+            const data = await apiGet("/supervisor/queue");
+            if (isActive()) setSupervisorQueue(data);
+        } catch (err) {
+            console.error(err);
+            if (isActive()) setSupervisorQueue(null);
+        }
+    }, 30000, ["platform_admin", "agency_admin", "supervisor"].includes(role));
 
     useEffect(() => subscribeToReadState(() => {
         setReadStateVersion((current) => current + 1);

@@ -75,8 +75,8 @@ def accessible_case_ids(
     current_user: User,
     include_grants: bool = True,
 ) -> list[int]:
-    query = apply_case_access_filter(
-        db.query(Cases.case_id),
+    query = accessible_case_id_query(
+        db,
         current_user,
         include_grants,
     )
@@ -85,6 +85,19 @@ def accessible_case_ids(
         case_id
         for (case_id,) in query.all()
     ]
+
+
+def accessible_case_id_query(
+    db: Session,
+    current_user: User,
+    include_grants: bool = True,
+):
+    """Return a composable one-column query for need-to-know case filtering."""
+    return apply_case_access_filter(
+        db.query(Cases.case_id),
+        current_user,
+        include_grants,
+    )
 
 
 def get_authorized_case(

@@ -65,6 +65,7 @@ from routes.cases_routes import router as cases_router
 from routes.alerts_routes import router as alerts_router
 from routes.evidence_routes import router as evidence_router
 from routes.admin_user_routes import router as admin_user_router
+from routes.agencies_routes import router as agencies_router
 from routes.dashboard_routes import router as dashboard_router
 from routes.legal_access_routes import router as legal_access_router
 from routes.admin_log import router as admin_log_router
@@ -209,6 +210,7 @@ app.include_router(cases_router)
 app.include_router(alerts_router)
 app.include_router(evidence_router)
 app.include_router(admin_user_router)
+app.include_router(agencies_router)
 app.include_router(dashboard_router)
 app.include_router(legal_access_router)
 app.include_router(person_router)

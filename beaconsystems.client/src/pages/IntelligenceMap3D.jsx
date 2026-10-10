@@ -4,7 +4,6 @@ import {
     BufferGeometry,
     CanvasTexture,
     CircleGeometry,
-    Clock,
     Color,
     CylinderGeometry,
     DirectionalLight,
@@ -25,6 +24,7 @@ import {
     RingGeometry,
     Scene,
     SRGBColorSpace,
+    Timer,
     Vector2,
     Vector3,
     WebGLRenderer,
@@ -491,10 +491,12 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
         resize();
 
         let frameId = 0;
-        const clock = new Clock();
+        const timer = new Timer();
+        timer.connect(document);
 
-        const animate = () => {
-            const elapsed = clock.getElapsedTime();
+        const animate = (timestamp) => {
+            timer.update(timestamp);
+            const elapsed = timer.getElapsed();
             markerGroup.children.forEach((child) => {
                 if (child.geometry?.type === "RingGeometry") {
                     const scale = 1 + (Math.sin(elapsed * child.userData.speed) + 1) * 0.24;
@@ -514,6 +516,7 @@ function IntelligenceMap3D({ sightings, records, mappedLocations = [] }) {
             resizeObserver.disconnect();
             renderer.domElement.removeEventListener("pointerdown", onPointerDown);
             controls.dispose();
+            timer.dispose();
             mount.removeChild(renderer.domElement);
 
             scene.traverse((object) => {

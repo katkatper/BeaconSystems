@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
@@ -19,7 +19,9 @@ from models.sighting import Sighting
 from models.user import User
 from security.auth import get_current_user
 from models.bolo_alert import BoloAlert
-from security.case_access import apply_case_access_filter
+from security.case_access import accessible_case_id_query, apply_case_access_filter
+from services.clock import utc_now
+from services.dashboard_metrics import load_case_dashboard_metrics
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -29,29 +31,29 @@ def get_dashboard_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    today = datetime.utcnow() - timedelta(days=1)
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    fourteen_days_ago = datetime.utcnow() - timedelta(days=14)
-    inactive_statuses = ["closed", "resolved", "archived"]
+    now = utc_now()
+    today = now - timedelta(days=1)
+    seven_days_ago = now - timedelta(days=7)
+    fourteen_days_ago = now - timedelta(days=14)
+    inactive_statuses = ("closed", "resolved", "archived")
 
     case_query = apply_case_access_filter(db.query(Cases), current_user)
-
-    total_cases = case_query.count()
-    open_cases = case_query.filter(func.lower(Cases.case_status) == "open").count()
-    high_priority_cases = case_query.filter(
-        func.lower(Cases.priority_level).in_(["high", "critical"])
-    ).count()
+    case_metrics = load_case_dashboard_metrics(
+        case_query,
+        seven_days_ago=seven_days_ago,
+        fourteen_days_ago=fourteen_days_ago,
+        inactive_statuses=inactive_statuses,
+    )
+    total_cases = case_metrics.total_cases
+    open_cases = case_metrics.open_cases
+    high_priority_cases = case_metrics.high_priority_cases
     active_case_query = case_query.filter(
         func.lower(Cases.case_status).notin_(inactive_statuses)
     )
-    critical_cases = active_case_query.filter(
-        func.lower(Cases.priority_level) == "critical"
-    ).count()
-    high_risk_cases = active_case_query.filter(
-        func.lower(Cases.priority_level) == "high"
-    ).count()
+    critical_cases = case_metrics.critical_cases
+    high_risk_cases = case_metrics.high_risk_cases
 
-    accessible_case_ids = case_query.with_entities(Cases.case_id).subquery()
+    accessible_case_ids = accessible_case_id_query(db, current_user)
     missing_children = (
         active_case_query.join(Person, Cases.person_id == Person.person_id)
         .filter(Person.age < 18)
@@ -272,20 +274,10 @@ def get_dashboard_summary(
         IntegrationSource.is_active == True
     ).count()
 
-    inactive_case_query = case_query.filter(
-        Cases.updated_at <= seven_days_ago,
-        func.lower(Cases.case_status).notin_(inactive_statuses),
-    )
-    stalled_cases = inactive_case_query.count()
-    inactive_7_days = stalled_cases
-    inactive_14_days = case_query.filter(
-        Cases.updated_at <= fourteen_days_ago,
-        func.lower(Cases.case_status).notin_(inactive_statuses),
-    ).count()
-    unassigned_cases = case_query.filter(
-        Cases.investigator_id == None,  # noqa: E711
-        func.lower(Cases.case_status).notin_(inactive_statuses),
-    ).count()
+    stalled_cases = case_metrics.inactive_7_days
+    inactive_7_days = case_metrics.inactive_7_days
+    inactive_14_days = case_metrics.inactive_14_days
+    unassigned_cases = case_metrics.unassigned_cases
 
     urgent_cases = (
         case_query.filter(func.lower(Cases.priority_level).in_(["high", "critical"]))

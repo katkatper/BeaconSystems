@@ -213,10 +213,31 @@ class AuthorizationContractTests(unittest.TestCase):
             "sightings_routes.py",
             "timeline_events_routes.py",
             "admin_user_routes.py",
+            "agencies_routes.py",
             "agency_exchange_routes.py",
             "users_routes.py",
         ]:
             self.assertIn("paginate_query", route_source(route_name), route_name)
+
+    def test_agency_directory_is_authenticated_and_tenant_scoped(self):
+        source = route_source("agencies_routes.py")
+        tenant_scope_source = (
+            REPOSITORY_ROOT / "security" / "tenant_scope.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Depends(get_current_user)", source)
+        self.assertIn("apply_agency_directory_scope", source)
+        self.assertIn(
+            "Agencies.agency_id == current_user.agency_id",
+            tenant_scope_source,
+        )
+
+    def test_dashboard_uses_composable_tenant_case_query(self):
+        source = route_source("dashboard_routes.py")
+
+        self.assertIn("accessible_case_id_query(db, current_user)", source)
+        self.assertNotIn("with_entities(Cases.case_id).subquery()", source)
+        self.assertIn("now = utc_now()", source)
 
 
 if __name__ == "__main__":
