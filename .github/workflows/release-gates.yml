@@ -60,6 +60,8 @@ jobs:
         run: test "$(alembic heads | wc -l)" -eq 1
       - name: Apply migrations to PostgreSQL
         run: alembic upgrade head
+      - name: Verify models match the migrated schema
+        run: alembic check
       - name: Run backend and isolation tests with coverage floor
         run: >-
           python -m pytest tests -q -p no:cacheprovider

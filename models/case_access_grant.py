@@ -1,10 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Index
 from database.connection import Base
 from datetime import datetime
 
 
 class CaseAccessGrant(Base):
     __tablename__ = "case_access_grants"
+    __table_args__ = (
+        Index("ix_case_access_grants_agency_granted", "agency_id", "granted_at"),
+    )
 
     grant_id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=False)

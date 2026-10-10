@@ -1,11 +1,14 @@
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index, Text, Float
 from database.connection import Base
 from datetime import datetime
 
 class Alerts(Base):
 
     __tablename__ = 'alerts'
+    __table_args__ = (
+        Index("ix_alerts_case_created", "case_id", "created_at"),
+    )
 
     alert_id = Column(Integer, primary_key=True, index=True)
 

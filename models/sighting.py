@@ -1,10 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index, Text, Float
 from database.connection import Base
 from datetime import datetime
 
 class Sighting(Base):  
 
     __tablename__= "sightings"  #table name in the database
+    __table_args__ = (
+        Index("ix_sightings_case_created", "case_id", "created_at"),
+    )
 
  
 

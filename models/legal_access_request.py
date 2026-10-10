@@ -1,10 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Index
 from database.connection import Base
 from datetime import datetime
 
 
 class LegalAccessRequest(Base):
     __tablename__ = "legal_access_requests"
+    __table_args__ = (
+        Index("ix_legal_access_agency_status", "agency_id", "status"),
+    )
 
     request_id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=True)

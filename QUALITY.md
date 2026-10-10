@@ -44,7 +44,7 @@ A production-bound change must:
 
 ## Current measured baseline
 
-As of October 10, 2026, the backend suite has 136 passing tests plus seven
+As of October 10, 2026, the backend suite has 141 passing tests plus seven
 parameterized subtests and approximately 25.0 percent statement coverage across
 the measured Python application packages. This is a floor, not a production
 target. Most API routes still lack behavioral execution coverage.

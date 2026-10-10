@@ -1,12 +1,15 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 
 from database.connection import Base
 
 
 class AgencyExchange(Base):
     __tablename__ = "agency_exchanges"
+    __table_args__ = (
+        Index("ix_agency_exchanges_case_created", "case_id", "created_at"),
+    )
 
     exchange_id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=False)
