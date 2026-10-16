@@ -25,6 +25,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from security.http_middleware import SecurityHeadersMiddleware
 from security.rate_limit import validate_rate_limit_backend
 from services.object_storage import object_storage
+from services.malware_scanner import malware_scanner
 
 # Import application models so SQLAlchemy/Alembic metadata includes all tables.
 # Alembic is the source of truth for schema changes.
@@ -97,6 +98,7 @@ async def lifespan(app: FastAPI):
         validate_database_security(engine)
         validate_rate_limit_backend()
         object_storage.validate_production_access()
+        malware_scanner.validate_production_access()
 
 
     yield
@@ -240,6 +242,8 @@ def readiness_check():
     try:
         with engine.connect() as connection:
             connection.execute(sql_text("SELECT 1"))
+        if IS_PRODUCTION:
+            malware_scanner.validate_production_access()
     except Exception:
         request_logger.exception(json.dumps({"event": "readiness_check_failed"}))
         return JSONResponse(status_code=503, content={"status": "not_ready"})

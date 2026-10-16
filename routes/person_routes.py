@@ -32,6 +32,7 @@ from services.object_storage import object_storage
 from services.person_filters import apply_person_query_filters
 from services.person_risk import infer_missing_person_risk
 from services.upload_validation import validate_upload
+from services.malware_scanner import scan_upload
 
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
@@ -206,6 +207,7 @@ def upload_person_photo(
         content_type=file.content_type,
         allowed_content_types=ALLOWED_PHOTO_TYPES,
     )
+    scan_upload(file.file)
     if not current_user.agency_id:
         raise HTTPException(status_code=400, detail="Photo upload requires an owning agency")
     storage_key = object_storage.create_key(

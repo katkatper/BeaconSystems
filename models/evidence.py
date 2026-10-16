@@ -43,6 +43,14 @@ class Evidence(Base):
     encryption_key_id = Column(String(120), nullable=True)
     content_sha256 = Column(String(64), nullable=True)
 
+    retention_policy_code = Column(String(100), nullable=False, default="agency-standard")
+    retention_until = Column(DateTime, nullable=True)
+    legal_hold = Column(Boolean, nullable=False, default=False)
+    legal_hold_reason = Column(Text, nullable=True)
+    legal_hold_set_at = Column(DateTime, nullable=True)
+    legal_hold_set_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    disposition_status = Column(String(50), nullable=False, default="active")
+
     file_name = Column(String(255), nullable=True)
     file_path = Column(String(500), nullable=True)
 

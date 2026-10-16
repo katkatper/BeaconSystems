@@ -68,6 +68,8 @@ jobs:
           --cov=config --cov=database --cov=integrations --cov=models
           --cov=routes --cov=schemas --cov=security --cov=services
           --cov-fail-under=24 --cov-report=term
+      - name: Verify Phase I load and stateless contracts
+        run: python -m unittest tests.test_phase_one_load_gate -v
       - name: Verify application import
         run: python -c "import main"
       - name: Build production API image

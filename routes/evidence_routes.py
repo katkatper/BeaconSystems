@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database.connection import get_db
 from models.case import Cases
 from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
 from models.user import User
-from security.auth import get_current_user
+from security.auth import get_current_user, require_role
 from security.case_access import (
     apply_related_case_access_filter,
     assert_case_write_access as assert_authorized_case_write_access,
@@ -22,6 +22,9 @@ from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
 from services.object_storage import object_storage
 from services.upload_validation import validate_upload
+from services.malware_scanner import scan_upload
+from services.clock import utc_now
+from services.evidence_retention import retention_decision
 
 router = APIRouter(
     prefix="/evidence",
@@ -36,6 +39,21 @@ class EvidenceCustodyEvent(BaseModel):
     details: str | None = None
     lab_reference: str | None = None
     available_at: datetime | None = None
+
+
+class EvidenceRetentionUpdate(BaseModel):
+    retention_policy_code: str = Field(min_length=2, max_length=100)
+    retention_until: datetime | None = None
+    legal_hold: bool
+    reason: str = Field(min_length=5, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_retention(self):
+        self.retention_policy_code = self.retention_policy_code.strip()
+        self.reason = self.reason.strip()
+        if not self.retention_policy_code or not self.reason:
+            raise ValueError("Retention policy and reason are required")
+        return self
 
 
 CUSTODY_STATUS_BY_ACTION = {
@@ -133,6 +151,13 @@ def serialize_evidence_items(items: list[Evidence], db: Session):
             "is_encrypted": item.is_encrypted,
             "encryption_key_id": item.encryption_key_id,
             "content_sha256": item.content_sha256,
+            "retention_policy_code": item.retention_policy_code,
+            "retention_until": item.retention_until,
+            "legal_hold": item.legal_hold,
+            "legal_hold_reason": item.legal_hold_reason,
+            "legal_hold_set_at": item.legal_hold_set_at,
+            "disposition_status": item.disposition_status,
+            "disposition_eligible": retention_decision(item).eligible,
             "file_name": item.file_name,
             "collected_at": item.collected_at,
             "created_at": item.created_at,
@@ -195,6 +220,7 @@ def upload_evidence(
         file_name=original_file_name,
         content_type=file.content_type,
     )
+    scan_result = scan_upload(file.file)
     agency_id = case.agency_id or current_user.agency_id
     if not agency_id:
         raise HTTPException(status_code=400, detail="Evidence requires an owning agency")
@@ -238,6 +264,7 @@ def upload_evidence(
         details=(
             f"Evidence uploaded: {evidence.file_name}. "
             f"SHA-256: {content_sha256}. "
+            f"Malware scan: {scan_result.status}. "
             f"Encryption: {'enabled' if evidence.is_encrypted else 'not configured'}"
         ),
     )
@@ -491,4 +518,77 @@ def mark_evidence_sensitive(
         "message": "Evidence sensitivity updated",
         "evidence_id": evidence.evidence_id,
         "is_sensitive": evidence.is_sensitive,
+    }
+
+
+@router.put("/{evidence_id}/retention")
+def update_evidence_retention(
+    evidence_id: int,
+    data: EvidenceRetentionUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role("platform_admin", "agency_admin", "supervisor")
+    ),
+):
+    evidence = get_authorized_evidence(
+        db,
+        evidence_id,
+        current_user,
+        include_grants=False,
+    )
+    assert_case_write_access(db, evidence.case_id, current_user)
+
+    if data.retention_until and data.retention_until.tzinfo is not None:
+        retention_until = data.retention_until.astimezone(timezone.utc).replace(tzinfo=None)
+    else:
+        retention_until = data.retention_until
+
+    was_on_legal_hold = evidence.legal_hold
+    evidence.retention_policy_code = data.retention_policy_code
+    evidence.retention_until = retention_until
+    evidence.legal_hold = data.legal_hold
+    evidence.legal_hold_reason = data.reason if data.legal_hold else None
+    evidence.legal_hold_set_at = utc_now() if data.legal_hold else None
+    evidence.legal_hold_set_by = current_user.user_id if data.legal_hold else None
+
+    if data.legal_hold:
+        action = "PLACE_LEGAL_HOLD"
+    elif was_on_legal_hold:
+        action = "RELEASE_LEGAL_HOLD"
+    else:
+        action = "UPDATE_RETENTION_POLICY"
+    chain_event = EvidenceChain(
+        evidence_id=evidence.evidence_id,
+        case_id=evidence.case_id,
+        user_id=current_user.user_id,
+        action=action,
+        details=(
+            f"Retention policy {data.retention_policy_code}; "
+            f"retention until {retention_until.isoformat() if retention_until else 'indefinite'}; "
+            f"reason: {data.reason}"
+        ),
+    )
+    db.add(chain_event)
+    db.commit()
+    db.refresh(evidence)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action=action,
+        entity="evidence",
+        entity_id=evidence.evidence_id,
+        details=f"{current_user.username} changed evidence retention controls",
+        ip_address=request.client.host if request.client else None,
+    )
+
+    return {
+        "message": "Evidence retention controls updated",
+        "evidence_id": evidence.evidence_id,
+        "retention_policy_code": evidence.retention_policy_code,
+        "retention_until": evidence.retention_until,
+        "legal_hold": evidence.legal_hold,
+        "disposition_eligible": retention_decision(evidence).eligible,
     }

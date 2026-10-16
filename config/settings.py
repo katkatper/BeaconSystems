@@ -49,6 +49,10 @@ EXTERNAL_API_TIMEOUT_SECONDS = float(
 AWS_CONNECT_TIMEOUT_SECONDS = float(os.getenv("AWS_CONNECT_TIMEOUT_SECONDS", "5"))
 AWS_READ_TIMEOUT_SECONDS = float(os.getenv("AWS_READ_TIMEOUT_SECONDS", "10"))
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
+MALWARE_SCAN_BACKEND = os.getenv("MALWARE_SCAN_BACKEND", "disabled").strip().lower()
+MALWARE_SCAN_HOST = os.getenv("MALWARE_SCAN_HOST", "127.0.0.1").strip()
+MALWARE_SCAN_PORT = int(os.getenv("MALWARE_SCAN_PORT", "3310"))
+MALWARE_SCAN_TIMEOUT_SECONDS = float(os.getenv("MALWARE_SCAN_TIMEOUT_SECONDS", "15"))
 OBJECT_STORAGE_BACKEND = os.getenv("OBJECT_STORAGE_BACKEND", "local").strip().lower()
 OBJECT_STORAGE_BUCKET = os.getenv("OBJECT_STORAGE_BUCKET", "").strip()
 OBJECT_STORAGE_PREFIX = os.getenv("OBJECT_STORAGE_PREFIX", "beacon").strip().strip("/")
@@ -194,6 +198,18 @@ def validate_runtime_settings() -> None:
 
     if MAX_UPLOAD_BYTES <= 0:
         errors.append("MAX_UPLOAD_BYTES must be greater than zero")
+
+    if MALWARE_SCAN_BACKEND != "clamav":
+        errors.append("MALWARE_SCAN_BACKEND must be 'clamav' in production")
+
+    if not MALWARE_SCAN_HOST:
+        errors.append("MALWARE_SCAN_HOST is required in production")
+
+    if not 1 <= MALWARE_SCAN_PORT <= 65535:
+        errors.append("MALWARE_SCAN_PORT must be between 1 and 65535")
+
+    if MALWARE_SCAN_TIMEOUT_SECONDS <= 0:
+        errors.append("MALWARE_SCAN_TIMEOUT_SECONDS must be greater than zero")
 
     if ARCGIS_GEOCODING_ENABLED:
         parsed_arcgis_url = urlsplit(ARCGIS_GEOCODE_URL)

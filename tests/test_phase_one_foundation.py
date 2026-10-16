@@ -2,13 +2,21 @@ import ast
 import io
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from fastapi import HTTPException, Response
 from sqlalchemy import Column, Integer, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from services.object_storage import ObjectStorage
+from services.malware_scanner import MalwareScanner, scan_upload
+from services.evidence_retention import (
+    assert_evidence_disposition_allowed,
+    retention_decision,
+)
 from services.pagination import PaginationParams, paginate_query
 from services.upload_validation import validate_upload
 
@@ -166,6 +174,123 @@ class PhaseOneFoundationTests(unittest.TestCase):
                 content_type="application/pdf",
             )
 
+    def test_clamav_stream_scan_preserves_stream_and_accepts_clean_upload(self):
+        class FakeConnection:
+            def __init__(self):
+                self.sent = bytearray()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+            def sendall(self, payload):
+                self.sent.extend(payload)
+
+            def recv(self, size):
+                return b"stream: OK\0"
+
+        connection = FakeConnection()
+        scanner = MalwareScanner()
+        scanner.backend = "clamav"
+        stream = io.BytesIO(b"investigative upload")
+        stream.seek(4)
+
+        with patch("services.malware_scanner.socket.create_connection", return_value=connection):
+            result = scanner.scan(stream)
+
+        self.assertTrue(result.clean)
+        self.assertEqual(result.status, "clean")
+        self.assertEqual(stream.tell(), 4)
+        self.assertTrue(connection.sent.startswith(b"zINSTREAM\0"))
+        self.assertTrue(connection.sent.endswith(b"\x00\x00\x00\x00"))
+
+    def test_infected_upload_is_rejected_without_exposing_signature(self):
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def settimeout(self, timeout):
+                pass
+
+            def sendall(self, payload):
+                pass
+
+            def recv(self, size):
+                return b"stream: Eicar-Signature FOUND\0"
+
+        scanner = MalwareScanner()
+        scanner.backend = "clamav"
+        with patch("services.malware_scanner.socket.create_connection", return_value=FakeConnection()):
+            result = scanner.scan(io.BytesIO(b"unsafe"))
+        self.assertFalse(result.clean)
+        self.assertEqual(result.signature, "Eicar-Signature")
+
+        with patch("services.malware_scanner.malware_scanner.scan", return_value=result):
+            with self.assertRaisesRegex(HTTPException, "Upload rejected") as raised:
+                scan_upload(io.BytesIO(b"unsafe"))
+        self.assertEqual(raised.exception.status_code, 422)
+        self.assertNotIn("Eicar", raised.exception.detail)
+
+    def test_scanner_outage_fails_closed(self):
+        scanner = MalwareScanner()
+        scanner.backend = "clamav"
+        with patch(
+            "services.malware_scanner.socket.create_connection",
+            side_effect=TimeoutError,
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                scanner.scan(io.BytesIO(b"upload"))
+        self.assertEqual(raised.exception.status_code, 503)
+
+    def test_production_requires_malware_scanning(self):
+        source = (REPOSITORY_ROOT / "config" / "settings.py").read_text(encoding="utf-8")
+        self.assertIn("MALWARE_SCAN_BACKEND must be 'clamav' in production", source)
+        evidence = (REPOSITORY_ROOT / "routes" / "evidence_routes.py").read_text(encoding="utf-8")
+        persons = (REPOSITORY_ROOT / "routes" / "person_routes.py").read_text(encoding="utf-8")
+        self.assertIn("scan_upload(file.file)", evidence)
+        self.assertIn("scan_upload(file.file)", persons)
+        self.assertIn('f"Malware scan: {scan_result.status}. "', evidence)
+        main = (REPOSITORY_ROOT / "main.py").read_text(encoding="utf-8")
+        self.assertGreaterEqual(
+            main.count("malware_scanner.validate_production_access()"),
+            2,
+        )
+
+    def test_clamav_readiness_uses_ping(self):
+        class FakeConnection:
+            def __init__(self):
+                self.sent = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def settimeout(self, timeout):
+                pass
+
+            def sendall(self, payload):
+                self.sent = payload
+
+            def recv(self, size):
+                return b"PONG\0"
+
+        connection = FakeConnection()
+        scanner = MalwareScanner()
+        scanner.backend = "clamav"
+        with patch("services.malware_scanner.socket.create_connection", return_value=connection):
+            scanner.validate_production_access()
+        self.assertEqual(connection.sent, b"zPING\0")
+
     def test_cursor_pagination_returns_an_opaque_next_cursor(self):
         base = declarative_base()
 
@@ -198,6 +323,53 @@ class PhaseOneFoundationTests(unittest.TestCase):
         self.assertEqual([item.id for item in first_page], [5, 4])
         self.assertEqual([item.id for item in second_page], [3, 2])
         self.assertNotEqual(cursor, "4")
+
+    def test_legal_hold_and_retention_period_block_disposition(self):
+        now = datetime(2026, 10, 16, 12, 0, 0)
+        evidence = SimpleNamespace(
+            legal_hold=True,
+            disposition_status="active",
+            retention_until=now - timedelta(days=1),
+        )
+        self.assertEqual(retention_decision(evidence, now).reason, "legal_hold")
+        with self.assertRaises(HTTPException) as held:
+            assert_evidence_disposition_allowed(evidence, now)
+        self.assertEqual(held.exception.status_code, 409)
+
+        evidence.legal_hold = False
+        evidence.retention_until = now + timedelta(days=1)
+        self.assertEqual(
+            retention_decision(evidence, now).reason,
+            "retention_period_active",
+        )
+
+    def test_expired_unheld_evidence_is_eligible_for_controlled_disposition(self):
+        now = datetime(2026, 10, 16, 12, 0, 0)
+        evidence = SimpleNamespace(
+            legal_hold=False,
+            disposition_status="active",
+            retention_until=now - timedelta(seconds=1),
+        )
+        self.assertTrue(retention_decision(evidence, now).eligible)
+        assert_evidence_disposition_allowed(evidence, now)
+
+    def test_retention_endpoint_is_supervisor_only_and_audited(self):
+        source = (REPOSITORY_ROOT / "routes" / "evidence_routes.py").read_text(encoding="utf-8")
+        self.assertIn('@router.put("/{evidence_id}/retention")', source)
+        self.assertIn(
+            'require_role("platform_admin", "agency_admin", "supervisor")',
+            source,
+        )
+        self.assertIn('action = "RELEASE_LEGAL_HOLD"', source)
+        migration = (
+            REPOSITORY_ROOT
+            / "migrations"
+            / "versions"
+            / "a73d11c6402e_add_evidence_retention_controls.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('down_revision = "f2cc04888254"', migration)
+        self.assertIn("ck_evidence_legal_hold_reason", migration)
+        self.assertIn("ix_evidence_retention_disposition", migration)
 
 
 if __name__ == "__main__":
