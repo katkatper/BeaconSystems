@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
@@ -10,6 +10,7 @@ from security.auth import require_role
 from security.case_access import apply_related_case_access_filter
 from security.tenant_scope import apply_person_agency_scope
 from services.match_service import calculate_match_score
+from services.job_queue import enqueue_job
 
 
 router = APIRouter(
@@ -18,6 +19,51 @@ router = APIRouter(
 
     tags=["Matches"]
 )
+
+
+@router.post("/run-async", status_code=status.HTTP_202_ACCEPTED)
+def queue_matching(
+    candidate_limit: int = Query(200, ge=1, le=500),
+    agency_id: int | None = Query(None),
+    idempotency_key: str = Header(
+        ...,
+        alias="Idempotency-Key",
+        min_length=8,
+        max_length=200,
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role("platform_admin", "agency_admin", "supervisor")
+    ),
+):
+    target_agency_id = current_user.agency_id
+    if current_user.role == "platform_admin":
+        target_agency_id = agency_id
+    elif agency_id is not None and agency_id != current_user.agency_id:
+        raise HTTPException(status_code=404, detail="Agency not found")
+
+    if target_agency_id is None:
+        raise HTTPException(status_code=400, detail="Select an agency for matching")
+
+    job, created = enqueue_job(
+        db,
+        agency_id=target_agency_id,
+        job_type="matching.run",
+        payload={
+            "agency_id": target_agency_id,
+            "candidate_limit": candidate_limit,
+            "requested_by_user_id": current_user.user_id,
+        },
+        idempotency_key=f"matching:{idempotency_key}",
+        priority=10,
+    )
+    db.commit()
+    db.refresh(job)
+    return {
+        "job_id": job.job_id,
+        "status": job.status,
+        "created": created,
+    }
 
 
 @router.post("/run")

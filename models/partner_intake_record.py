@@ -1,12 +1,19 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 
 from database.connection import Base
 
 
 class PartnerIntakeRecord(Base):
     __tablename__ = "partner_intake_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "agency_id",
+            "ingestion_key",
+            name="uq_partner_intake_agency_ingestion_key",
+        ),
+    )
 
     intake_id = Column(Integer, primary_key=True, index=True)
     agency_id = Column(Integer, ForeignKey("agencies.agency_id"), nullable=False, index=True)
@@ -19,6 +26,7 @@ class PartnerIntakeRecord(Base):
 
     record_type = Column(String(100), nullable=False)
     external_id = Column(String(255), nullable=True)
+    ingestion_key = Column(String(200), nullable=True)
     subject_name = Column(String(255), nullable=True)
     location = Column(String(255), nullable=True)
     latitude = Column(Float, nullable=True)

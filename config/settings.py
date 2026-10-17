@@ -49,6 +49,20 @@ EXTERNAL_API_TIMEOUT_SECONDS = float(
 AWS_CONNECT_TIMEOUT_SECONDS = float(os.getenv("AWS_CONNECT_TIMEOUT_SECONDS", "5"))
 AWS_READ_TIMEOUT_SECONDS = float(os.getenv("AWS_READ_TIMEOUT_SECONDS", "10"))
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
+QUEUE_BACKLOG_WARNING = int(os.getenv("QUEUE_BACKLOG_WARNING", "1000"))
+WORKER_HEARTBEAT_TIMEOUT_SECONDS = int(
+    os.getenv("WORKER_HEARTBEAT_TIMEOUT_SECONDS", "60")
+)
+JOB_COMPLETED_RETENTION_DAYS = int(os.getenv("JOB_COMPLETED_RETENTION_DAYS", "30"))
+JOB_DEAD_LETTER_RETENTION_DAYS = int(
+    os.getenv("JOB_DEAD_LETTER_RETENTION_DAYS", "180")
+)
+WORKER_HEARTBEAT_RETENTION_DAYS = int(
+    os.getenv("WORKER_HEARTBEAT_RETENTION_DAYS", "7")
+)
+WORKER_MAINTENANCE_INTERVAL_SECONDS = int(
+    os.getenv("WORKER_MAINTENANCE_INTERVAL_SECONDS", "300")
+)
 MALWARE_SCAN_BACKEND = os.getenv("MALWARE_SCAN_BACKEND", "disabled").strip().lower()
 MALWARE_SCAN_HOST = os.getenv("MALWARE_SCAN_HOST", "127.0.0.1").strip()
 MALWARE_SCAN_PORT = int(os.getenv("MALWARE_SCAN_PORT", "3310"))
@@ -198,6 +212,22 @@ def validate_runtime_settings() -> None:
 
     if MAX_UPLOAD_BYTES <= 0:
         errors.append("MAX_UPLOAD_BYTES must be greater than zero")
+
+    if QUEUE_BACKLOG_WARNING <= 0:
+        errors.append("QUEUE_BACKLOG_WARNING must be greater than zero")
+
+    if WORKER_HEARTBEAT_TIMEOUT_SECONDS <= 0:
+        errors.append("WORKER_HEARTBEAT_TIMEOUT_SECONDS must be greater than zero")
+
+    retention_values = {
+        "JOB_COMPLETED_RETENTION_DAYS": JOB_COMPLETED_RETENTION_DAYS,
+        "JOB_DEAD_LETTER_RETENTION_DAYS": JOB_DEAD_LETTER_RETENTION_DAYS,
+        "WORKER_HEARTBEAT_RETENTION_DAYS": WORKER_HEARTBEAT_RETENTION_DAYS,
+        "WORKER_MAINTENANCE_INTERVAL_SECONDS": WORKER_MAINTENANCE_INTERVAL_SECONDS,
+    }
+    for name, value in retention_values.items():
+        if value <= 0:
+            errors.append(f"{name} must be greater than zero")
 
     if MALWARE_SCAN_BACKEND != "clamav":
         errors.append("MALWARE_SCAN_BACKEND must be 'clamav' in production")

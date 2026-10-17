@@ -74,10 +74,14 @@ jobs:
         run: python -c "import main"
       - name: Build production API image
         run: docker build --tag beacon-api:${{ github.sha }} .
+      - name: Build production worker image
+        run: docker build --file Dockerfile.worker --tag beacon-worker:${{ github.sha }} .
       - name: Verify production image runtime metadata
         run: |
           test "$(docker image inspect beacon-api:${{ github.sha }} --format '{{.Config.User}}')" = "10001:10001"
           test "$(docker image inspect beacon-api:${{ github.sha }} --format '{{json .Config.Healthcheck}}')" != "null"
+          test "$(docker image inspect beacon-worker:${{ github.sha }} --format '{{.Config.User}}')" = "10001:10001"
+          test "$(docker image inspect beacon-worker:${{ github.sha }} --format '{{.Config.StopSignal}}')" = "SIGTERM"
 
   frontend:
     runs-on: ubuntu-latest

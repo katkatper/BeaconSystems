@@ -33,9 +33,12 @@ from services.malware_scanner import malware_scanner
 from models.external_record import ExternalRecord
 from models.user import User
 from models.auth_session import AuthSession
+from models.async_job import AsyncJob
+from models.worker_heartbeat import WorkerHeartbeat
 from models.sighting import Sighting
 from models.case import Cases
 from models.alerts import Alerts
+from models.alert_delivery import AlertDelivery
 from models.activity_log import ActivityLog
 from models.agencies import Agencies
 from models.cameras import Cameras
@@ -82,6 +85,7 @@ from routes.audit_routes import router as audit_router
 from routes.agency_exchange_routes import router as agency_exchange_router
 from routes.security_routes import router as security_router
 from routes.geocoding_routes import router as geocoding_router
+from routes.jobs_routes import router as jobs_router
 
 
 # Register API areas. Each router owns one operational workflow such as cases,
@@ -228,6 +232,7 @@ app.include_router(agency_exchange_router)
 app.include_router(security_router)
 app.include_router(geocoding_router)
 app.include_router(admin_log_router)
+app.include_router(jobs_router)
 
 # Lightweight health endpoint used to confirm the API process is reachable.
 

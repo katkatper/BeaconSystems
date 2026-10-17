@@ -13,7 +13,7 @@ class ActivityLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    user_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=True)
     agency_id = Column(Integer, nullable=True)
 
 

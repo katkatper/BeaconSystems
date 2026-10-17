@@ -24,6 +24,7 @@ from services.geocoding_fields import apply_geocode_result, copy_geocode_fields
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
 from services.partner_matching import normalize_text, score_case_match, split_subject_name
+from services.job_queue import enqueue_job
 
 
 router = APIRouter(prefix="/partner-intake", tags=["Partner Intake"])
@@ -108,7 +109,15 @@ def create_intake_record(
     intake_channel: str,
     received_by_user_id: int | None,
     agency_id: int,
+    ingestion_key: str | None = None,
 ):
+    if ingestion_key:
+        existing = db.query(PartnerIntakeRecord).filter(
+            PartnerIntakeRecord.agency_id == agency_id,
+            PartnerIntakeRecord.ingestion_key == ingestion_key,
+        ).first()
+        if existing:
+            return existing
     matched_case, match_score, match_reason = find_best_case_match(
         db,
         data,
@@ -125,6 +134,7 @@ def create_intake_record(
         suggested_person_id=matched_case.person_id if matched_case else None,
         record_type=data.record_type,
         external_id=data.external_id,
+        ingestion_key=ingestion_key,
         subject_name=data.subject_name,
         location=data.location,
         summary=data.summary,
@@ -142,6 +152,50 @@ def create_intake_record(
     db.refresh(intake)
 
     return intake
+
+
+@router.post("/automated-async", status_code=202)
+def queue_automated_partner_intake_record(
+    data: PartnerIntakeCreate,
+    db: Session = Depends(get_db),
+    x_beacon_partner_token: Optional[str] = Header(None),
+    idempotency_key: str = Header(
+        ...,
+        alias="Idempotency-Key",
+        min_length=8,
+        max_length=160,
+    ),
+):
+    if not PARTNER_WEBHOOK_TOKEN:
+        raise HTTPException(status_code=503, detail="Partner webhook token is not configured")
+    if x_beacon_partner_token != PARTNER_WEBHOOK_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid partner webhook token")
+    get_approved_source(db, data.integration_source_id)
+    if data.agency_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Automated partner intake must identify its destination agency",
+        )
+    if not db.query(Agencies).filter(Agencies.agency_id == data.agency_id).first():
+        raise HTTPException(status_code=404, detail="Agency not found")
+
+    configure_tenant_session(db, agency_id=data.agency_id, platform_admin=False)
+    ingestion_key = f"partner:{data.integration_source_id}:{idempotency_key}"
+    job, created = enqueue_job(
+        db,
+        agency_id=data.agency_id,
+        job_type="partner_intake.process",
+        payload={
+            "agency_id": data.agency_id,
+            "ingestion_key": ingestion_key,
+            "data": data.model_dump(mode="json"),
+        },
+        idempotency_key=ingestion_key,
+        priority=40,
+    )
+    db.commit()
+    db.refresh(job)
+    return {"job_id": job.job_id, "status": job.status, "created": created}
 
 
 def get_approved_source(db: Session, source_id: int):

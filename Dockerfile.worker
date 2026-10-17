@@ -1,0 +1,33 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    WORKER_POLL_SECONDS=1 \
+    WORKER_LEASE_SECONDS=300 \
+    WORKER_RETRY_BASE_SECONDS=30
+
+WORKDIR /app
+
+RUN addgroup --system --gid 10001 beacon \
+    && adduser --system --uid 10001 --ingroup beacon --home /app beacon
+
+COPY requirements.txt ./
+RUN python -m pip install --no-cache-dir --requirement requirements.txt
+
+COPY alembic.ini global-bundle.pem ./
+COPY config ./config
+COPY database ./database
+COPY integrations ./integrations
+COPY models ./models
+COPY routes ./routes
+COPY schemas ./schemas
+COPY security ./security
+COPY services ./services
+COPY scripts/run_worker.py ./scripts/run_worker.py
+
+RUN chown -R beacon:beacon /app
+USER 10001:10001
+
+STOPSIGNAL SIGTERM
+CMD ["python", "scripts/run_worker.py"]

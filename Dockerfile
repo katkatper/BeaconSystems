@@ -28,6 +28,7 @@ COPY schemas ./schemas
 COPY security ./security
 COPY services ./services
 COPY scripts/start_production.py ./scripts/start_production.py
+COPY scripts/run_worker.py ./scripts/run_worker.py
 
 RUN chown -R beacon:beacon /app
 USER 10001:10001
