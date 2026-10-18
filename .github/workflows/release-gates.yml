@@ -68,6 +68,10 @@ jobs:
           --cov=config --cov=database --cov=integrations --cov=models
           --cov=routes --cov=schemas --cov=security --cov=services
           --cov-fail-under=24 --cov-report=term
+      - name: Verify PostgreSQL multi-worker queue claims
+        env:
+          BEACON_QUEUE_TEST_DATABASE_URL: postgresql+psycopg2://beacon_ci:beacon_ci_password@127.0.0.1:5432/beacon_ci
+        run: python -m pytest tests/test_queue_postgres.py -q -p no:cacheprovider
       - name: Verify Phase I load and stateless contracts
         run: python -m unittest tests.test_phase_one_load_gate -v
       - name: Verify application import

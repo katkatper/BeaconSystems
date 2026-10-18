@@ -81,6 +81,9 @@ def run_worker(stop_event: Event | None = None) -> None:
             try:
                 dispatch_job(db, job)
             except Exception as exc:
+                # A handler may have flushed partial writes or invalidated the
+                # transaction. Roll it back before persisting retry state.
+                db.rollback()
                 logger.exception("Job %s failed", job.job_id)
                 fail_job(db, job, exc, retry_base_seconds=retry_base_seconds)
             else:

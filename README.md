@@ -40,3 +40,6 @@ inactive worker heartbeats for 7 days by default. The worker prunes expired
 operational history every five minutes. Override the corresponding retention
 environment variables only in accordance with agency audit and records policy;
 queued, retrying, and running work is never removed by maintenance.
+
+See [OPERATIONS.md](OPERATIONS.md) for the operations page, metrics export,
+Phase II acceptance gates, and Phase III investigator workspace scope.

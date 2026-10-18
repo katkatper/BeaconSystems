@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 
 function Administration() {
     const administrationLinks = [
+        ...(["platform_admin", "agency_admin", "supervisor"].includes(localStorage.getItem("role"))
+            ? [["Operations", "/operations", "Inspect queue health and replay failed background jobs."]] : []),
         ["Users", "/admin/users", "Manage accounts, roles, and supervisor access."],
         ["Audit", "/audit", "Review system activity, compliance logs, and user history."],
         ["Agencies", "/agencies", "Maintain agency registry and operational contacts."],

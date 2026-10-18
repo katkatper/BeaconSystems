@@ -134,7 +134,11 @@ class ObjectStorage:
             raise RuntimeError("Signed URLs are available only for S3 storage")
         params = {"Bucket": self.bucket, "Key": key}
         if self.expected_owner:
-            params["ExpectedBucketOwner"] = self.expected_owner
+            # Check ownership server-side. Signing this header into the URL
+            # would require browsers to supply it on every download request.
+            self._s3.head_bucket(
+                Bucket=self.bucket, ExpectedBucketOwner=self.expected_owner
+            )
         if download_name:
             content_type = mimetypes.guess_type(download_name)[0] or "application/octet-stream"
             params["ResponseContentType"] = content_type

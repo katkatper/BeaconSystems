@@ -20,7 +20,11 @@ class PhaseOneLoadAndStatelessTests(unittest.TestCase):
             def upload_fileobj(self, stream, bucket, key, ExtraArgs):
                 self.objects[(bucket, key)] = stream.read()
 
+            def head_bucket(self, **params):
+                assert params["ExpectedBucketOwner"] == "123456789012"
+
             def generate_presigned_url(self, operation, Params, ExpiresIn):
+                assert "ExpectedBucketOwner" not in Params
                 key = (Params["Bucket"], Params["Key"])
                 if key not in self.objects:
                     raise AssertionError("object was not shared between instances")

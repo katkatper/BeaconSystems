@@ -17,7 +17,7 @@ from models.leads import Leads
 from models.person import Person
 from models.sighting import Sighting
 from models.user import User
-from security.auth import get_current_user
+from security.auth import get_current_user, require_role
 from models.bolo_alert import BoloAlert
 from security.case_access import accessible_case_id_query, apply_case_access_filter
 from services.clock import utc_now
@@ -492,3 +492,13 @@ def get_dashboard_summary(
         "recent_sightings": [serialize_sighting(item) for item in recent_sightings],
         "recent_activity": [serialize_activity(item) for item in recent_activity],
     }
+
+
+@router.get("/investigator")
+def get_investigator_workspace(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("investigator")),
+):
+    from services.investigator_workspace import load_investigator_workspace
+
+    return load_investigator_workspace(db, current_user)

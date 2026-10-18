@@ -7,6 +7,7 @@ import Login from "./pages/Login.jsx";
 import "./App.css";
 import BeaconInsight from "./components/BeaconInsight.jsx";
 
+const InvestigatorWorkspace = lazy(() => import("./pages/InvestigatorWorkspace.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const MissingPersonsList = lazy(() => import("./pages/MissingPersons.jsx"));
 const AddPerson = lazy(() => import("./pages/AddReport.jsx"));
@@ -33,6 +34,7 @@ const CommandTools = lazy(() => import("./pages/CommandTools.jsx"));
 const EscapeRouteAnalysis = lazy(() => import("./pages/EscapeRouteAnalysis.jsx"));
 const BoloBoard = lazy(() => import("./pages/BoloBoard.jsx"));
 const SupervisorQueue = lazy(() => import("./pages/SupervisorQueue.jsx"));
+const JobOperations = lazy(() => import("./pages/JobOperations.jsx"));
 const AuditCenter = lazy(() => import("./pages/AuditCenter.jsx"));
 
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
@@ -130,6 +132,7 @@ function AppLayout() {
                     </div>
                 )}>
                 <Routes>
+                <Route path="/operations" element={<ProtectedRoute><JobOperations /></ProtectedRoute>} />
 
                 <Route path="/login" element={<Login />} />
 
@@ -137,7 +140,7 @@ function AppLayout() {
                     path="/"
                     element={
                         <ProtectedRoute>
-                            <Dashboard />
+                            {localStorage.getItem("role") === "investigator" ? <InvestigatorWorkspace /> : <Dashboard />}
                         </ProtectedRoute>
                     }
                 />

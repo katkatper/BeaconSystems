@@ -129,6 +129,32 @@ def get_job_metrics(
     return result
 
 
+@router.get("/metrics/prometheus", response_class=Response)
+def export_job_metrics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role("platform_admin", "agency_admin", "supervisor")
+    ),
+):
+    metrics = get_job_metrics(db=db, current_user=current_user)
+    values = {
+        "beacon_queue_backlog": metrics["backlog"],
+        "beacon_queue_dead_letters": metrics["dead_letters"],
+        "beacon_queue_oldest_job_age_seconds": metrics["oldest_job_age_seconds"],
+        "beacon_active_workers": metrics["active_workers"],
+        "beacon_queue_degraded": int(metrics["status"] == "degraded"),
+    }
+    body = "".join(
+        f"# TYPE {name} gauge\n{name} {value}\n"
+        for name, value in values.items()
+    )
+    return Response(
+        content=body,
+        media_type="text/plain; version=0.0.4",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @router.get("/{job_id}")
 def get_job(
     job_id: int,
