@@ -7,6 +7,24 @@ const fetchEvidence = async (caseFilter = "") => {
     return apiGet(caseFilter ? `/evidence/?case_id=${caseFilter}` : "/evidence/");
 };
 
+const evidenceTypes = [
+    ["biological", "Biological"],
+    ["digital", "Digital"],
+    ["document", "Document"],
+    ["physical", "Physical item"],
+    ["photo_video", "Photo or video"],
+    ["trace", "Trace evidence"],
+    ["vehicle", "Vehicle-related"],
+    ["other", "Other"],
+];
+
+const retentionPolicies = [
+    ["agency-standard", "Agency standard"],
+    ["major-case", "Major case"],
+    ["juvenile-case", "Juvenile case"],
+    ["permanent", "Permanent retention"],
+];
+
 const normalizeStatus = (status) => status || "collected";
 const getEvidenceIndicator = (status) => {
     const normalized = normalizeStatus(status);
@@ -49,12 +67,18 @@ const isThisWeek = (dateValue) => {
 function EvidenceUpload() {
     const [searchParams, setSearchParams] = useSearchParams();
     const statusFilter = searchParams.get("status") || "all";
+    const requestedCaseId = searchParams.get("case_id");
     const [caseId, setCaseId] = useState("");
     const [filterCaseId, setFilterCaseId] = useState("");
     const [evidenceType, setEvidenceType] = useState("");
+    const [authorizedCases, setAuthorizedCases] = useState([]);
     const [evidenceLocation, setEvidenceLocation] = useState("");
     const [description, setDescription] = useState("");
+    const [collectedAt, setCollectedAt] = useState("");
+    const [isSensitive, setIsSensitive] = useState(false);
+    const [retentionPolicy, setRetentionPolicy] = useState("agency-standard");
     const [file, setFile] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
     const [evidence, setEvidence] = useState([]);
     const [evidenceChains, setEvidenceChains] = useState({});
     const [custodyForms, setCustodyForms] = useState({});
@@ -147,10 +171,14 @@ function EvidenceUpload() {
     useEffect(() => {
         let isMounted = true;
 
-        fetchEvidence("")
-            .then((data) => {
+        Promise.all([fetchEvidence(""), apiGet("/cases/?limit=100")])
+            .then(([data, cases]) => {
                 if (isMounted) {
                     setEvidence(Array.isArray(data) ? data : []);
+                    setAuthorizedCases(Array.isArray(cases) ? cases : []);
+                    if (requestedCaseId && cases.some((item) => String(item.case_id) === requestedCaseId)) {
+                        setCaseId(requestedCaseId);
+                    }
                 }
             })
             .catch((err) => console.error(err));
@@ -158,7 +186,7 @@ function EvidenceUpload() {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [requestedCaseId]);
 
     const submitEvidence = async (e) => {
         e.preventDefault();
@@ -169,20 +197,29 @@ function EvidenceUpload() {
         formData.append("evidence_type", evidenceType);
         formData.append("evidence_location", evidenceLocation);
         formData.append("description", description);
+        if (collectedAt) formData.append("collected_at", new Date(collectedAt).toISOString());
+        formData.append("is_sensitive", String(isSensitive));
+        formData.append("retention_policy_code", retentionPolicy);
         formData.append("file", file);
 
         try {
+            setIsUploading(true);
             const data = await apiPostForm("/evidence/upload", formData);
 
             setMessage(data.message);
             setEvidenceType("");
             setEvidenceLocation("");
             setDescription("");
+            setCollectedAt("");
+            setIsSensitive(false);
+            setRetentionPolicy("agency-standard");
             setFile(null);
             await loadEvidence(filterCaseId);
         } catch (err) {
             console.error(err);
-            setMessage("Could not upload evidence.");
+            setMessage(err.message || "Could not upload evidence.");
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -370,21 +407,41 @@ function EvidenceUpload() {
                     <h2>Upload Evidence</h2>
 
                     <form className="evidence-form" onSubmit={submitEvidence}>
-                        <input
-                            type="number"
-                            placeholder="Case ID"
+                        <label>
+                            Authorized case
+                            <select
                             value={caseId}
                             onChange={(e) => setCaseId(e.target.value)}
                             required
-                        />
+                            >
+                                <option value="">Select an authorized case</option>
+                                {authorizedCases.map((item) => (
+                                    <option key={item.case_id} value={item.case_id}>
+                                        {item.case_number || `Case ${item.case_id}`} · {item.title}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
 
-                        <input
-                            type="text"
-                            placeholder="Evidence Type"
-                            value={evidenceType}
-                            onChange={(e) => setEvidenceType(e.target.value)}
-                            required
-                        />
+                        <label>
+                            Evidence category
+                            <select value={evidenceType} onChange={(e) => setEvidenceType(e.target.value)} required>
+                                <option value="">Select a category</option>
+                                {evidenceTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                            </select>
+                        </label>
+
+                        <label>
+                            Collected at
+                            <input type="datetime-local" value={collectedAt} onChange={(e) => setCollectedAt(e.target.value)} required />
+                        </label>
+
+                        <label>
+                            Retention policy
+                            <select value={retentionPolicy} onChange={(e) => setRetentionPolicy(e.target.value)} required>
+                                {retentionPolicies.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                            </select>
+                        </label>
 
                         <input
                             type="text"
@@ -405,10 +462,17 @@ function EvidenceUpload() {
                             required
                         />
 
-                        <button type="submit">Upload Evidence</button>
+                        <label className="evidence-sensitive-control">
+                            <input type="checkbox" checked={isSensitive} onChange={(e) => setIsSensitive(e.target.checked)} />
+                            Sensitive evidence — restrict file access to case editors
+                        </label>
+
+                        <button type="submit" disabled={isUploading}>
+                            {isUploading ? "Scanning and uploading…" : "Scan & Upload Evidence"}
+                        </button>
                     </form>
 
-                    {message && <p>{message}</p>}
+                    {message && <p role="status" aria-live="polite">{message}</p>}
                 </section>
 
                 <section className="evidence-panel">

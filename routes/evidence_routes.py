@@ -71,6 +71,24 @@ CUSTODY_STATUS_BY_ACTION = {
     "AUDIT_REVIEWED": "audit_reviewed",
 }
 
+EVIDENCE_TYPES = {
+    "biological",
+    "digital",
+    "document",
+    "physical",
+    "photo_video",
+    "trace",
+    "vehicle",
+    "other",
+}
+
+UPLOAD_RETENTION_POLICIES = {
+    "agency-standard",
+    "major-case",
+    "juvenile-case",
+    "permanent",
+}
+
 
 def apply_evidence_case_access(query, current_user: User, include_grants: bool = True):
     return apply_related_case_access_filter(
@@ -204,15 +222,29 @@ def get_all_evidence(
 @router.post("/upload")
 def upload_evidence(
     case_id: int = Form(...),
-    evidence_type: str = Form(...),
+    evidence_type: str = Form(..., min_length=2, max_length=100),
     description: str = Form(None),
     evidence_location: str = Form(None),
+    collected_at: datetime | None = Form(None),
+    is_sensitive: bool = Form(False),
+    retention_policy_code: str = Form("agency-standard"),
     file: UploadFile = File(...),
     request: Request = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     case = assert_case_write_access(db, case_id, current_user)
+
+    normalized_type = evidence_type.strip().lower()
+    normalized_retention = retention_policy_code.strip().lower()
+    if normalized_type not in EVIDENCE_TYPES:
+        raise HTTPException(status_code=400, detail="Unsupported evidence type")
+    if normalized_retention not in UPLOAD_RETENTION_POLICIES:
+        raise HTTPException(status_code=400, detail="Unsupported retention policy")
+    if collected_at and collected_at.tzinfo is not None:
+        collected_at = collected_at.astimezone(timezone.utc).replace(tzinfo=None)
+    if collected_at and collected_at > utc_now():
+        raise HTTPException(status_code=400, detail="Collection time cannot be in the future")
 
     original_file_name = Path(file.filename or "evidence-upload").name
     validate_upload(
@@ -232,7 +264,7 @@ def upload_evidence(
     evidence = Evidence(
         case_id=case_id,
         description=description,
-        evidence_type=evidence_type,
+        evidence_type=normalized_type,
         collected_by=current_user.user_id,
         evidence_location=evidence_location,
         evidence_latitude=geocoded_location["latitude"] if geocoded_location else None,
@@ -244,6 +276,9 @@ def upload_evidence(
         geocoded_at=datetime.utcnow() if geocoded_location else None,
         current_holder=current_user.username,
         custody_status="collected",
+        collected_at=collected_at or utc_now(),
+        is_sensitive=is_sensitive,
+        retention_policy_code=normalized_retention,
         file_name=original_file_name,
         file_path=stored.key,
         is_encrypted=EVIDENCE_ENCRYPTION_ENABLED,
@@ -265,7 +300,9 @@ def upload_evidence(
             f"Evidence uploaded: {evidence.file_name}. "
             f"SHA-256: {content_sha256}. "
             f"Malware scan: {scan_result.status}. "
-            f"Encryption: {'enabled' if evidence.is_encrypted else 'not configured'}"
+            f"Encryption: {'enabled' if evidence.is_encrypted else 'not configured'}. "
+            f"Classification: {normalized_type}; retention: {normalized_retention}; "
+            f"sensitive: {is_sensitive}"
         ),
     )
 

@@ -9,6 +9,7 @@ from models.timeline_events import Timeline_Event
 from security.auth import get_current_user, require_role
 from models.user import User
 from security.case_access import apply_related_case_access_filter, assert_case_write_access, get_authorized_case
+from services.activity_service import create_activity_log
 from services.pagination import PaginationParams, paginate_query
 
 
@@ -78,5 +79,18 @@ def create_timeline_event(
     db.add(event)
     db.commit()
     db.refresh(event)
+
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=current_user.agency_id,
+        action="CREATE_TIMELINE_EVENT",
+        entity="timeline_event",
+        entity_id=event.event_id,
+        details=(
+            f"{current_user.username} added {event.event_type} activity "
+            f"to case {event.case_id}"
+        ),
+    )
 
     return event

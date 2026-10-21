@@ -44,6 +44,18 @@ Priority cases appear first; leads appear oldest first. Each list reports
 whether additional work exists. Team cases and temporary read grants remain
 available through the existing authorized case browser.
 
-Remaining Phase III slices: case timeline/profile improvements, evidence upload
-and classification flow, lead ownership/status, match disposition, investigator
-notifications/read receipts, and mobile/accessibility browser acceptance.
+The case profile now loads its protected timeline with the investigator session,
+orders activity newest first, avoids duplicating sightings already represented
+as timeline events, and audits manually created timeline entries.
+
+Evidence intake now requires an authorized case selection, controlled evidence
+category, collection time, sensitivity decision and retention policy. The API
+validates those classifications and records them with the initial custody event.
+
+Case leads now have accountable owners, controlled priorities and statuses, due
+dates, closure resolutions and audited changes. Investigators see their own or
+unassigned leads; assignment remains restricted to active users in the case
+agency.
+
+Remaining Phase III slices: match disposition, investigator notifications/read
+receipts, and mobile/accessibility browser acceptance.

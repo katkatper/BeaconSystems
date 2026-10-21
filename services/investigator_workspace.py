@@ -33,6 +33,8 @@ def load_investigator_workspace(db: Session, user: User, *, limit: int = 10) -> 
     ).order_by(Alerts.created_at.desc(), Alerts.alert_id.desc()).limit(limit + 1).all()
     leads = db.query(Leads).filter(
         Leads.case_id.in_(case_ids),
+        (Leads.assigned_to_user_id.is_(None))
+        | (Leads.assigned_to_user_id == user.user_id),
         func.lower(func.coalesce(Leads.status, "new")).notin_(
             ("closed", "resolved", "rejected", "dismissed")
         ),
@@ -49,7 +51,9 @@ def load_investigator_workspace(db: Session, user: User, *, limit: int = 10) -> 
         } for row in alerts[:limit]],
         "pending_leads": [{
             "lead_id": row.lead_id, "case_id": row.case_id,
-            "status": row.status, "created_at": row.created_at,
+            "status": row.status, "priority": row.priority,
+            "assigned_to_user_id": row.assigned_to_user_id,
+            "due_at": row.due_at, "created_at": row.created_at,
         } for row in leads[:limit]],
         "has_more": {
             "assigned_cases": len(cases) > limit,

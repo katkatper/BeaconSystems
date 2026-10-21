@@ -15,6 +15,16 @@ function CaseDetail() {
     const [sightingMessage, setSightingMessage] = useState("");
     const [person, setPerson] = useState(null);
     const [timelineEvents, setTimelineEvents] = useState([]);
+    const [leads, setLeads] = useState([]);
+    const [leadAssignees, setLeadAssignees] = useState([]);
+    const [leadMessage, setLeadMessage] = useState("");
+    const [leadForm, setLeadForm] = useState({
+        lead_source: "",
+        description: "",
+        priority: "medium",
+        assigned_to_user_id: "",
+        due_at: "",
+    });
     const [evidence, setEvidence] = useState([]);
     const [evidenceChains, setEvidenceChains] = useState({});
     const [selectedExternalRecord, setSelectedExternalRecord] = useState(null);
@@ -71,11 +81,15 @@ function CaseDetail() {
                     externalRecordsResponse,
                     agencyExchangesResponse,
                     correlationsResponse,
+                    leadsResponse,
+                    leadAssigneesResponse,
                 ] = await Promise.all([
                     fetch(apiUrl(`/sightings/?case_id=${id}`), {
                         headers: authHeaders,
                     }),
-                    fetch(apiUrl(`/timeline-events/?case_id=${id}`)),
+                    fetch(apiUrl(`/timeline-events/?case_id=${id}`), {
+                        headers: authHeaders,
+                    }),
                     fetch(apiUrl(`/evidence/case/${id}`), {
                         headers: authHeaders,
                     }),
@@ -92,6 +106,8 @@ function CaseDetail() {
                     fetch(apiUrl(`/cases/${id}/correlations`), {
                         headers: authHeaders,
                     }),
+                    fetch(apiUrl(`/leads/?case_id=${id}`), { headers: authHeaders }),
+                    fetch(apiUrl(`/leads/assignees?case_id=${id}`), { headers: authHeaders }),
                 ]);
 
                 const [
@@ -102,6 +118,8 @@ function CaseDetail() {
                     externalRecordsData,
                     agencyExchangesData,
                     correlationsData,
+                    leadsData,
+                    leadAssigneesData,
                 ] = await Promise.all([
                     sightingsResponse.ok ? sightingsResponse.json() : [],
                     timelineResponse.ok ? timelineResponse.json() : [],
@@ -110,6 +128,8 @@ function CaseDetail() {
                     externalRecordsResponse.ok ? externalRecordsResponse.json() : [],
                     agencyExchangesResponse.ok ? agencyExchangesResponse.json() : [],
                     correlationsResponse.ok ? correlationsResponse.json() : { correlations: [] },
+                    leadsResponse.ok ? leadsResponse.json() : [],
+                    leadAssigneesResponse.ok ? leadAssigneesResponse.json() : [],
                 ]);
 
                 if (!isMounted) return;
@@ -127,6 +147,8 @@ function CaseDetail() {
                 setCaseCorrelations(
                     Array.isArray(correlationsData?.correlations) ? correlationsData.correlations : []
                 );
+                setLeads(Array.isArray(leadsData) ? leadsData : []);
+                setLeadAssignees(Array.isArray(leadAssigneesData) ? leadAssigneesData : []);
             } catch (err) {
                 console.error(err);
                 if (isMounted) {
@@ -154,6 +176,54 @@ function CaseDetail() {
             ...associateForm,
             [e.target.name]: e.target.value,
         });
+    };
+
+    const submitLead = async (event) => {
+        event.preventDefault();
+        const token = localStorage.getItem("token");
+        setLeadMessage("");
+        try {
+            const response = await fetch(apiUrl("/leads/"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    case_id: Number(id),
+                    lead_source: leadForm.lead_source,
+                    description: leadForm.description,
+                    priority: leadForm.priority,
+                    assigned_to_user_id: leadForm.assigned_to_user_id ? Number(leadForm.assigned_to_user_id) : null,
+                    due_at: leadForm.due_at ? new Date(leadForm.due_at).toISOString() : null,
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Could not create lead");
+            setLeads((current) => [data, ...current]);
+            setLeadForm({ lead_source: "", description: "", priority: "medium", assigned_to_user_id: "", due_at: "" });
+            setLeadMessage("Lead created and added to the case workflow.");
+        } catch (err) {
+            setLeadMessage(err.message || "Could not create lead.");
+        }
+    };
+
+    const updateLead = async (lead, changes) => {
+        const token = localStorage.getItem("token");
+        const resolution = changes.status && ["resolved", "closed"].includes(changes.status)
+            ? window.prompt("Resolution summary (required)", lead.resolution || "")
+            : undefined;
+        if (resolution === null) return;
+        try {
+            const response = await fetch(apiUrl(`/leads/${lead.lead_id}`), {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...changes, ...(resolution !== undefined ? { resolution } : {}) }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Could not update lead");
+            setLeads((current) => current.map((item) => item.lead_id === data.lead_id ? data : item));
+            setLeadMessage(`Lead ${data.lead_id} updated.`);
+        } catch (err) {
+            setLeadMessage(err.message || "Could not update lead.");
+        }
     };
 
     const submitSighting = async (e) => {
@@ -653,24 +723,22 @@ function CaseDetail() {
     ];
     const externalRequests = agencyExchanges.length > 0 ? agencyExchanges : externalRequestExamples;
     const selectedRequestDetails = selectedExternalRequest || externalRequests[0];
-    const landscapeTimeline = [
-        ...timelineEvents.map((event) => ({
+    const unifiedTimeline = timelineEvents
+        .map((event) => ({
             id: `event-${event.event_id}`,
             type: statusLabel(event.event_type || "Case event"),
             title: event.description || "Case activity recorded",
             detail: event.location || "No location recorded",
             timestamp: event.timestamp,
-        })),
-        ...sortedSightings.map((sighting, index) => ({
-            id: `sighting-${sighting.sighting_id || index}`,
-            type: "Sighting",
-            title: sighting.location || "Sighting reported",
-            detail: sighting.description || "No description recorded",
-            timestamp: sighting.sighting_time || sighting.created_at,
-        })),
-    ]
-        .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
-        .slice(0, 6);
+            source: event.source_type ? statusLabel(event.source_type) : "Beacon",
+        }))
+        .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+    const landscapeTimeline = unifiedTimeline.slice(0, 6);
+    const formatTimelineTime = (timestamp) => {
+        if (!timestamp) return "Time not recorded";
+        const value = new Date(timestamp);
+        return Number.isNaN(value.getTime()) ? timestamp : value.toLocaleString();
+    };
     const relationshipGroups = associates.reduce((groups, associate) => {
         const relationship = String(associate.relationship || "associate").toLowerCase();
         if (relationship.includes("family") || relationship.includes("parent") || relationship.includes("sibling") || relationship.includes("spouse")) {
@@ -749,7 +817,7 @@ function CaseDetail() {
                                 <span>Known relationships</span>
                             </button>
                             <button type="button" onClick={() => setActiveTab("timeline")}>
-                                <strong>{timelineEvents.length + sortedSightings.length}</strong>
+                                <strong>{unifiedTimeline.length}</strong>
                                 <span>Timeline events</span>
                             </button>
                             <button type="button" onClick={() => setActiveTab("externalRequests")}>
@@ -936,27 +1004,14 @@ function CaseDetail() {
             {activeTab === "timeline" && (
                 <div className="case-section case-tab-panel">
                     <h2>Timeline</h2>
+                    <p>Newest activity first. Sighting events are recorded here once and can be managed from the Sightings tab.</p>
                     <div className="case-timeline-list">
-                        {timelineEvents.map((event) => (
-                            <article key={event.event_id} className="timeline-card">
-                                <strong>{event.timestamp || "Timeline event"}</strong>
-                                <p>{event.event_type}: {event.description}</p>
-                                <small>{event.location}</small>
-                            </article>
-                        ))}
-
-                        {sortedSightings.map((sighting, index) => (
-                            <article key={sighting.sighting_id} className="timeline-card">
-                                <strong>{sighting.sighting_time || sighting.created_at || `Sighting ${index + 1}`}</strong>
-                                <p>Sighting reported at {sighting.location}</p>
-                                <small>{sighting.description}</small>
-                                <button
-                                    type="button"
-                                    className="small-danger-button"
-                                    onClick={() => deleteSighting(sighting)}
-                                >
-                                    Remove Sighting
-                                </button>
+                        {unifiedTimeline.length === 0 && <p>No case activity has been recorded.</p>}
+                        {unifiedTimeline.map((event) => (
+                            <article key={event.id} className="timeline-card">
+                                <strong>{formatTimelineTime(event.timestamp)}</strong>
+                                <p>{event.type}: {event.title}</p>
+                                <small>{event.source} · {event.detail}</small>
                             </article>
                         ))}
                     </div>
@@ -1181,11 +1236,38 @@ function CaseDetail() {
             {activeTab === "leads" && (
                 <div className="case-section case-tab-panel">
                     <h2>Leads</h2>
-                    <div className="beacon-status-list">
-                        <span>New leads: {externalRecords.length}</span>
-                        <span>Assigned leads: {agencyExchanges.length}</span>
-                        <span>Pending follow-ups: {sortedSightings.length}</span>
-                        <span>Closed leads: 0</span>
+                    <p>Assign ownership, set urgency, and document the outcome of every investigative lead.</p>
+                    <form className="case-lead-form" onSubmit={submitLead}>
+                        <label>Source<input value={leadForm.lead_source} onChange={(event) => setLeadForm({ ...leadForm, lead_source: event.target.value })} required /></label>
+                        <label>Priority<select value={leadForm.priority} onChange={(event) => setLeadForm({ ...leadForm, priority: event.target.value })}>
+                            <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
+                        </select></label>
+                        <label>Owner<select value={leadForm.assigned_to_user_id} onChange={(event) => setLeadForm({ ...leadForm, assigned_to_user_id: event.target.value })}>
+                            <option value="">Unassigned</option>
+                            {leadAssignees.map((user) => <option key={user.user_id} value={user.user_id}>{user.username} · {statusLabel(user.role)}</option>)}
+                        </select></label>
+                        <label>Due date<input type="datetime-local" value={leadForm.due_at} onChange={(event) => setLeadForm({ ...leadForm, due_at: event.target.value })} /></label>
+                        <label className="case-lead-description">Lead details<textarea value={leadForm.description} onChange={(event) => setLeadForm({ ...leadForm, description: event.target.value })} required /></label>
+                        <button type="submit">Create Lead</button>
+                    </form>
+                    {leadMessage && <p role="status" aria-live="polite">{leadMessage}</p>}
+                    <div className="case-lead-list">
+                        {leads.length === 0 && <p>No leads have been recorded for this case.</p>}
+                        {leads.map((lead) => (
+                            <article key={lead.lead_id} className="case-lead-card">
+                                <div><span>{statusLabel(lead.priority)} priority</span><strong>{lead.lead_source}</strong></div>
+                                <p>{lead.description}</p>
+                                <small>Owner: {lead.assigned_to || "Unassigned"}{lead.due_at ? ` · Due ${formatTimelineTime(lead.due_at)}` : ""}</small>
+                                {lead.resolution && <p><strong>Resolution:</strong> {lead.resolution}</p>}
+                                <label>Status<select value={lead.status || "new"} onChange={(event) => updateLead(lead, { status: event.target.value })}>
+                                    <option value="new">New</option><option value="assigned">Assigned</option><option value="in_progress">In progress</option><option value="pending">Pending</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
+                                </select></label>
+                                <label>Owner<select value={lead.assigned_to_user_id || ""} onChange={(event) => updateLead(lead, { assigned_to_user_id: event.target.value ? Number(event.target.value) : null })}>
+                                    <option value="">Unassigned</option>
+                                    {leadAssignees.map((user) => <option key={user.user_id} value={user.user_id}>{user.username}</option>)}
+                                </select></label>
+                            </article>
+                        ))}
                     </div>
                 </div>
             )}

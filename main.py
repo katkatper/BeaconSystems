@@ -86,6 +86,7 @@ from routes.agency_exchange_routes import router as agency_exchange_router
 from routes.security_routes import router as security_router
 from routes.geocoding_routes import router as geocoding_router
 from routes.jobs_routes import router as jobs_router
+from routes.leads_routes import router as leads_router
 
 
 # Register API areas. Each router owns one operational workflow such as cases,
@@ -233,6 +234,7 @@ app.include_router(security_router)
 app.include_router(geocoding_router)
 app.include_router(admin_log_router)
 app.include_router(jobs_router)
+app.include_router(leads_router)
 
 # Lightweight health endpoint used to confirm the API process is reachable.
 
