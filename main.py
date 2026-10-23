@@ -10,7 +10,6 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text as sql_text
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from config.settings import (
@@ -90,6 +89,7 @@ from security.http_middleware import SecurityHeadersMiddleware
 from security.rate_limit import validate_rate_limit_backend
 from services.malware_scanner import malware_scanner
 from services.object_storage import object_storage
+from services.readiness import readiness_service
 
 # Register API areas. Each router owns one operational workflow such as cases,
 # evidence, legal authority, partner sources, BOLO alerts, or supervisor review.
@@ -108,9 +108,11 @@ async def lifespan(app: FastAPI):
         malware_scanner.validate_production_access()
 
 
-    yield
-
-    print("Shutting down...")
+    try:
+        yield
+    finally:
+        print("Shutting down...")
+        engine.dispose()
    
 validate_runtime_settings()
 
@@ -249,16 +251,13 @@ def health_check():
 
 @app.get("/ready")
 def readiness_check():
-    try:
-        with engine.connect() as connection:
-            connection.execute(sql_text("SELECT 1"))
-        if IS_PRODUCTION:
-            malware_scanner.validate_production_access()
-    except Exception:
-        request_logger.exception(json.dumps({"event": "readiness_check_failed"}))
+    result = readiness_service.check()
+    if not result["ready"]:
+        request_logger.error(json.dumps({"event": "readiness_check_failed"}))
         return JSONResponse(status_code=503, content={"status": "not_ready"})
-
-    return {"status": "ready"}
+    return {
+        "status": "degraded" if result["degraded"] else "ready",
+    }
 
 
 

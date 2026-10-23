@@ -23,6 +23,9 @@ def main() -> None:
         workers=positive_integer("API_WORKERS", 1),
         proxy_headers=True,
         forwarded_allow_ips=os.getenv("FORWARDED_ALLOW_IPS", "127.0.0.1"),
+        timeout_graceful_shutdown=positive_integer(
+            "API_GRACEFUL_SHUTDOWN_SECONDS", 30
+        ),
         access_log=False,
     )
 

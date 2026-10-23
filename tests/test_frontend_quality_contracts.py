@@ -73,3 +73,40 @@ def test_mobile_acceptance_contract_preserves_touch_targets_and_content():
     assert "NVDA" in checklist
     assert "VoiceOver" in checklist
     assert "TalkBack" in checklist
+
+
+def test_case_tabs_support_keyboard_and_screen_reader_navigation():
+    source = (
+        REPOSITORY_ROOT
+        / "beaconsystems.client"
+        / "src"
+        / "pages"
+        / "CaseDetail.jsx"
+    ).read_text(encoding="utf-8")
+
+    assert 'role="tablist"' in source
+    assert 'role="tab"' in source
+    assert "aria-selected={activeTab === tabId}" in source
+    assert 'role="tabpanel"' in source
+    assert 'event.key === "ArrowRight"' in source
+    assert 'event.key === "ArrowLeft"' in source
+    assert 'event.key === "Home"' in source
+    assert 'event.key === "End"' in source
+
+
+def test_investigator_workspace_has_refresh_and_live_notification_feedback():
+    source = (
+        REPOSITORY_ROOT
+        / "beaconsystems.client"
+        / "src"
+        / "pages"
+        / "InvestigatorWorkspace.jsx"
+    ).read_text(encoding="utf-8")
+
+    assert "Refresh workspace" in source
+    assert 'aria-live="polite"' in source
+    assert "Notification marked read." in source
+    styles = (
+        REPOSITORY_ROOT / "beaconsystems.client" / "src" / "App.css"
+    ).read_text(encoding="utf-8")
+    assert ".sr-only" in styles

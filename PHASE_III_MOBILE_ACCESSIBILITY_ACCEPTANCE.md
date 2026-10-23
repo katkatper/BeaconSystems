@@ -1,4 +1,11 @@
-+# Phase III mobile and accessibility acceptance
+# Phase III mobile and accessibility acceptance
+
+## Status
+
+Phase III implementation and automated verification are complete. Field acceptance
+remains a release gate because browser, device and assistive-technology behavior
+cannot be certified by source tests. Record the required results below before a
+production release is approved.
 
 Automated lint, build and contract checks are prerequisites, not proof of browser
 or assistive-technology acceptance. Complete this matrix against a production-like

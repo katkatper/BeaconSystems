@@ -70,6 +70,10 @@ lists are bounded by the shared pagination contract.
 Mobile and accessibility safeguards now include keyboard skip navigation,
 screen-reader route focus, visible focus indicators, reduced-motion and forced-
 color support, 44-pixel mobile touch targets, and overflow-safe mobile content.
+Case information uses a complete keyboard tab pattern with selected-state,
+controlled-panel and arrow/Home/End navigation semantics. The investigator
+workspace provides an explicit refresh action, persistent-notification feedback,
+and labelled work queues.
 The required real-device/browser sign-off matrix is documented in
 `PHASE_III_MOBILE_ACCESSIBILITY_ACCEPTANCE.md`; Phase III is not accepted
 until those staging checks are recorded and approved.
@@ -102,3 +106,30 @@ Beacon also requests that key on every evidence upload and records encryption
 metadata from the storage boundary, avoiding a separate flag that could report a
 file as encrypted when it was not. Preserve the bucket, KMS policy, key-rotation,
 database encryption, and encrypted-backup configuration as release evidence.
+
+## Phase IV resilience and recovery
+
+`/health` is a process liveness check. `/ready` verifies the database on every
+request because Beacon cannot safely serve without its tenant boundary. Production
+checks for the shared authentication limiter, evidence storage and malware scanner
+are cached for `READINESS_DEPENDENCY_CACHE_SECONDS` (300 seconds by default).
+Their failure returns `{"status":"degraded"}` with HTTP 200 so unaffected case
+work can continue; the affected workflow still fails closed at its own boundary.
+A database failure returns HTTP 503 and removes the instance from service.
+
+Alert on both `not_ready` and `degraded`. Do not treat a degraded response as proof
+that evidence uploads or authentication are usable. The implementation and required
+recovery exercises are tracked in `PHASE_IV_RESILIENCE_RECOVERY.md`.
+
+After restoring a production backup into an isolated PostgreSQL environment, set
+only `BEACON_RESTORE_DATABASE_URL` for the restricted verification role and run:
+
+```powershell
+python scripts/verify_restored_database.py
+```
+
+The command refuses the configured application and migration database identities,
+uses a read-only transaction, verifies the current Alembic head and required tables,
+checks core relationships, and prints only table counts—not investigative records.
+Save its JSON output with the timed restore evidence, then destroy the isolated
+restore according to the approved data-handling procedure.

@@ -758,6 +758,22 @@ function CaseDetail() {
     const topCorrelationConfidence = caseCorrelations.length > 0
         ? Math.round(Number(caseCorrelations[0].confidence || 0) * 100)
         : 0;
+    const selectCaseTab = (tabId) => {
+        setActiveTab(tabId);
+        window.requestAnimationFrame(() => {
+            document.getElementById(`case-tab-${tabId}`)?.focus();
+        });
+    };
+    const handleCaseTabKeyDown = (event, currentIndex) => {
+        let nextIndex;
+        if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % caseTabs.length;
+        if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + caseTabs.length) % caseTabs.length;
+        if (event.key === "Home") nextIndex = 0;
+        if (event.key === "End") nextIndex = caseTabs.length - 1;
+        if (nextIndex === undefined) return;
+        event.preventDefault();
+        selectCaseTab(caseTabs[nextIndex][0]);
+    };
 
     return (
         <div className="case-detail-page">
@@ -784,18 +800,30 @@ function CaseDetail() {
             </div>
 
             <div className="case-tabs" role="tablist" aria-label="Case information tabs">
-                {caseTabs.map(([tabId, label]) => (
+                {caseTabs.map(([tabId, label], index) => (
                     <button
                         key={tabId}
+                        id={`case-tab-${tabId}`}
                         type="button"
+                        role="tab"
+                        aria-selected={activeTab === tabId}
+                        aria-controls="case-active-tab-panel"
+                        tabIndex={activeTab === tabId ? 0 : -1}
                         className={activeTab === tabId ? "active" : ""}
                         onClick={() => setActiveTab(tabId)}
+                        onKeyDown={(event) => handleCaseTabKeyDown(event, index)}
                     >
                         {label}
                     </button>
                 ))}
             </div>
 
+            <div
+                id="case-active-tab-panel"
+                role="tabpanel"
+                aria-labelledby={`case-tab-${activeTab}`}
+                tabIndex="0"
+            >
             {activeTab === "landscape" && (
                 <div className="investigative-landscape" aria-label="Investigative landscape">
                     <section className="case-section landscape-hero">
@@ -1427,7 +1455,7 @@ function CaseDetail() {
                     )}
                 </div>
             )}
-
+            </div>
         </div>
     );
 }

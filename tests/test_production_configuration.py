@@ -45,6 +45,8 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("MFA_SECRET_ENCRYPTION_KEY is required in production", source)
         self.assertIn("MFA_SECRET_ENCRYPTION_KEY must be a valid Fernet key", source)
         self.assertIn("MFA_ENFORCEMENT_ENABLED must be true in production", source)
+        self.assertIn("READINESS_DEPENDENCY_CACHE_SECONDS must be greater than zero", source)
+        self.assertIn("API_GRACEFUL_SHUTDOWN_SECONDS must be greater than zero", source)
         self.assertIn("Production database connections must use sslmode=verify-full", source)
         self.assertIn("Production database connections must specify sslrootcert", source)
         self.assertIn("OBJECT_STORAGE_KMS_KEY_ID must be a full KMS key ARN", source)
@@ -164,6 +166,33 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("## HIPAA readiness evidence", register)
         self.assertIn("## CJIS readiness evidence", register)
         self.assertIn("not a representation that Beacon is", register)
+
+    def test_phase_four_keeps_external_recovery_evidence_visible(self):
+        phase_four = (
+            REPOSITORY_ROOT / "PHASE_IV_RESILIENCE_RECOVERY.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("restored-database verification", phase_four)
+        self.assertIn("recovery point", phase_four)
+        self.assertIn("recovery time", phase_four)
+        self.assertIn("external gate has dated evidence", phase_four)
+
+        api_start = (
+            REPOSITORY_ROOT / "scripts" / "start_production.py"
+        ).read_text(encoding="utf-8")
+        main = (REPOSITORY_ROOT / "main.py").read_text(encoding="utf-8")
+        dockerfile = (REPOSITORY_ROOT / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("timeout_graceful_shutdown", api_start)
+        self.assertIn("engine.dispose()", main)
+        self.assertIn("STOPSIGNAL SIGTERM", dockerfile)
+
+        for document in (
+            "BACKUP_RESTORE_RUNBOOK.md",
+            "DEPLOYMENT_ROLLBACK_RUNBOOK.md",
+            "INCIDENT_RESPONSE_RUNBOOK.md",
+            "SECRET_ROTATION_RUNBOOK.md",
+        ):
+            self.assertTrue((REPOSITORY_ROOT / "docs" / document).is_file())
 
 
 if __name__ == "__main__":

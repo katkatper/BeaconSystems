@@ -194,7 +194,11 @@ class PhaseOneFoundationTests(unittest.TestCase):
         self.assertIn('@app.middleware("http")', source)
         self.assertIn('response.headers["X-Request-ID"]', source)
         self.assertIn('@app.get("/ready")', source)
-        self.assertIn('sql_text("SELECT 1")', source)
+        self.assertIn("readiness_service.check()", source)
+        readiness = (
+            REPOSITORY_ROOT / "services" / "readiness.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('sql_text("SELECT 1")', readiness)
         self.assertIn("validate_rate_limit_backend()", source)
         self.assertIn("object_storage.validate_production_access()", source)
 
@@ -303,10 +307,11 @@ class PhaseOneFoundationTests(unittest.TestCase):
         self.assertIn("scan_upload(file.file)", persons)
         self.assertIn('f"Malware scan: {scan_result.status}. "', evidence)
         main = (REPOSITORY_ROOT / "main.py").read_text(encoding="utf-8")
-        self.assertGreaterEqual(
-            main.count("malware_scanner.validate_production_access()"),
-            2,
-        )
+        readiness = (
+            REPOSITORY_ROOT / "services" / "readiness.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("malware_scanner.validate_production_access", readiness)
+        self.assertIn("malware_scanner.validate_production_access()", main)
 
     def test_clamav_readiness_uses_ping(self):
         class FakeConnection:

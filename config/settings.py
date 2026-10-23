@@ -44,6 +44,12 @@ DATABASE_POOL_RECYCLE_SECONDS = int(
 )
 DATABASE_SLOW_QUERY_MS = float(os.getenv("DATABASE_SLOW_QUERY_MS", "500"))
 API_REQUEST_TIMEOUT_SECONDS = float(os.getenv("API_REQUEST_TIMEOUT_SECONDS", "30"))
+API_GRACEFUL_SHUTDOWN_SECONDS = int(
+    os.getenv("API_GRACEFUL_SHUTDOWN_SECONDS", "30")
+)
+READINESS_DEPENDENCY_CACHE_SECONDS = float(
+    os.getenv("READINESS_DEPENDENCY_CACHE_SECONDS", "300")
+)
 EXTERNAL_API_TIMEOUT_SECONDS = float(
     os.getenv("EXTERNAL_API_TIMEOUT_SECONDS", "10")
 )
@@ -241,6 +247,12 @@ def validate_runtime_settings() -> None:
 
     if API_REQUEST_TIMEOUT_SECONDS <= 0:
         errors.append("API_REQUEST_TIMEOUT_SECONDS must be greater than zero")
+
+    if API_GRACEFUL_SHUTDOWN_SECONDS <= 0:
+        errors.append("API_GRACEFUL_SHUTDOWN_SECONDS must be greater than zero")
+
+    if READINESS_DEPENDENCY_CACHE_SECONDS <= 0:
+        errors.append("READINESS_DEPENDENCY_CACHE_SECONDS must be greater than zero")
 
     if EXTERNAL_API_TIMEOUT_SECONDS <= 0:
         errors.append("EXTERNAL_API_TIMEOUT_SECONDS must be greater than zero")

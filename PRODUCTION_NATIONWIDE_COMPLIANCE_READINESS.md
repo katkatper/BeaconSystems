@@ -17,10 +17,10 @@ the release record.
 | Production MFA | Implemented; verification required | Migration `3d6a02b9e841`, staging enrollment/refresh tests, recovery exercise, legacy-session revocation evidence |
 | Encryption in transit | Implemented in part; verification required | PostgreSQL `verify-full` startup evidence, approved TLS termination configuration, certificate rotation, internal service encryption decision |
 | Encryption at rest | Implemented in part; verification required | S3 default and per-upload KMS checks, database and backup encryption configuration with key identifiers |
-| Key and secret management | Implemented in part; verification required | KMS ARN/account validation, access policy, rotation evidence, secret-manager inventory and break-glass procedure |
+| Key and secret management | Implemented in part; verification required | KMS ARN/account validation and rotation runbook implemented; access policy, secret-manager inventory, rotation exercise and break-glass evidence required |
 | Audit integrity and retention | Verification required | Central immutable destination, access controls, clock synchronization and approved retention |
-| Backups and recovery | Verification required | Encrypted backups, point-in-time recovery, successful timed restoration exercise |
-| High availability | Verification required | Multi-instance API and worker tests, load balancer health, zone/region failure decision |
+| Backups and recovery | Implemented in part; verification required | Read-only restore verifier and runbook implemented; encrypted backups, point-in-time recovery and successful timed restoration exercise required |
+| High availability | Implemented in part; verification required | Cached dependency degradation and graceful shutdown implemented; multi-instance API/worker tests, load-balancer readiness and zone/region failure decision required |
 | Monitoring and incident alerting | Verification required | Scrape configuration, alert destinations, on-call ownership and alert exercise |
 | External alert delivery | Blocked on provider selection | Provider contract, authenticated callback tests, retry/dead-letter evidence |
 | Vulnerability management | Verification required | Dependency scanning, container/image scanning, patch SLA and remediation records |
@@ -36,7 +36,7 @@ the release record.
 | Capacity model | Verification required | Per-agency/user/case/evidence assumptions, peak targets and cost forecast |
 | Load and soak testing | Verification required | Production-shaped PostgreSQL, API, queue, worker and object-storage results |
 | Regional architecture | External decision | Primary/secondary region, recovery objectives, data-residency and failover decisions |
-| Zero-downtime deployment | Verification required | Migration compatibility, rolling deployment and rollback exercise |
+| Zero-downtime deployment | Implemented in part; verification required | Graceful API/worker shutdown and rollback runbook implemented; migration compatibility, rolling deployment and rollback exercise required |
 | Cross-agency exchange | Implemented; verification required | Legal-authority workflow, recipient validation, audit and revocation tests |
 | Support operations | External decision | Service levels, escalation paths, after-hours coverage and agency communications |
 | Configuration governance | Verification required | Versioned environment inventory, change approval and drift detection |

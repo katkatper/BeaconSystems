@@ -42,4 +42,6 @@ environment variables only in accordance with agency audit and records policy;
 queued, retrying, and running work is never removed by maintenance.
 
 See [OPERATIONS.md](OPERATIONS.md) for the operations page, metrics export,
-Phase II acceptance gates, and Phase III investigator workspace scope.
+Phase II acceptance gates, Phase III investigator scope and Phase IV resilience
+behavior. Phase IV implementation and external recovery gates are tracked in
+[PHASE_IV_RESILIENCE_RECOVERY.md](PHASE_IV_RESILIENCE_RECOVERY.md).
