@@ -17,6 +17,7 @@ function Navbar() {
     const [collapsed, setCollapsed] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [summary, setSummary] = useState(null);
+    const [notificationCount, setNotificationCount] = useState(0);
     const [, setReadStateVersion] = useState(0);
     const role = localStorage.getItem("role");
     const username = localStorage.getItem("username") || "Beacon User";
@@ -66,14 +67,7 @@ function Navbar() {
         { id: "new-critical-sightings", count: summary?.critical_sightings || 0 },
         { id: "escalated-alerts", count: summary?.new_alerts || 0 },
     ];
-    const notificationBadgeItems = [
-        { id: "potential-hospital-match", count: summary?.external_matches || 0 },
-        { id: "new-bolo-activity", count: summary?.new_alerts || 0 },
-        { id: "evidence-custody-update", count: summary?.evidence_awaiting_review || 0 },
-        { id: "agency-request-received", count: summary?.agency_requests || 0 },
-    ];
     const taskCount = getUnviewedCount("tasks", taskBadgeItems);
-    const notificationCount = getUnviewedCount("notifications", notificationBadgeItems);
     const searchResults = useMemo(() => {
         const normalized = searchTerm.trim().toLowerCase();
 
@@ -104,9 +98,11 @@ function Navbar() {
         const loadSummary = async () => {
             try {
                 const data = await apiGet("/dashboard/summary");
+                const notificationData = await apiGet("/notifications/unread-count");
 
                 if (isMounted) {
                     setSummary(data);
+                    setNotificationCount(notificationData.unread_count);
                 }
             } catch (err) {
                 console.error(err);

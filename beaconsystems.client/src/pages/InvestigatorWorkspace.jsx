@@ -1,11 +1,24 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { apiGet } from "../api.jsx";
+import { apiGet, apiPost } from "../api.jsx";
 import { useVisiblePolling } from "../hooks/useVisiblePolling.js";
 
 export default function InvestigatorWorkspace() {
     const [workspace, setWorkspace] = useState(null);
     const [error, setError] = useState("");
+    const markNotificationRead = async (notificationId) => {
+        try {
+            await apiPost(`/notifications/${notificationId}/read`, {});
+            setWorkspace((current) => ({
+                ...current,
+                unread_notifications: current.unread_notifications.filter(
+                    (item) => item.notification_id !== notificationId
+                ),
+            }));
+        } catch (err) {
+            setError(err.message);
+        }
+    };
     useVisiblePolling(async (isActive) => {
         try {
             const data = await apiGet("/dashboard/investigator");
@@ -47,6 +60,19 @@ export default function InvestigatorWorkspace() {
                     <p>{item.status || "New"}</p>
                 </li>)}</ul>
                 {workspace.has_more.pending_leads && <Link to="/intelligence">Review more leads</Link>}
+            </section>
+            <section className="beacon-panel"><h2>Unread notifications</h2>
+                {workspace.unread_notifications.length === 0 && <p>You are caught up.</p>}
+                <ul>{workspace.unread_notifications.map((item) => <li key={item.notification_id}>
+                    <Link to={item.case_id ? `/cases/${item.case_id}` : "/alerts"}>
+                        {item.title}
+                    </Link>
+                    <p>{item.message}</p>
+                    <button type="button" onClick={() => markNotificationRead(item.notification_id)}>
+                        Mark read
+                    </button>
+                </li>)}</ul>
+                {workspace.has_more.unread_notifications && <Link to="/command/notifications">Review all notifications</Link>}
             </section>
         </div>}
     </div>;

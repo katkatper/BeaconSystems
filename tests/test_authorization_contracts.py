@@ -2,7 +2,6 @@ import ast
 import unittest
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -167,8 +166,9 @@ class AuthorizationContractTests(unittest.TestCase):
             'require_role("platform_admin", "agency_admin", "supervisor")',
             source,
         )
-        self.assertIn("apply_person_agency_scope", source)
-        self.assertIn("apply_related_case_access_filter", source)
+        self.assertIn("run_agency_matching", source)
+        self.assertIn("target_agency_id = current_user.agency_id", source)
+        self.assertIn("target_agency_id = agency_id", source)
         self.assertIn("le=500", source)
 
     def test_partner_intake_has_explicit_tenant_ownership(self):

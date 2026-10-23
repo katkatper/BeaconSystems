@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
-from models.alerts import Alerts
 
+from models.alerts import Alerts
+from models.case import Cases
+from services.notification_service import notify_assigned_investigator_of_alert
 
 # ALERT SERVICE - FOR BUSINESS LOGIC RELATED TO ALERTS GENERATED FROM CASES OR EXTERNAL SOURCES
 
@@ -43,6 +45,20 @@ def create_alert(
     )
 
     db.add(alert)
+    db.flush()
+    if case_id is not None:
+        case = db.query(Cases).filter(
+            Cases.case_id == case_id,
+            Cases.agency_id == recipient_agency_id,
+        ).first()
+        if case is not None:
+            notify_assigned_investigator_of_alert(
+                db,
+                case=case,
+                alert_id=alert.alert_id,
+                title=alert.title,
+                severity=alert.severity,
+            )
     db.commit()
     db.refresh(alert)
 

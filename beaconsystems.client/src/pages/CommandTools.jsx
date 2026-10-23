@@ -12,13 +12,6 @@ const taskItems = [
     ["escalated-alerts", "Escalated alerts", "Review BOLOs, potential matches, and investigator escalations.", "High", "/alerts"],
 ];
 
-const notificationItems = [
-    ["potential-hospital-match", "Potential hospital match", "External record match is ready for supervisor review.", "/intelligence"],
-    ["new-bolo-activity", "New BOLO activity", "An operational alert was created for field coordination.", "/alerts"],
-    ["evidence-custody-update", "Evidence custody update", "A custody event was recorded on an active case.", "/evidence-upload"],
-    ["agency-request-received", "Agency request received", "A partner agency submitted a new information request.", "/agencies"],
-];
-
 const settingsItems = [
     ["Account settings", "Review your Beacon profile, role, and notification preferences."],
     ["Workspace defaults", "Set preferred landing views for supervisor workflows."],
@@ -34,6 +27,8 @@ function CommandTools() {
     const [mfaMessage, setMfaMessage] = useState("");
     const [sessions, setSessions] = useState([]);
     const [sessionMessage, setSessionMessage] = useState("");
+    const [notifications, setNotifications] = useState([]);
+    const [notificationMessage, setNotificationMessage] = useState("");
     const [, setReadStateVersion] = useState(0);
     const username = localStorage.getItem("username") || "Beacon User";
     const role = localStorage.getItem("role") || "viewer";
@@ -49,13 +44,6 @@ function CommandTools() {
         { id: taskItems[4][0], title: taskItems[4][1], detail: taskItems[4][2], priority: taskItems[4][3], path: taskItems[4][4], count: summary?.critical_sightings ?? 0 },
         { id: taskItems[5][0], title: taskItems[5][1], detail: taskItems[5][2], priority: taskItems[5][3], path: taskItems[5][4], count: summary?.new_alerts ?? 0 },
     ].map((item) => ({ ...item, count: getVisibleCount("tasks", item) }));
-    const liveNotificationItems = [
-        { id: notificationItems[0][0], title: notificationItems[0][1], detail: notificationItems[0][2], path: notificationItems[0][3], count: summary?.external_matches ?? 0 },
-        { id: notificationItems[1][0], title: notificationItems[1][1], detail: notificationItems[1][2], path: notificationItems[1][3], count: summary?.new_alerts ?? 0 },
-        { id: notificationItems[2][0], title: notificationItems[2][1], detail: notificationItems[2][2], path: notificationItems[2][3], count: summary?.evidence_awaiting_review ?? 0 },
-        { id: notificationItems[3][0], title: notificationItems[3][1], detail: notificationItems[3][2], path: notificationItems[3][3], count: summary?.agency_requests ?? 0 },
-    ].map((item) => ({ ...item, count: getVisibleCount("notifications", item) }));
-
     useEffect(() => {
         let isMounted = true;
 
@@ -81,6 +69,37 @@ function CommandTools() {
     useEffect(() => subscribeToReadState(() => {
         setReadStateVersion((current) => current + 1);
     }), []);
+
+    useEffect(() => {
+        if (!isNotifications) return undefined;
+        let isMounted = true;
+        apiGet("/notifications/?limit=100")
+            .then((data) => { if (isMounted) setNotifications(data); })
+            .catch((err) => { if (isMounted) setNotificationMessage(err.message); });
+        return () => { isMounted = false; };
+    }, [isNotifications]);
+
+    const readNotification = async (item) => {
+        try {
+            const updated = await apiPost(`/notifications/${item.notification_id}/read`, {});
+            setNotifications((current) => current.map((entry) =>
+                entry.notification_id === item.notification_id ? updated : entry
+            ));
+        } catch (err) {
+            setNotificationMessage(err.message);
+        }
+    };
+
+    const readAllNotifications = async () => {
+        try {
+            const result = await apiPost("/notifications/read-all", {});
+            const readAt = result.read_at || new Date().toISOString();
+            setNotifications((current) => current.map((item) => ({ ...item, read_at: item.read_at || readAt })));
+            setNotificationMessage(`${result.read_count} notification(s) marked read.`);
+        } catch (err) {
+            setNotificationMessage(err.message);
+        }
+    };
 
     const loadSessions = async () => {
         try {
@@ -206,19 +225,28 @@ function CommandTools() {
             )}
 
             {isNotifications && (
-                <section className="command-tool-grid">
-                    {liveNotificationItems.map(({ id, title, detail, path, count }) => (
-                        <article key={title} className="beacon-panel command-tool-card">
-                            <div>
-                                <span className="task-count">{count}</span>
-                                <h2>{title}</h2>
-                            </div>
-                            <p>{detail}</p>
-                            <Link to={path} onClick={() => markItemViewed("notifications", id)}>
-                                Review
-                            </Link>
-                        </article>
-                    ))}
+                <section>
+                    <div className="command-notification-actions">
+                        <p>{notifications.filter((item) => !item.read_at).length} unread</p>
+                        <button type="button" onClick={readAllNotifications}>Mark all read</button>
+                    </div>
+                    {notificationMessage && <p role="status">{notificationMessage}</p>}
+                    {notifications.length === 0 && <p>You have no notifications.</p>}
+                    <div className="command-tool-grid">
+                        {notifications.map((item) => (
+                            <article key={item.notification_id} className={`beacon-panel command-tool-card ${item.read_at ? "notification-read" : "notification-unread"}`}>
+                                <div>
+                                    <span className="task-count">{item.read_at ? "Read" : "New"}</span>
+                                    <h2>{item.title}</h2>
+                                </div>
+                                <p>{item.message}</p>
+                                <Link to={item.case_id ? `/cases/${item.case_id}` : "/alerts"} onClick={() => readNotification(item)}>
+                                    Review
+                                </Link>
+                                {!item.read_at && <button type="button" onClick={() => readNotification(item)}>Mark read</button>}
+                            </article>
+                        ))}
+                    </div>
                 </section>
             )}
 

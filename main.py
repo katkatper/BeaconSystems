@@ -4,13 +4,15 @@ import asyncio
 import json
 import logging
 import time
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text as sql_text
-from database.connection import engine
-from database.security_posture import validate_database_security
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
 from config.settings import (
     API_REQUEST_TIMEOUT_SECONDS,
     CORS_ORIGINS,
@@ -19,75 +21,75 @@ from config.settings import (
     TRUSTED_HOSTS,
     validate_runtime_settings,
 )
-from  contextlib import asynccontextmanager
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
-from security.http_middleware import SecurityHeadersMiddleware
-from security.rate_limit import validate_rate_limit_backend
-from services.object_storage import object_storage
-from services.malware_scanner import malware_scanner
-
-# Import application models so SQLAlchemy/Alembic metadata includes all tables.
-# Alembic is the source of truth for schema changes.
-
-from models.external_record import ExternalRecord
-from models.user import User
-from models.auth_session import AuthSession
-from models.async_job import AsyncJob
-from models.worker_heartbeat import WorkerHeartbeat
-from models.sighting import Sighting
-from models.case import Cases
-from models.alerts import Alerts
-from models.alert_delivery import AlertDelivery
+from database.connection import engine
+from database.security_posture import validate_database_security
 from models.activity_log import ActivityLog
 from models.agencies import Agencies
+from models.agency_exchange import AgencyExchange
+from models.alert_delivery import AlertDelivery
+from models.alerts import Alerts
+from models.async_job import AsyncJob
+from models.auth_session import AuthSession
+from models.bolo_alert import BoloAlert
 from models.cameras import Cameras
+from models.case import Cases
+from models.case_access_grant import CaseAccessGrant
+from models.case_team_member import CaseTeamMember
 from models.data_matches import Data_Matches
 from models.data_sources import Data_Source
 from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
-from models.legal_access_request import LegalAccessRequest
-from models.case_access_grant import CaseAccessGrant
-from models.case_team_member import CaseTeamMember
-from models.leads import Leads
-from models.person import Person
-from models.timeline_events import Timeline_Event
-from models.investigators import Investigators
+
+# Import application models so SQLAlchemy/Alembic metadata includes all tables.
+# Alembic is the source of truth for schema changes.
+from models.external_record import ExternalRecord
 from models.IntegrationSource import IntegrationSource
-from models.partner_intake_record import PartnerIntakeRecord
+from models.investigators import Investigators
+from models.leads import Leads
+from models.legal_access_request import LegalAccessRequest
 from models.match import Match
-from models.bolo_alert import BoloAlert
-from models.agency_exchange import AgencyExchange
+from models.notification import Notification
+from models.partner_intake_record import PartnerIntakeRecord
+from models.person import Person
+from models.sighting import Sighting
+from models.timeline_events import Timeline_Event
+from models.user import User
+from models.worker_heartbeat import WorkerHeartbeat
+from routes import (
+    external_records_routes,
+    integrations_routes,
+    match_routes,
+    partner_intake_routes,
+)
+from routes.admin_log import router as admin_log_router
+from routes.admin_user_routes import router as admin_user_router
+from routes.agencies_routes import router as agencies_router
+from routes.agency_exchange_routes import router as agency_exchange_router
+from routes.alerts_routes import router as alerts_router
+from routes.audit_routes import router as audit_router
+from routes.bolo_routes import router as bolo_router
+from routes.cases_routes import router as cases_router
+from routes.dashboard_routes import router as dashboard_router
+from routes.evidence_routes import router as evidence_router
+from routes.geocoding_routes import router as geocoding_router
+from routes.jobs_routes import router as jobs_router
+from routes.leads_routes import router as leads_router
+from routes.legal_access_routes import router as legal_access_router
+from routes.notifications_routes import router as notifications_router
+from routes.person_routes import router as person_router
+from routes.security_routes import router as security_router
+from routes.sightings_routes import router as sightings_router
+from routes.supervisor_routes import router as supervisor_router
+from routes.timeline_events_routes import router as timeline_events_router
 
 # Route modules define the API endpoints used by the React frontend.
 # Keep sensitive workflows, such as evidence and legal access, behind auth checks
 # inside the route modules.
-
 from routes.users_routes import router as users_router
-from routes.sightings_routes import router as sightings_router
-from routes.cases_routes import router as cases_router
-from routes.alerts_routes import router as alerts_router
-from routes.evidence_routes import router as evidence_router
-from routes.admin_user_routes import router as admin_user_router
-from routes.agencies_routes import router as agencies_router
-from routes.dashboard_routes import router as dashboard_router
-from routes.legal_access_routes import router as legal_access_router
-from routes.admin_log import router as admin_log_router
-from routes.person_routes import router as person_router
-from routes import integrations_routes
-from routes import external_records_routes
-from routes import partner_intake_routes
-from routes import match_routes
-from  routes.timeline_events_routes import router as timeline_events_router
-from routes.bolo_routes import router as bolo_router
-from routes.supervisor_routes import router as supervisor_router
-from routes.audit_routes import router as audit_router
-from routes.agency_exchange_routes import router as agency_exchange_router
-from routes.security_routes import router as security_router
-from routes.geocoding_routes import router as geocoding_router
-from routes.jobs_routes import router as jobs_router
-from routes.leads_routes import router as leads_router
-
+from security.http_middleware import SecurityHeadersMiddleware
+from security.rate_limit import validate_rate_limit_backend
+from services.malware_scanner import malware_scanner
+from services.object_storage import object_storage
 
 # Register API areas. Each router owns one operational workflow such as cases,
 # evidence, legal authority, partner sources, BOLO alerts, or supervisor review.
@@ -235,6 +237,7 @@ app.include_router(geocoding_router)
 app.include_router(admin_log_router)
 app.include_router(jobs_router)
 app.include_router(leads_router)
+app.include_router(notifications_router)
 
 # Lightweight health endpoint used to confirm the API process is reachable.
 

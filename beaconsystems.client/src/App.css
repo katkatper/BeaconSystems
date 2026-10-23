@@ -7069,6 +7069,75 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     grid-column: 1 / -1;
 }
 
+.match-review-panel {
+    margin-top: 22px;
+}
+
+.match-review-heading,
+.match-review-card,
+.match-review-actions {
+    display: flex;
+    gap: 14px;
+}
+
+.match-review-heading,
+.match-review-card {
+    justify-content: space-between;
+}
+
+.match-review-list {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.match-review-card {
+    flex-wrap: wrap;
+    padding: 16px;
+    border: 1px solid rgba(113, 168, 255, 0.3);
+    border-radius: 12px;
+    background: rgba(10, 24, 45, 0.72);
+}
+
+.match-review-score {
+    min-width: 90px;
+    text-align: center;
+}
+
+.match-review-score strong {
+    display: block;
+    font-size: 1.7rem;
+}
+
+.match-review-identity {
+    flex: 1 1 320px;
+}
+
+.match-review-identity > span {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.match-review-history,
+.match-review-card > label,
+.match-review-actions {
+    flex-basis: 100%;
+}
+
+.match-review-card > label {
+    display: grid;
+    gap: 6px;
+}
+
+.match-review-card textarea {
+    min-height: 84px;
+    width: 100%;
+}
+
+.match-review-actions {
+    flex-wrap: wrap;
+}
+
 @media (max-width: 760px) {
     .case-lead-form,
     .case-lead-card {
@@ -10035,4 +10104,20 @@ a.case-health-row:hover {
     .landscape-timeline-preview article span {
         grid-row: auto;
     }
+}
+.command-notification-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.notification-unread {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.22);
+}
+
+.notification-read {
+    opacity: 0.78;
 }

@@ -12,6 +12,7 @@ from models.agencies import Agencies
 from models.alerts import Alerts
 from models.case import Cases
 from models.leads import Leads
+from models.notification import Notification
 from models.person import Person
 from routes.dashboard_routes import router
 from security.auth import get_current_user
@@ -21,7 +22,7 @@ from services.investigator_workspace import load_investigator_workspace
 @pytest.fixture
 def workspace_db():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    for model in (Agencies, Person, Cases, Alerts, Leads):
+    for model in (Agencies, Person, Cases, Alerts, Leads, Notification):
         model.__table__.create(engine)
     with Session(engine) as db:
         for cid, agency, investigator, status in (
@@ -38,6 +39,17 @@ def workspace_db():
         db.add(Alerts(alert_id=99, case_id=1, recipient_agency_id=11,
             title="Wrong recipient", alert_status="active", severity="critical"))
         db.add(Leads(lead_id=99, case_id=1, status="resolved"))
+        db.add_all([
+            Notification(notification_id=1, agency_id=10, user_id=7,
+                notification_type="alert_assigned_case", entity_type="alert",
+                entity_id=1, case_id=1, title="Notification 1"),
+            Notification(notification_id=2, agency_id=10, user_id=7,
+                notification_type="alert_assigned_case", entity_type="alert",
+                entity_id=5, case_id=5, title="Notification 2"),
+            Notification(notification_id=3, agency_id=11, user_id=7,
+                notification_type="alert_assigned_case", entity_type="alert",
+                entity_id=3, case_id=3, title="Wrong tenant"),
+        ])
         db.commit()
         yield db
     engine.dispose()
@@ -52,6 +64,7 @@ def test_workspace_excludes_other_users_tenants_and_closed_cases(workspace_db):
     assert [row["case_id"] for row in result["assigned_cases"]] == [5, 1]
     assert {row["alert_id"] for row in result["urgent_alerts"]} == {1, 5}
     assert {row["lead_id"] for row in result["pending_leads"]} == {1, 5}
+    assert {row["notification_id"] for row in result["unread_notifications"]} == {1, 2}
     assert not any(result["has_more"].values())
 
 
@@ -65,7 +78,7 @@ def test_workspace_is_bounded_and_indicates_more(workspace_db):
 
 def test_workspace_empty_state(workspace_db):
     result = load_investigator_workspace(workspace_db, investigator(user_id=999))
-    assert result["assigned_cases"] == result["urgent_alerts"] == result["pending_leads"] == []
+    assert result["assigned_cases"] == result["urgent_alerts"] == result["pending_leads"] == result["unread_notifications"] == []
 
 
 @pytest.mark.parametrize("role,active,expected", [("investigator", True, 200), ("viewer", True, 403), ("investigator", False, 403)])

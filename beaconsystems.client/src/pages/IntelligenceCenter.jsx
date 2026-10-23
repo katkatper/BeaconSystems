@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiRequest, apiUrl } from "../api.jsx";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 
 const IntelligenceMap3D = lazy(() => import("./IntelligenceMap3D.jsx"));
@@ -26,6 +26,9 @@ function IntelligenceCenter() {
     const [bolos, setBolos] = useState([]);
     const [evidence, setEvidence] = useState([]);
     const [persons, setPersons] = useState([]);
+    const [matches, setMatches] = useState([]);
+    const [matchNotes, setMatchNotes] = useState({});
+    const [matchMessage, setMatchMessage] = useState("");
     const [lastUpdated, setLastUpdated] = useState(null);
     const [showAiReview, setShowAiReview] = useState(false);
 
@@ -36,21 +39,23 @@ function IntelligenceCenter() {
 
         const loadIntelligence = async () => {
             try {
-                const [sightingsResponse, recordsResponse, bolosResponse, evidenceResponse, personsResponse] =
+                const [sightingsResponse, recordsResponse, bolosResponse, evidenceResponse, personsResponse, matchesResponse] =
                     await Promise.all([
                         fetch(apiUrl("/sightings/"), { headers }),
                         fetch(apiUrl("/external-records/"), { headers }),
                         fetch(apiUrl("/bolos/"), { headers }),
                         fetch(apiUrl("/evidence/"), { headers }),
                         fetch(apiUrl("/persons/?limit=100"), { headers }),
+                        fetch(apiUrl("/matches/?limit=100"), { headers }),
                     ]);
 
-                const [sightingsData, recordsData, bolosData, evidenceData, personsData] = await Promise.all([
+                const [sightingsData, recordsData, bolosData, evidenceData, personsData, matchesData] = await Promise.all([
                     sightingsResponse.ok ? sightingsResponse.json() : [],
                     recordsResponse.ok ? recordsResponse.json() : [],
                     bolosResponse.ok ? bolosResponse.json() : [],
                     evidenceResponse.ok ? evidenceResponse.json() : [],
                     personsResponse.ok ? personsResponse.json() : [],
+                    matchesResponse.ok ? matchesResponse.json() : [],
                 ]);
 
                 if (!isMounted) return;
@@ -60,6 +65,7 @@ function IntelligenceCenter() {
                 setBolos(Array.isArray(bolosData) ? bolosData : []);
                 setEvidence(Array.isArray(evidenceData) ? evidenceData : []);
                 setPersons(Array.isArray(personsData) ? personsData : []);
+                setMatches(Array.isArray(matchesData) ? matchesData : []);
                 setLastUpdated(new Date());
             } catch (err) {
                 console.error(err);
@@ -332,6 +338,26 @@ function IntelligenceCenter() {
         ? detectedCorrelations
         : representativeCorrelations;
     const topAiConfidence = Math.round((aiCorrelations[0]?.confidence || 0) * 100);
+    const pendingMatches = matches.filter((item) => ["pending_review", "needs_more_information"].includes(item.status));
+    const dispositionMatch = async (match, disposition) => {
+        const reason = (matchNotes[match.match_id] || "").trim();
+        if (reason.length < 5) {
+            setMatchMessage("Enter a review reason of at least five characters before recording a decision.");
+            return;
+        }
+        try {
+            const updated = await apiRequest(`/matches/${match.match_id}/disposition`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ disposition, reason }),
+            });
+            setMatches((current) => current.map((item) => item.match_id === updated.match_id ? updated : item));
+            setMatchNotes((current) => ({ ...current, [match.match_id]: "" }));
+            setMatchMessage(`Match ${updated.match_id} marked ${updated.status.replaceAll("_", " ")}.`);
+        } catch (err) {
+            setMatchMessage(err.message || "Could not record the match decision.");
+        }
+    };
 
     return (
         <div className="intelligence-page">
@@ -434,6 +460,37 @@ function IntelligenceCenter() {
                 </section>
                 </aside>
             </div>
+            <section className="intelligence-panel match-review-panel" aria-labelledby="match-review-heading">
+                <div className="match-review-heading">
+                    <div><span>Human review required</span><h2 id="match-review-heading">Potential Match Disposition</h2></div>
+                    <strong>{pendingMatches.length} pending</strong>
+                </div>
+                <p>Beacon provides a score, not a final identity decision. Record the evidence-based reason for every outcome.</p>
+                {matchMessage && <p role="status" aria-live="polite">{matchMessage}</p>}
+                <div className="match-review-list">
+                    {matches.length === 0 && <p>No generated matches are available for review.</p>}
+                    {matches.map((match) => (
+                        <article key={match.match_id} className={`match-review-card match-${match.status}`}>
+                            <div className="match-review-score"><strong>{match.score}%</strong><span>Match score</span></div>
+                            <div className="match-review-identity">
+                                <span>{match.status.replaceAll("_", " ")}</span>
+                                <h3>{match.person_name || `Person ${match.person_id}`}</h3>
+                                <p>Compared with {match.record_name || match.record_type || `record ${match.external_record_id}`}</p>
+                                <small>{match.record_type || "External record"}{match.record_location ? ` · ${match.record_location}` : ""}</small>
+                            </div>
+                            {match.disposition_reason && <p className="match-review-history"><strong>Decision:</strong> {match.disposition_reason}{match.reviewed_by ? ` · ${match.reviewed_by}` : ""}</p>}
+                            {["pending_review", "needs_more_information"].includes(match.status) && <>
+                                <label>Review reason<textarea value={matchNotes[match.match_id] || ""} onChange={(event) => setMatchNotes((current) => ({ ...current, [match.match_id]: event.target.value }))} placeholder="Document the evidence supporting this decision" /></label>
+                                <div className="match-review-actions">
+                                    <button type="button" onClick={() => dispositionMatch(match, "confirmed")}>Confirm Match</button>
+                                    <button type="button" onClick={() => dispositionMatch(match, "needs_more_information")}>Need More Information</button>
+                                    <button type="button" onClick={() => dispositionMatch(match, "rejected")}>Reject Match</button>
+                                </div>
+                            </>}
+                        </article>
+                    ))}
+                </div>
+            </section>
         </div>
     );
 }

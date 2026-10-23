@@ -1,10 +1,14 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.sql import func
+
 from database.connection import Base
 
 
 class Match(Base):
     __tablename__ = "matches"
+    __table_args__ = (
+        Index("ix_matches_agency_status_created", "agency_id", "status", "created_at"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 
@@ -18,7 +22,15 @@ class Match(Base):
 
     score = Column(Integer, nullable=False)
 
-    status = Column(String, default="pending_review")
+    status = Column(String, nullable=False, default="pending_review")
+
+    disposition_reason = Column(Text, nullable=True)
+
+    reviewed_by_user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

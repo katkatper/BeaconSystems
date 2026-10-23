@@ -1,18 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
-from fastapi import Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from models.alerts import Alerts
+
+from database.connection import get_db
 from models.alert_delivery import AlertDelivery
-from  database.connection import get_db
+from models.alerts import Alerts
 from models.user import User
 from security.auth import get_current_user, require_role
-from security.case_access import apply_related_case_access_filter, assert_case_write_access
-from services.pagination import PaginationParams, paginate_query
+from security.case_access import (
+    apply_related_case_access_filter,
+    assert_case_write_access,
+)
+from services.activity_service import create_activity_log
 from services.clock import utc_now
 from services.job_queue import enqueue_job
-from services.activity_service import create_activity_log
+from services.notification_service import notify_assigned_investigator_of_alert
+from services.pagination import PaginationParams, paginate_query
 
 # ALERTS ROUTES - FOR MANAGING ALERTS GENERATED FROM CASES OR EXTERNAL SOURCES
 
@@ -102,6 +106,13 @@ def create_alerts(
     )
     db.add(delivery)
     db.flush()
+    notify_assigned_investigator_of_alert(
+        db,
+        case=case,
+        alert_id=alerts.alert_id,
+        title=alerts.title,
+        severity=alerts.severity,
+    )
     enqueue_job(
         db,
         agency_id=case.agency_id,

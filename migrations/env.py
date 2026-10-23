@@ -1,40 +1,37 @@
-from logging.config import fileConfig
 import os
-
-from database.connection import Base, DATABASE_URL as APPLICATION_DATABASE_URL
-from sqlalchemy import create_engine
-from sqlalchemy import pool
+from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import create_engine, pool
 
-from models.person import Person
-from models.case import Cases
-from models.sighting import Sighting
+from database.connection import DATABASE_URL as APPLICATION_DATABASE_URL
+from database.connection import Base
 from models.activity_log import ActivityLog
-from models.alerts import Alerts
 from models.agencies import Agencies
+from models.agency_exchange import AgencyExchange
+from models.alerts import Alerts
+from models.auth_session import AuthSession
+from models.bolo_alert import BoloAlert
 from models.cameras import Cameras
+from models.case import Cases
+from models.case_access_grant import CaseAccessGrant
+from models.case_team_member import CaseTeamMember
 from models.data_matches import Data_Matches
 from models.data_sources import Data_Source
 from models.evidence import Evidence
-from models.leads import Leads
-from models.user import User
-from models.auth_session import AuthSession
-from models.timeline_events import Timeline_Event
-from models.investigators import Investigators
-from models.IntegrationSource import IntegrationSource
-from models.match import Match
-from models.external_record import ExternalRecord
 from models.evidence_chain import EvidenceChain
+from models.external_record import ExternalRecord
+from models.IntegrationSource import IntegrationSource
+from models.investigators import Investigators
+from models.leads import Leads
 from models.legal_access_request import LegalAccessRequest
-from models.case_access_grant import CaseAccessGrant
-from models.case_team_member import CaseTeamMember
+from models.match import Match
+from models.notification import Notification
 from models.partner_intake_record import PartnerIntakeRecord
-from models.agency_exchange import AgencyExchange
-from models.bolo_alert import BoloAlert
-
-
-
+from models.person import Person
+from models.sighting import Sighting
+from models.timeline_events import Timeline_Event
+from models.user import User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

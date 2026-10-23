@@ -57,5 +57,14 @@ dates, closure resolutions and audited changes. Investigators see their own or
 unassigned leads; assignment remains restricted to active users in the case
 agency.
 
-Remaining Phase III slices: match disposition, investigator notifications/read
-receipts, and mobile/accessibility browser acceptance.
+Generated matches now enter a tenant-scoped human review queue. Reviewers must
+record a reason when confirming, rejecting or requesting more information;
+Beacon stores the reviewer and time, audits the decision, and prevents an
+investigator from silently changing a final outcome.
+
+Investigator notifications are persisted per user and tenant rather than stored
+in one browser. Alerts on assigned cases create an investigator notification;
+opening it records a durable read timestamp and an audit event. Notification
+lists are bounded by the shared pagination contract.
+
+Remaining Phase III slice: mobile/accessibility browser acceptance.

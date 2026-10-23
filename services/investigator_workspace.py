@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from models.alerts import Alerts
 from models.case import Cases
 from models.leads import Leads
+from models.notification import Notification
 from models.user import User
 
 
@@ -39,6 +40,11 @@ def load_investigator_workspace(db: Session, user: User, *, limit: int = 10) -> 
             ("closed", "resolved", "rejected", "dismissed")
         ),
     ).order_by(Leads.created_at.asc(), Leads.lead_id.asc()).limit(limit + 1).all()
+    notifications = db.query(Notification).filter(
+        Notification.agency_id == user.agency_id,
+        Notification.user_id == user.user_id,
+        Notification.read_at.is_(None),
+    ).order_by(Notification.created_at.desc(), Notification.notification_id.desc()).limit(limit + 1).all()
     return {
         "assigned_cases": [{
             "case_id": row.case_id, "case_number": row.case_number,
@@ -55,9 +61,20 @@ def load_investigator_workspace(db: Session, user: User, *, limit: int = 10) -> 
             "assigned_to_user_id": row.assigned_to_user_id,
             "due_at": row.due_at, "created_at": row.created_at,
         } for row in leads[:limit]],
+        "unread_notifications": [{
+            "notification_id": row.notification_id,
+            "notification_type": row.notification_type,
+            "entity_type": row.entity_type,
+            "entity_id": row.entity_id,
+            "case_id": row.case_id,
+            "title": row.title,
+            "message": row.message,
+            "created_at": row.created_at,
+        } for row in notifications[:limit]],
         "has_more": {
             "assigned_cases": len(cases) > limit,
             "urgent_alerts": len(alerts) > limit,
             "pending_leads": len(leads) > limit,
+            "unread_notifications": len(notifications) > limit,
         },
     }
