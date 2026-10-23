@@ -1,10 +1,19 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Request
+from datetime import datetime, timezone
+from pathlib import Path
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import FileResponse, RedirectResponse
-from fastapi import Response
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
-from pathlib import Path
-from datetime import datetime, timezone
 
 from database.connection import get_db
 from models.case import Cases
@@ -14,17 +23,18 @@ from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import (
     apply_related_case_access_filter,
+)
+from security.case_access import (
     assert_case_write_access as assert_authorized_case_write_access,
 )
 from services.activity_service import create_activity_log
-from config.settings import EVIDENCE_ENCRYPTION_ENABLED, EVIDENCE_ENCRYPTION_KEY_ID
-from services.geocoding_service import geocode_address
-from services.pagination import PaginationParams, paginate_query
-from services.object_storage import object_storage
-from services.upload_validation import validate_upload
-from services.malware_scanner import scan_upload
 from services.clock import utc_now
 from services.evidence_retention import retention_decision
+from services.geocoding_service import geocode_address
+from services.malware_scanner import scan_upload
+from services.object_storage import object_storage
+from services.pagination import PaginationParams, paginate_query
+from services.upload_validation import validate_upload
 
 router = APIRouter(
     prefix="/evidence",
@@ -281,8 +291,8 @@ def upload_evidence(
         retention_policy_code=normalized_retention,
         file_name=original_file_name,
         file_path=stored.key,
-        is_encrypted=EVIDENCE_ENCRYPTION_ENABLED,
-        encryption_key_id=EVIDENCE_ENCRYPTION_KEY_ID if EVIDENCE_ENCRYPTION_ENABLED else None,
+        is_encrypted=object_storage.is_encrypted,
+        encryption_key_id=object_storage.encryption_key_id,
         content_sha256=content_sha256,
     )
 

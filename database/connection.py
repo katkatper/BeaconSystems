@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, event
@@ -14,7 +14,6 @@ from config.settings import (
     DATABASE_POOL_SIZE,
     DATABASE_SLOW_QUERY_MS,
 )
-
 
 load_dotenv()
 
@@ -30,12 +29,25 @@ def build_database_url() -> str:
     db_host = os.getenv("DB_HOST")
     db_name = os.getenv("DB_NAME")
     db_port = os.getenv("DB_PORT", "5432")
+    db_sslmode = os.getenv("DB_SSLMODE", "").strip()
+    db_sslrootcert = os.getenv("DB_SSLROOTCERT", "").strip()
 
     if db_user and db_password and db_host and db_name:
-        return (
+        database_url = (
             f"postgresql+psycopg2://{db_user}:{quote_plus(db_password)}"
             f"@{db_host}:{db_port}/{db_name}"
         )
+        tls_options = {
+            key: value
+            for key, value in {
+                "sslmode": db_sslmode,
+                "sslrootcert": db_sslrootcert,
+            }.items()
+            if value
+        }
+        if tls_options:
+            database_url = f"{database_url}?{urlencode(tls_options)}"
+        return database_url
 
     raise RuntimeError(
         "Set DATABASE_URL or DB_USER/DB_PASSWORD/DB_HOST/DB_NAME before starting Beacon."

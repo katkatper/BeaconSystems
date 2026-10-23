@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 
 from database.connection import Base
 
@@ -18,3 +18,4 @@ class AuthSession(Base):
     user_agent = Column(String(512), nullable=True)
     refresh_token_hash = Column(String(64), nullable=True, unique=True, index=True)
     refresh_expires_at = Column(DateTime, nullable=True, index=True)
+    mfa_authenticated = Column(Boolean, nullable=False, default=False)

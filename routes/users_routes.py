@@ -1,30 +1,41 @@
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi import Response
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
 
 from config.settings import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
+    IS_PRODUCTION,
     JWT_AUDIENCE,
     JWT_ISSUER,
-    IS_PRODUCTION,
     LOGIN_RATE_LIMIT_ATTEMPTS,
     LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+    MFA_ENFORCEMENT_ENABLED,
     MFA_RATE_LIMIT_ATTEMPTS,
     MFA_RATE_LIMIT_WINDOW_SECONDS,
-    REFRESH_TOKEN_EXPIRE_DAYS,
     REFRESH_RATE_LIMIT_ATTEMPTS,
     REFRESH_RATE_LIMIT_WINDOW_SECONDS,
+    REFRESH_TOKEN_EXPIRE_DAYS,
     SECRET_KEY,
 )
 from database.connection import get_db
 from database.tenant_context import configure_tenant_session
-from models.user import User
 from models.auth_session import AuthSession
-from schemas.user_schema import MfaEnable, MfaLoginVerify, PasswordChange, UserCreate, UserLogin, UserResponse, UserRoleUpdate
+from models.user import User
+from schemas.user_schema import (
+    MfaEnable,
+    MfaEnrollmentComplete,
+    MfaEnrollmentStart,
+    MfaLoginVerify,
+    PasswordChange,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    UserRoleUpdate,
+)
 from security.auth import (
     create_access_token,
     decode_access_token,
@@ -84,11 +95,14 @@ def build_login_response(
     response: Response,
     password_change_required: bool,
     password_expires_at: datetime,
+    *,
+    mfa_authenticated: bool,
 ):
     auth_session, refresh_token = create_auth_session(
         user.user_id,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
+        mfa_authenticated=mfa_authenticated,
     )
     db.add(auth_session)
     db.commit()
@@ -117,13 +131,14 @@ def build_login_response(
         "role": user.role,
         "agency_id": user.agency_id,
         "mfa_enabled": bool(user.mfa_enabled),
+        "mfa_authenticated": mfa_authenticated,
         "password_change_required": password_change_required,
         "password_expires_at": password_expires_at.isoformat(),
         "session_expires_at": f"{auth_session.expires_at.isoformat()}Z",
     }
 
 
-def verify_mfa_login_token(token: str) -> tuple[int, int]:
+def verify_mfa_challenge_token(token: str, expected_type: str) -> tuple[int, int]:
     try:
         payload = jwt.decode(
             token,
@@ -137,10 +152,23 @@ def verify_mfa_login_token(token: str) -> tuple[int, int]:
     except (JWTError, TypeError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA challenge")
 
-    if payload.get("token_type") != "mfa" or user_id <= 0 or auth_version < 0:
+    if payload.get("token_type") != expected_type or user_id <= 0 or auth_version < 0:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA challenge")
 
     return user_id, auth_version
+
+
+def issue_mfa_challenge(user: User, token_type: str) -> str:
+    return create_access_token(
+        {
+            "sub": str(user.user_id),
+            "username": user.username,
+            "role": user.role,
+            "auth_version": user.auth_version,
+        },
+        expires_delta=timedelta(minutes=5),
+        token_type=token_type,
+    )
 
 
 def mfa_otpauth_uri(user: User, secret: str) -> str:
@@ -251,16 +279,7 @@ def login(
     password_change_required, password_expires_at = password_expiration_for(user)
 
     if user.mfa_enabled:
-        mfa_token = create_access_token(
-            {
-                "sub": str(user.user_id),
-                "username": user.username,
-                "role": user.role,
-                "auth_version": user.auth_version,
-            },
-            expires_delta=timedelta(minutes=5),
-            token_type="mfa",
-        )
+        mfa_token = issue_mfa_challenge(user, "mfa")
 
         create_activity_log(
             db=db,
@@ -286,6 +305,24 @@ def login(
             "password_expires_at": password_expires_at.isoformat(),
         }
 
+    if MFA_ENFORCEMENT_ENABLED:
+        enrollment_token = issue_mfa_challenge(user, "mfa_enrollment")
+        create_activity_log(
+            db=db,
+            user_id=user.user_id,
+            agency_id=user.agency_id,
+            action="MFA_ENROLLMENT_CHALLENGE",
+            entity="user",
+            entity_id=user.user_id,
+            details=f"MFA enrollment required for {user.username}",
+        )
+        return {
+            "mfa_enrollment_required": True,
+            "mfa_token": enrollment_token,
+            "token_type": "mfa_enrollment",
+            "username": user.username,
+        }
+
     user.last_login_at = utc_now()
 
     create_activity_log(
@@ -306,7 +343,101 @@ def login(
 
     db.commit()
 
-    return build_login_response(db, user, request, response, password_change_required, password_expires_at)
+    return build_login_response(
+        db, user, request, response, password_change_required,
+        password_expires_at, mfa_authenticated=False,
+    )
+
+
+@router.post("/mfa/enrollment/start")
+def start_mfa_enrollment(
+    data: MfaEnrollmentStart,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    enforce_rate_limit(
+        request,
+        namespace="mfa-enrollment",
+        identifier=f"{client_address(request)}:{data.mfa_token}",
+        limit=MFA_RATE_LIMIT_ATTEMPTS,
+        window_seconds=MFA_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    user_id, auth_version = verify_mfa_challenge_token(
+        data.mfa_token, "mfa_enrollment"
+    )
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user or not user.is_active or user.auth_version != auth_version:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+    if user.mfa_enabled:
+        raise HTTPException(status_code=409, detail="MFA is already enabled")
+    configure_tenant_session(
+        db, agency_id=user.agency_id, platform_admin=user.role == "platform_admin"
+    )
+    if not user.mfa_secret:
+        secret = generate_mfa_secret()
+        user.mfa_secret = encrypt_mfa_secret(secret)
+        db.commit()
+    else:
+        secret, was_plaintext = decrypt_mfa_secret(user.mfa_secret)
+        if was_plaintext:
+            user.mfa_secret = encrypt_mfa_secret(secret)
+            db.commit()
+    return {
+        "secret": secret,
+        "otpauth_uri": mfa_otpauth_uri(user, secret),
+        "issuer": MFA_ISSUER,
+        "account": user.username,
+    }
+
+
+@router.post("/mfa/enrollment/complete")
+def complete_mfa_enrollment(
+    data: MfaEnrollmentComplete,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    enforce_rate_limit(
+        request,
+        namespace="mfa-enrollment",
+        identifier=f"{client_address(request)}:{data.mfa_token}",
+        limit=MFA_RATE_LIMIT_ATTEMPTS,
+        window_seconds=MFA_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    user_id, auth_version = verify_mfa_challenge_token(
+        data.mfa_token, "mfa_enrollment"
+    )
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user or not user.is_active or user.auth_version != auth_version:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+    configure_tenant_session(
+        db, agency_id=user.agency_id, platform_admin=user.role == "platform_admin"
+    )
+    if not user.mfa_secret:
+        raise HTTPException(status_code=401, detail="MFA enrollment was not started")
+    secret, was_plaintext = decrypt_mfa_secret(user.mfa_secret)
+    if not verify_totp(secret, data.code):
+        raise HTTPException(status_code=400, detail="Invalid MFA code")
+    if was_plaintext:
+        user.mfa_secret = encrypt_mfa_secret(secret)
+    user.mfa_enabled = True
+    user.mfa_verified_at = utc_now()
+    user.last_login_at = utc_now()
+    password_change_required, password_expires_at = password_expiration_for(user)
+    create_activity_log(
+        db=db,
+        user_id=user.user_id,
+        agency_id=user.agency_id,
+        action="MFA_ENROLLMENT_COMPLETE",
+        entity="user",
+        entity_id=user.user_id,
+        details=f"MFA enrollment completed for {user.username}",
+        ip_address=request.client.host if request.client else None,
+    )
+    return build_login_response(
+        db, user, request, response, password_change_required,
+        password_expires_at, mfa_authenticated=True,
+    )
 
 
 @router.get("/mfa/setup")
@@ -380,6 +511,11 @@ def disable_mfa(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if MFA_ENFORCEMENT_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail="MFA cannot be disabled while enforcement is active",
+        )
     if not current_user.mfa_secret:
         raise HTTPException(status_code=400, detail="MFA is not configured")
 
@@ -420,7 +556,7 @@ def verify_mfa_login(
         limit=MFA_RATE_LIMIT_ATTEMPTS,
         window_seconds=MFA_RATE_LIMIT_WINDOW_SECONDS,
     )
-    user_id, auth_version = verify_mfa_login_token(data.mfa_token)
+    user_id, auth_version = verify_mfa_challenge_token(data.mfa_token, "mfa")
     user = db.query(User).filter(User.user_id == user_id).first()
 
     if not user or not user.is_active or user.auth_version != auth_version:
@@ -457,7 +593,10 @@ def verify_mfa_login(
 
     db.commit()
 
-    return build_login_response(db, user, request, response, password_change_required, password_expires_at)
+    return build_login_response(
+        db, user, request, response, password_change_required,
+        password_expires_at, mfa_authenticated=True,
+    )
 
 
 @router.post("/refresh")
@@ -490,6 +629,14 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
         revoke_auth_session(auth_session, now=now)
         db.commit()
         raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    if MFA_ENFORCEMENT_ENABLED and (
+        not user.mfa_enabled or not auth_session.mfa_authenticated
+    ):
+        revoke_auth_session(auth_session, now=now)
+        db.commit()
+        response.delete_cookie("beacon_refresh", path="/users")
+        raise HTTPException(status_code=401, detail="MFA authentication is required")
 
     rotated_token = rotate_refresh_token(auth_session, now=now)
     db.commit()

@@ -18,6 +18,7 @@ function Login({ onLogin }) {
     const [pendingToken, setPendingToken] = useState("");
     const [mfaToken, setMfaToken] = useState("");
     const [mfaCode, setMfaCode] = useState("");
+    const [mfaEnrollment, setMfaEnrollment] = useState(null);
     const navigate = useNavigate();
 
     const getLandingPath = (role) => {
@@ -66,6 +67,7 @@ function Login({ onLogin }) {
         setMessage("");
         setMfaToken("");
         setMfaCode("");
+        setMfaEnrollment(null);
 
         try {
             const response = await fetch(apiUrl("/users/login"), {
@@ -92,10 +94,55 @@ function Login({ onLogin }) {
                 return;
             }
 
+            if (data.mfa_enrollment_required) {
+                const enrollmentResponse = await fetch(apiUrl("/users/mfa/enrollment/start"), {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ mfa_token: data.mfa_token }),
+                });
+                if (!enrollmentResponse.ok) {
+                    const enrollmentError = await enrollmentResponse.json().catch(() => ({}));
+                    throw new Error(enrollmentError.detail || "Could not start MFA enrollment");
+                }
+                const enrollment = await enrollmentResponse.json();
+                setMfaToken(data.mfa_token);
+                setMfaEnrollment(enrollment);
+                setMessage("Set up MFA before continuing to Beacon.");
+                return;
+            }
+
             completeLogin(data);
         } catch (err) {
             console.error(err);
             setError("Invalid username or password");
+        }
+    };
+
+    const handleMfaEnrollment = async (e) => {
+        e.preventDefault();
+        setError("");
+        setMessage("");
+
+        try {
+            const response = await fetch(apiUrl("/users/mfa/enrollment/complete"), {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mfa_token: mfaToken, code: mfaCode }),
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.detail || "MFA enrollment failed");
+            }
+            const data = await response.json();
+            setMfaToken("");
+            setMfaCode("");
+            setMfaEnrollment(null);
+            completeLogin(data);
+        } catch (err) {
+            console.error(err);
+            setError(err.message || "Could not complete MFA enrollment");
         }
     };
 
@@ -177,7 +224,28 @@ function Login({ onLogin }) {
             <div className="login-card">
                 <h1>Beacon</h1>
 
-                {mfaToken ? (
+                {mfaEnrollment ? (
+                    <form className="mfa-challenge-panel" onSubmit={handleMfaEnrollment}>
+                        <h2>MFA Enrollment Required</h2>
+                        <p>Add this account to your authenticator app, then enter its six-digit code.</p>
+                        <div className="mfa-secret-box">
+                            <span>Issuer: {mfaEnrollment.issuer}</span>
+                            <span>Account: {mfaEnrollment.account}</span>
+                            <strong>{mfaEnrollment.secret}</strong>
+                            <small>{mfaEnrollment.otpauth_uri}</small>
+                        </div>
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            aria-label="Authenticator verification code"
+                            placeholder="Six-digit code"
+                            value={mfaCode}
+                            onChange={(e) => setMfaCode(e.target.value)}
+                        />
+                        <button type="submit">Enable MFA and Sign In</button>
+                    </form>
+                ) : mfaToken ? (
                     <form className="mfa-challenge-panel" onSubmit={handleMfaVerify}>
                         <h2>MFA Verification</h2>
                         <p>Enter the six-digit code from your authenticator app.</p>

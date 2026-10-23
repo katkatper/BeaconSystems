@@ -1,7 +1,8 @@
 import base64
 import binascii
 import os
-from urllib.parse import urlsplit
+import re
+from urllib.parse import parse_qs, urlsplit
 
 try:
     from dotenv import load_dotenv
@@ -88,12 +89,18 @@ MFA_RATE_LIMIT_ATTEMPTS = int(os.getenv("MFA_RATE_LIMIT_ATTEMPTS", "10"))
 MFA_RATE_LIMIT_WINDOW_SECONDS = int(
     os.getenv("MFA_RATE_LIMIT_WINDOW_SECONDS", "300")
 )
+MFA_ENFORCEMENT_ENABLED = env_bool(
+    "MFA_ENFORCEMENT_ENABLED",
+    default=IS_PRODUCTION,
+)
 REFRESH_RATE_LIMIT_ATTEMPTS = int(os.getenv("REFRESH_RATE_LIMIT_ATTEMPTS", "60"))
 REFRESH_RATE_LIMIT_WINDOW_SECONDS = int(
     os.getenv("REFRESH_RATE_LIMIT_WINDOW_SECONDS", "60")
 )
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+DB_SSLMODE = os.getenv("DB_SSLMODE", "").strip()
+DB_SSLROOTCERT = os.getenv("DB_SSLROOTCERT", "").strip()
 SECRET_KEY = os.getenv("SECRET_KEY")
 MFA_SECRET_ENCRYPTION_KEY = os.getenv("MFA_SECRET_ENCRYPTION_KEY", "").strip()
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
@@ -142,6 +149,9 @@ def validate_runtime_settings() -> None:
         except (ValueError, UnicodeEncodeError, binascii.Error):
             errors.append("MFA_SECRET_ENCRYPTION_KEY must be a valid Fernet key")
 
+    if not MFA_ENFORCEMENT_ENABLED:
+        errors.append("MFA_ENFORCEMENT_ENABLED must be true in production")
+
     if not JWT_ISSUER:
         errors.append("JWT_ISSUER is required in production")
 
@@ -183,6 +193,22 @@ def validate_runtime_settings() -> None:
     if ENABLE_LOCAL_SCHEMA_BOOTSTRAP:
         errors.append("ENABLE_LOCAL_SCHEMA_BOOTSTRAP must be false in production")
 
+    if DATABASE_URL:
+        parsed_database_url = urlsplit(DATABASE_URL)
+        database_options = parse_qs(parsed_database_url.query)
+        database_sslmode = database_options.get("sslmode", [""])[-1]
+        database_sslrootcert = database_options.get("sslrootcert", [""])[-1]
+        if not parsed_database_url.scheme.startswith("postgresql"):
+            errors.append("DATABASE_URL must use PostgreSQL in production")
+    else:
+        database_sslmode = DB_SSLMODE
+        database_sslrootcert = DB_SSLROOTCERT
+
+    if database_sslmode != "verify-full":
+        errors.append("Production database connections must use sslmode=verify-full")
+    if not database_sslrootcert:
+        errors.append("Production database connections must specify sslrootcert")
+
     if OBJECT_STORAGE_BACKEND != "s3":
         errors.append("OBJECT_STORAGE_BACKEND must be 's3' in production")
 
@@ -200,6 +226,18 @@ def validate_runtime_settings() -> None:
         errors.append(
             "OBJECT_STORAGE_EXPECTED_OWNER must be a 12 digit AWS account ID in production"
         )
+
+    kms_key_match = re.fullmatch(
+        r"arn:(aws|aws-us-gov|aws-cn):kms:[a-z0-9-]+:(\d{12}):key/[A-Za-z0-9-]+",
+        OBJECT_STORAGE_KMS_KEY_ID,
+    )
+    if OBJECT_STORAGE_KMS_KEY_ID and not kms_key_match:
+        errors.append("OBJECT_STORAGE_KMS_KEY_ID must be a full KMS key ARN in production")
+    elif kms_key_match and OBJECT_STORAGE_EXPECTED_OWNER:
+        if kms_key_match.group(2) != OBJECT_STORAGE_EXPECTED_OWNER:
+            errors.append(
+                "OBJECT_STORAGE_KMS_KEY_ID account must match OBJECT_STORAGE_EXPECTED_OWNER"
+            )
 
     if API_REQUEST_TIMEOUT_SECONDS <= 0:
         errors.append("API_REQUEST_TIMEOUT_SECONDS must be greater than zero")

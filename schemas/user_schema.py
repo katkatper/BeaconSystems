@@ -32,6 +32,14 @@ class MfaLoginVerify(BaseModel):
     code: str
 
 
+class MfaEnrollmentStart(BaseModel):
+    mfa_token: str
+
+
+class MfaEnrollmentComplete(MfaEnrollmentStart):
+    code: str
+
+
 class AdminPasswordReset(BaseModel):
     temporary_password: str
 

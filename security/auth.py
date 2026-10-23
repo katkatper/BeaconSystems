@@ -1,5 +1,5 @@
-from datetime import timedelta
 import uuid
+from datetime import timedelta
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -12,14 +12,14 @@ from config.settings import (
     ALGORITHM,
     JWT_AUDIENCE,
     JWT_ISSUER,
+    MFA_ENFORCEMENT_ENABLED,
     SECRET_KEY,
 )
 from database.connection import get_db
 from database.tenant_context import configure_tenant_session
-from models.user import User
 from models.auth_session import AuthSession
+from models.user import User
 from services.clock import utc_now, utc_now_aware
-
 
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY must be set in the environment")
@@ -145,6 +145,15 @@ def get_current_user(
     ).first()
     if auth_session is None:
         raise credentials_exception
+
+    if MFA_ENFORCEMENT_ENABLED and (
+        not user.mfa_enabled or not auth_session.mfa_authenticated
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="MFA authentication is required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     configure_tenant_session(
         db,

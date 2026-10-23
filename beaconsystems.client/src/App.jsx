@@ -120,11 +120,23 @@ function AppLayout() {
         };
     }, [hideNavbar, navigate]);
 
+    useEffect(() => {
+        const main = document.getElementById("main-content");
+        if (main) {
+            main.focus({ preventScroll: true });
+        }
+    }, [location.pathname]);
+
     return (
         <>
+            {!hideNavbar && <a className="skip-link" href="#main-content">Skip to main content</a>}
             {!hideNavbar && <Navbar />}
 
-            <main className={hideNavbar ? "app-content" : "app-content with-sidebar"}>
+            <main
+                id="main-content"
+                tabIndex="-1"
+                className={hideNavbar ? "app-content" : "app-content with-sidebar"}
+            >
                 <Suspense fallback={(
                     <div className="route-loading-state" role="status" aria-live="polite">
                         <span aria-hidden="true" />

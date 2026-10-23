@@ -15,7 +15,6 @@ from services.user_administration import (
     set_user_active,
 )
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -172,6 +171,21 @@ class AuthenticationContractTests(unittest.TestCase):
         self.assertIn("decrypt_mfa_secret", routes_source)
         self.assertIn("if current_user.mfa_enabled", routes_source)
         self.assertIn('ENCRYPTED_PREFIX = "enc:v1:"', encryption_source)
+
+    def test_production_mfa_enrollment_and_refresh_sessions_are_enforced(self):
+        routes_source = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")
+        auth_source = (REPOSITORY_ROOT / "security" / "auth.py").read_text(encoding="utf-8")
+        session_model = (REPOSITORY_ROOT / "models" / "auth_session.py").read_text(encoding="utf-8")
+        login_source = (REPOSITORY_ROOT / "beaconsystems.client" / "src" / "pages" / "Login.jsx").read_text(encoding="utf-8")
+
+        self.assertIn('issue_mfa_challenge(user, "mfa_enrollment")', routes_source)
+        self.assertIn('@router.post("/mfa/enrollment/start")', routes_source)
+        self.assertIn('@router.post("/mfa/enrollment/complete")', routes_source)
+        self.assertIn("MFA cannot be disabled while enforcement is active", routes_source)
+        self.assertIn("not auth_session.mfa_authenticated", routes_source)
+        self.assertIn("not auth_session.mfa_authenticated", auth_source)
+        self.assertIn("mfa_authenticated = Column(Boolean", session_model)
+        self.assertIn('/users/mfa/enrollment/complete', login_source)
 
     def test_no_hard_coded_development_signing_key_remains(self):
         offenders = []

@@ -4,7 +4,6 @@ from pathlib import Path
 
 from database.security_posture import database_role_violations
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -45,6 +44,14 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("ARCGIS_GEOCODE_URL must use HTTPS in production", source)
         self.assertIn("MFA_SECRET_ENCRYPTION_KEY is required in production", source)
         self.assertIn("MFA_SECRET_ENCRYPTION_KEY must be a valid Fernet key", source)
+        self.assertIn("MFA_ENFORCEMENT_ENABLED must be true in production", source)
+        self.assertIn("Production database connections must use sslmode=verify-full", source)
+        self.assertIn("Production database connections must specify sslrootcert", source)
+        self.assertIn("OBJECT_STORAGE_KMS_KEY_ID must be a full KMS key ARN", source)
+        self.assertIn(
+            "OBJECT_STORAGE_KMS_KEY_ID account must match OBJECT_STORAGE_EXPECTED_OWNER",
+            source,
+        )
 
     def test_api_perimeter_has_security_headers_and_bounded_cors(self):
         main_source = (REPOSITORY_ROOT / "main.py").read_text(encoding="utf-8")
@@ -77,6 +84,21 @@ class ProductionConfigurationTests(unittest.TestCase):
         self.assertIn("pool_size=DATABASE_POOL_SIZE", source)
         self.assertIn("max_overflow=DATABASE_MAX_OVERFLOW", source)
         self.assertIn('"slow_database_query"', source)
+        self.assertIn('"sslmode": db_sslmode', source)
+        self.assertIn('"sslrootcert": db_sslrootcert', source)
+
+    def test_evidence_encryption_metadata_comes_from_storage_boundary(self):
+        evidence_source = (
+            REPOSITORY_ROOT / "routes" / "evidence_routes.py"
+        ).read_text(encoding="utf-8")
+        storage_source = (
+            REPOSITORY_ROOT / "services" / "object_storage.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("is_encrypted=object_storage.is_encrypted", evidence_source)
+        self.assertIn("encryption_key_id=object_storage.encryption_key_id", evidence_source)
+        self.assertIn("get_bucket_encryption", storage_source)
+        self.assertIn("Production evidence bucket default encryption", storage_source)
 
     def test_production_database_role_rejects_rls_bypasses(self):
         violations = database_role_violations(
@@ -131,6 +153,17 @@ class ProductionConfigurationTests(unittest.TestCase):
 
         self.assertIn("down_revision: Union[str, Sequence[str], None] = None", baseline)
         self.assertIn("down_revision: Union[str, Sequence[str], None] = '601d95116833'", security)
+
+    def test_release_readiness_register_keeps_external_gates_visible(self):
+        register = (
+            REPOSITORY_ROOT / "PRODUCTION_NATIONWIDE_COMPLIANCE_READINESS.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("## Release-blocking controls", register)
+        self.assertIn("## Nationwide deployment controls", register)
+        self.assertIn("## HIPAA readiness evidence", register)
+        self.assertIn("## CJIS readiness evidence", register)
+        self.assertIn("not a representation that Beacon is", register)
 
 
 if __name__ == "__main__":

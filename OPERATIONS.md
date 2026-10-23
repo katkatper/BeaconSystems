@@ -67,4 +67,38 @@ in one browser. Alerts on assigned cases create an investigator notification;
 opening it records a durable read timestamp and an audit event. Notification
 lists are bounded by the shared pagination contract.
 
-Remaining Phase III slice: mobile/accessibility browser acceptance.
+Mobile and accessibility safeguards now include keyboard skip navigation,
+screen-reader route focus, visible focus indicators, reduced-motion and forced-
+color support, 44-pixel mobile touch targets, and overflow-safe mobile content.
+The required real-device/browser sign-off matrix is documented in
+`PHASE_III_MOBILE_ACCESSIBILITY_ACCEPTANCE.md`; Phase III is not accepted
+until those staging checks are recorded and approved.
+
+## Production identity assurance
+
+Production startup now requires `MFA_ENFORCEMENT_ENABLED=true`. After a valid
+password, an unenrolled user receives only a five-minute enrollment challenge;
+Beacon does not create an application or refresh session until the authenticator
+code is proven. Refresh sessions record whether MFA authenticated the session,
+and pre-enforcement sessions cannot be refreshed or used after enforcement is
+enabled. MFA cannot be disabled while the release gate is active.
+
+Apply migration `3d6a02b9e841` before enabling this setting. Test enrollment with
+designated break-glass administrators in staging, verify recovery procedures, and
+then revoke all legacy sessions before production cutover.
+
+## Production encryption gate
+
+Production startup requires PostgreSQL certificate and hostname verification with
+`sslmode=verify-full` and an approved `sslrootcert`. These may be supplied in
+`DATABASE_URL`, or through `DB_SSLMODE` and `DB_SSLROOTCERT` when the URL is built
+from the individual database settings. Rotate the trust bundle through the normal
+configuration change process and test connectivity before removing the old CA.
+
+The evidence bucket must block public access, enable versioning, and use the exact
+configured customer-managed KMS key as its default encryption. The KMS key must be
+a full ARN owned by the same AWS account as `OBJECT_STORAGE_EXPECTED_OWNER`.
+Beacon also requests that key on every evidence upload and records encryption
+metadata from the storage boundary, avoiding a separate flag that could report a
+file as encrypted when it was not. Preserve the bucket, KMS policy, key-rotation,
+database encryption, and encrypted-backup configuration as release evidence.

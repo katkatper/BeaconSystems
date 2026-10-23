@@ -10121,3 +10121,98 @@ a.case-health-row:hover {
 .notification-read {
     opacity: 0.78;
 }
+
+/* Phase III mobile and keyboard-access acceptance safeguards. */
+.skip-link {
+    position: fixed;
+    z-index: 10000;
+    top: 8px;
+    left: 8px;
+    padding: 10px 14px;
+    color: #07111f;
+    font-weight: 800;
+    background: #f8fafc;
+    border: 3px solid #2563eb;
+    border-radius: 6px;
+    transform: translateY(-160%);
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid #7dd3fc;
+    outline-offset: 3px;
+}
+
+#main-content:focus {
+    outline: none;
+}
+
+.beacon-page,
+.beacon-panel,
+.command-tool-card,
+.top-command-header {
+    min-width: 0;
+}
+
+.beacon-page :where(p, a, button, td, th, label, strong, span) {
+    overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (forced-colors: active) {
+    :where(a, button, input, select, textarea):focus-visible {
+        outline: 3px solid Highlight;
+    }
+
+    .notification-unread {
+        border: 2px solid Highlight;
+    }
+}
+
+@media (max-width: 760px) {
+    :where(button, input, select, textarea, .top-header-actions a, .navbar-links a) {
+        min-height: 44px;
+    }
+
+    input,
+    select,
+    textarea {
+        max-width: 100%;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
+
+    .top-header-actions,
+    .case-tabs,
+    .navbar-links {
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: thin;
+    }
+
+    .beacon-page table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .command-notification-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

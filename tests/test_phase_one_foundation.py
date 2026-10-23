@@ -6,20 +6,21 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 from fastapi import HTTPException, Response
 from sqlalchemy import Column, Integer, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from services.object_storage import ObjectStorage
-from services.malware_scanner import MalwareScanner, scan_upload
+from database.connection import build_database_url
 from services.evidence_retention import (
     assert_evidence_disposition_allowed,
     retention_decision,
 )
+from services.malware_scanner import MalwareScanner, scan_upload
+from services.object_storage import ObjectStorage
 from services.pagination import PaginationParams, paginate_query
 from services.upload_validation import validate_upload
-
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,6 +54,7 @@ class PhaseOneFoundationTests(unittest.TestCase):
                 self.head_request = None
                 self.public_access_request = None
                 self.versioning_request = None
+                self.encryption_request = None
 
             def head_bucket(self, **params):
                 self.head_request = params
@@ -71,6 +73,19 @@ class PhaseOneFoundationTests(unittest.TestCase):
             def get_bucket_versioning(self, **params):
                 self.versioning_request = params
                 return {"Status": "Enabled"}
+
+            def get_bucket_encryption(self, **params):
+                self.encryption_request = params
+                return {
+                    "ServerSideEncryptionConfiguration": {
+                        "Rules": [{
+                            "ApplyServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "aws:kms",
+                                "KMSMasterKeyID": "arn:aws:kms:us-gov-west-1:123456789012:key/test",
+                            }
+                        }]
+                    }
+                }
 
             def upload_fileobj(self, stream, bucket, key, ExtraArgs):
                 self.upload = {
@@ -106,6 +121,9 @@ class PhaseOneFoundationTests(unittest.TestCase):
         )
         self.assertEqual(storage._s3.public_access_request, storage._s3.head_request)
         self.assertEqual(storage._s3.versioning_request, storage._s3.head_request)
+        self.assertEqual(storage._s3.encryption_request, storage._s3.head_request)
+        self.assertTrue(storage.is_encrypted)
+        self.assertEqual(storage.encryption_key_id, storage.kms_key_id)
 
     def test_s3_validation_rejects_public_or_unversioned_evidence_buckets(self):
         class UnsafeS3Client:
@@ -125,6 +143,9 @@ class PhaseOneFoundationTests(unittest.TestCase):
             def get_bucket_versioning(self, **params):
                 return {"Status": "Suspended"}
 
+            def get_bucket_encryption(self, **params):
+                return {}
+
         storage = ObjectStorage.__new__(ObjectStorage)
         storage.backend = "s3"
         storage.bucket = "unsafe-evidence"
@@ -133,6 +154,29 @@ class PhaseOneFoundationTests(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "block every form of public access"):
             storage.validate_production_access()
+
+    def test_database_fallback_url_preserves_verified_tls_options(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "DATABASE_URL": "",
+                "DB_USER": "beacon",
+                "DB_PASSWORD": "secret value",
+                "DB_HOST": "db.beacon.example",
+                "DB_PORT": "5432",
+                "DB_NAME": "beacon",
+                "DB_SSLMODE": "verify-full",
+                "DB_SSLROOTCERT": "/etc/beacon/rds-ca.pem",
+            },
+            clear=False,
+        ):
+            url = build_database_url()
+
+        parsed = urlsplit(url)
+        options = parse_qs(parsed.query)
+        self.assertEqual(options["sslmode"], ["verify-full"])
+        self.assertEqual(options["sslrootcert"], ["/etc/beacon/rds-ca.pem"])
+        self.assertIn("secret+value", parsed.netloc)
 
     def test_upload_routes_use_shared_storage_boundary(self):
         evidence = (REPOSITORY_ROOT / "routes" / "evidence_routes.py").read_text(encoding="utf-8")

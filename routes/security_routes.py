@@ -1,27 +1,24 @@
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from config.settings import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    EVIDENCE_ENCRYPTION_ENABLED,
-    EVIDENCE_ENCRYPTION_KEY_ID,
     SPLUNK_HEC_TOKEN,
     SPLUNK_HEC_URL,
 )
 from database.connection import get_db
-from models.IntegrationSource import IntegrationSource
 from models.activity_log import ActivityLog
 from models.agency_exchange import AgencyExchange
 from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
 from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
+from models.IntegrationSource import IntegrationSource
 from models.user import User
 from security.auth import require_role
-
+from services.object_storage import object_storage
 
 router = APIRouter(prefix="/security", tags=["Security"])
 
@@ -127,11 +124,11 @@ def get_security_posture(
             {
                 "key": "evidence_encryption",
                 "label": "Evidence encryption",
-                "status": "active" if EVIDENCE_ENCRYPTION_ENABLED else "attention",
+                "status": "active" if object_storage.is_encrypted else "attention",
                 "summary": f"{encrypted_evidence} of {total_evidence} evidence records marked encrypted.",
                 "metric": encrypted_evidence,
                 "total": total_evidence,
-                "key_id": EVIDENCE_ENCRYPTION_KEY_ID if EVIDENCE_ENCRYPTION_ENABLED else None,
+                "key_id": object_storage.encryption_key_id,
                 "sensitive_evidence": sensitive_evidence,
             },
             {

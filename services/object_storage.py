@@ -19,7 +19,6 @@ from config.settings import (
     OBJECT_STORAGE_SIGNED_URL_TTL_SECONDS,
 )
 
-
 _SAFE_SEGMENT = re.compile(r"[^a-zA-Z0-9._-]+")
 
 
@@ -59,6 +58,14 @@ class ObjectStorage:
         ]
         return "/".join(part for part in parts if part)
 
+    @property
+    def is_encrypted(self) -> bool:
+        return self.backend == "s3" and bool(self.kms_key_id)
+
+    @property
+    def encryption_key_id(self) -> str | None:
+        return self.kms_key_id if self.is_encrypted else None
+
     def validate_production_access(self) -> None:
         if self.backend != "s3" or self._s3 is None:
             raise RuntimeError("Production object storage is not configured for S3")
@@ -85,6 +92,22 @@ class ObjectStorage:
             if versioning.get("Status") != "Enabled":
                 raise RuntimeError(
                     "Production evidence bucket versioning must be enabled"
+                )
+
+            encryption = self._s3.get_bucket_encryption(**params)
+            rules = encryption.get("ServerSideEncryptionConfiguration", {}).get(
+                "Rules", []
+            )
+            defaults = [
+                rule.get("ApplyServerSideEncryptionByDefault", {}) for rule in rules
+            ]
+            if not any(
+                item.get("SSEAlgorithm") == "aws:kms"
+                and item.get("KMSMasterKeyID") == self.kms_key_id
+                for item in defaults
+            ):
+                raise RuntimeError(
+                    "Production evidence bucket default encryption must use the configured KMS key"
                 )
         except (BotoCoreError, ClientError) as exc:
             raise RuntimeError(

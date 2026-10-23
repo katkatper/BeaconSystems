@@ -36,3 +36,40 @@ def test_dashboard_polling_is_visibility_aware_and_non_overlapping():
     assert "document.hidden" in polling_source
     assert "inFlight" in polling_source
     assert 'removeEventListener("visibilitychange"' in polling_source
+
+
+def test_application_shell_supports_keyboard_and_screen_reader_navigation():
+    app_source = (
+        REPOSITORY_ROOT / "beaconsystems.client" / "src" / "App.jsx"
+    ).read_text(encoding="utf-8")
+    styles = (
+        REPOSITORY_ROOT / "beaconsystems.client" / "src" / "App.css"
+    ).read_text(encoding="utf-8")
+
+    assert 'className="skip-link"' in app_source
+    assert 'href="#main-content"' in app_source
+    assert 'id="main-content"' in app_source
+    assert 'tabIndex="-1"' in app_source
+    assert "main.focus({ preventScroll: true })" in app_source
+    assert ":focus-visible" in styles
+    assert "prefers-reduced-motion: reduce" in styles
+    assert "forced-colors: active" in styles
+
+
+def test_mobile_acceptance_contract_preserves_touch_targets_and_content():
+    styles = (
+        REPOSITORY_ROOT / "beaconsystems.client" / "src" / "App.css"
+    ).read_text(encoding="utf-8")
+    checklist = (
+        REPOSITORY_ROOT
+        / "PHASE_III_MOBILE_ACCESSIBILITY_ACCEPTANCE.md"
+    ).read_text(encoding="utf-8")
+
+    assert "min-height: 44px" in styles
+    assert "font-size: 16px" in styles
+    assert ".beacon-page table" in styles
+    assert "320 CSS pixels" in checklist
+    assert "200% browser zoom" in checklist
+    assert "NVDA" in checklist
+    assert "VoiceOver" in checklist
+    assert "TalkBack" in checklist

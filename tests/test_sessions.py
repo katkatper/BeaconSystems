@@ -27,6 +27,16 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(len(session.user_agent), 512)
         self.assertGreater(session.expires_at, issued_at)
         self.assertGreater(session.refresh_expires_at, session.expires_at)
+        self.assertFalse(session.mfa_authenticated)
+
+        mfa_session, _ = create_auth_session(
+            42,
+            ip_address=None,
+            user_agent=None,
+            mfa_authenticated=True,
+            now=issued_at,
+        )
+        self.assertTrue(mfa_session.mfa_authenticated)
 
     def test_refresh_rotation_invalidates_old_token_and_updates_activity(self):
         issued_at = datetime(2026, 10, 4, 12, 0, 0)
@@ -59,6 +69,7 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(session.revoked_at, issued_at)
         self.assertTrue(serialized["is_current"])
         self.assertEqual(serialized["session_id"], session.session_id)
+        self.assertFalse(serialized["mfa_authenticated"])
 
 
 if __name__ == "__main__":

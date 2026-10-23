@@ -18,6 +18,7 @@ def create_auth_session(
     *,
     ip_address: str | None,
     user_agent: str | None,
+    mfa_authenticated: bool = False,
     now: datetime | None = None,
 ) -> tuple[AuthSession, str]:
     """Create an unpersisted server session and its client-only refresh token."""
@@ -32,6 +33,7 @@ def create_auth_session(
         user_agent=(user_agent or "")[:512] or None,
         refresh_token_hash=refresh_token_hash(refresh_token),
         refresh_expires_at=issued_at + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        mfa_authenticated=mfa_authenticated,
     )
     return session, refresh_token
 
@@ -65,4 +67,5 @@ def serialize_auth_session(session: AuthSession, current_session_id: str) -> dic
         "ip_address": session.ip_address,
         "user_agent": session.user_agent,
         "is_current": session.session_id == current_session_id,
+        "mfa_authenticated": bool(session.mfa_authenticated),
     }
