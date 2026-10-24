@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Index
-from database.connection import Base
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Index, Integer, String, Text
+
+from database.connection import Base
 
 
 class ActivityLog(Base):
@@ -27,8 +29,7 @@ class ActivityLog(Base):
     ip_address = Column(String(100), nullable=True)
 
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
-
-
-
-
+    previous_hash = Column(String(64), nullable=True)
+    event_hash = Column(String(64), nullable=True)
+    integrity_key_id = Column(String(100), nullable=True)
 

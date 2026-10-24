@@ -18,12 +18,12 @@ the release record.
 | Encryption in transit | Implemented in part; verification required | PostgreSQL `verify-full` startup evidence, approved TLS termination configuration, certificate rotation, internal service encryption decision |
 | Encryption at rest | Implemented in part; verification required | S3 default and per-upload KMS checks, database and backup encryption configuration with key identifiers |
 | Key and secret management | Implemented in part; verification required | KMS ARN/account validation and rotation runbook implemented; access policy, secret-manager inventory, rotation exercise and break-glass evidence required |
-| Audit integrity and retention | Verification required | Central immutable destination, access controls, clock synchronization and approved retention |
+| Audit integrity and retention | Implemented in part; verification required | Append-only tenant RLS and HMAC chains implemented; centralized immutable destination, scheduled verification, clock synchronization and approved retention required |
 | Backups and recovery | Implemented in part; verification required | Read-only restore verifier and runbook implemented; encrypted backups, point-in-time recovery and successful timed restoration exercise required |
 | High availability | Implemented in part; verification required | Cached dependency degradation and graceful shutdown implemented; multi-instance API/worker tests, load-balancer readiness and zone/region failure decision required |
-| Monitoring and incident alerting | Verification required | Scrape configuration, alert destinations, on-call ownership and alert exercise |
+| Monitoring and incident alerting | Implemented in part; verification required | Bounded API, dependency and queue metrics implemented; scrape configuration, alert destinations, on-call ownership and alert exercise required |
 | External alert delivery | Blocked on provider selection | Provider contract, authenticated callback tests, retry/dead-letter evidence |
-| Vulnerability management | Verification required | Dependency scanning, container/image scanning, patch SLA and remediation records |
+| Vulnerability management | Implemented in part; verification required | Dependency, image scanning and retained SBOMs implemented; patch SLA, triage and remediation records required |
 | Independent security test | Blocked on assessor | Scoped penetration test and closure of critical/high findings |
 | Incident and breach response | External decision | Approved plan, contact tree, tabletop exercise and notification responsibilities |
 | Retention and disposal | External decision | Agency/legal approval by data class and tested deletion/legal-hold procedures |
@@ -32,14 +32,14 @@ the release record.
 
 | Control | Current status | Required evidence before nationwide rollout |
 | --- | --- | --- |
-| Agency provisioning | Verification required | Repeatable onboarding/offboarding runbook and least-privilege administrator workflow |
+| Agency provisioning | Implemented in part; verification required | Audited creation, suspension/offboarding revocation and runbook implemented; approval, training and lifecycle exercise required |
 | Capacity model | Verification required | Per-agency/user/case/evidence assumptions, peak targets and cost forecast |
 | Load and soak testing | Verification required | Production-shaped PostgreSQL, API, queue, worker and object-storage results |
 | Regional architecture | External decision | Primary/secondary region, recovery objectives, data-residency and failover decisions |
 | Zero-downtime deployment | Implemented in part; verification required | Graceful API/worker shutdown and rollback runbook implemented; migration compatibility, rolling deployment and rollback exercise required |
 | Cross-agency exchange | Implemented; verification required | Legal-authority workflow, recipient validation, audit and revocation tests |
 | Support operations | External decision | Service levels, escalation paths, after-hours coverage and agency communications |
-| Configuration governance | Verification required | Versioned environment inventory, change approval and drift detection |
+| Configuration governance | Implemented in part; verification required | Versioned inventory, secret-safe validation and fingerprint implemented; deployment integration, change approval and drift-response exercise required |
 
 ## HIPAA readiness evidence
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { apiGet, apiPost, apiUrl } from "../api.jsx";
+import { apiGet, apiPatch, apiPost, apiUrl } from "../api.jsx";
 
 
 const starterAgencies = [
@@ -331,6 +331,16 @@ const initialRequestForm = {
     summary: "",
 };
 
+const initialAgencyForm = {
+    agency_name: "",
+    agency_type: "Law Enforcement",
+    city: "",
+    state: "",
+    country: "United States",
+    contact_phone: "",
+    contact_email: "",
+};
+
 
 function AgencyManagement() {
     const [agencies, setAgencies] = useState([]);
@@ -342,8 +352,17 @@ function AgencyManagement() {
     const [requestForm, setRequestForm] = useState(initialRequestForm);
     const [expandedRequestId, setExpandedRequestId] = useState(null);
     const [visibleRequestCount, setVisibleRequestCount] = useState(2);
+    const [agencyForm, setAgencyForm] = useState(initialAgencyForm);
+    const [statusDrafts, setStatusDrafts] = useState({});
+    const [lifecycleBusyId, setLifecycleBusyId] = useState(null);
 
     const token = localStorage.getItem("token");
+    const isPlatformAdmin = localStorage.getItem("role") === "platform_admin";
+
+    const refreshAgencies = async () => {
+        const data = await apiGet("/agencies/");
+        setAgencies(mergeAgencies(Array.isArray(data) ? data : []));
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -411,6 +430,54 @@ function AgencyManagement() {
         }));
     };
 
+    const updateAgencyForm = (field, value) => {
+        setAgencyForm((current) => ({ ...current, [field]: value }));
+    };
+
+    const submitAgency = async (event) => {
+        event.preventDefault();
+        setMessage("");
+        try {
+            await apiPost("/agencies/", agencyForm);
+            await refreshAgencies();
+            setAgencyForm(initialAgencyForm);
+            setMessage("Agency created and audit logged.");
+        } catch (err) {
+            setMessage(err.message || "Could not create agency.");
+        }
+    };
+
+    const updateLifecycleDraft = (agencyId, field, value) => {
+        setStatusDrafts((current) => ({
+            ...current,
+            [agencyId]: {
+                status: current[agencyId]?.status || "active",
+                reason: current[agencyId]?.reason || "",
+                [field]: value,
+            },
+        }));
+    };
+
+    const submitLifecycleChange = async (agency) => {
+        const draft = statusDrafts[agency.agency_id] || {};
+        if (!draft.status || (draft.reason || "").trim().length < 10) {
+            setMessage("Choose a status and enter a reason of at least 10 characters.");
+            return;
+        }
+        setLifecycleBusyId(agency.agency_id);
+        setMessage("");
+        try {
+            const result = await apiPatch(`/agencies/${agency.agency_id}/status`, draft);
+            await refreshAgencies();
+            setStatusDrafts((current) => ({ ...current, [agency.agency_id]: undefined }));
+            setMessage(`Agency status updated. ${result.affected_users} user account(s) affected.`);
+        } catch (err) {
+            setMessage(err.message || "Could not update agency status.");
+        } finally {
+            setLifecycleBusyId(null);
+        }
+    };
+
     const submitAgencyRequest = async (event) => {
         event.preventDefault();
         setMessage("");
@@ -468,6 +535,26 @@ function AgencyManagement() {
             </div>
 
             {message && <p className="alert-banner">{message}</p>}
+
+            {isPlatformAdmin && (
+                <section className="agency-governance-panel" aria-labelledby="agency-governance-heading">
+                    <div className="audit-panel-heading">
+                        <span>Platform Administration</span>
+                        <strong id="agency-governance-heading">Controlled Agency Onboarding</strong>
+                    </div>
+                    <form className="agency-onboarding-form" onSubmit={submitAgency}>
+                        <input required placeholder="Agency name" value={agencyForm.agency_name} onChange={(event) => updateAgencyForm("agency_name", event.target.value)} />
+                        <input required placeholder="Agency type" value={agencyForm.agency_type} onChange={(event) => updateAgencyForm("agency_type", event.target.value)} />
+                        <input placeholder="City" value={agencyForm.city} onChange={(event) => updateAgencyForm("city", event.target.value)} />
+                        <input placeholder="State / Province" value={agencyForm.state} onChange={(event) => updateAgencyForm("state", event.target.value)} />
+                        <input required placeholder="Country" value={agencyForm.country} onChange={(event) => updateAgencyForm("country", event.target.value)} />
+                        <input placeholder="Contact phone" value={agencyForm.contact_phone} onChange={(event) => updateAgencyForm("contact_phone", event.target.value)} />
+                        <input type="email" placeholder="Contact email" value={agencyForm.contact_email} onChange={(event) => updateAgencyForm("contact_email", event.target.value)} />
+                        <button type="submit">Create Agency</button>
+                    </form>
+                    <small>Verify authorization and approval evidence before onboarding. All changes are audit logged.</small>
+                </section>
+            )}
 
             <section className="interagency-hub-panel">
                 <div className="audit-panel-heading">
@@ -703,6 +790,39 @@ function AgencyManagement() {
                                             <p>Phone: {agency.contact_phone || "Not provided"}</p>
                                             <p>Address: {agency.address || "Not provided"}</p>
                                             <p>ID: {agency.agency_id}</p>
+                                            {agency.lifecycle_status && (
+                                                <p>Status: <span className={`agency-lifecycle-status ${agency.lifecycle_status}`}>{agency.lifecycle_status}</span></p>
+                                            )}
+                                            {agency.status_changed_at && (
+                                                <p>Last status change: {new Date(agency.status_changed_at).toLocaleString()}</p>
+                                            )}
+                                            {isPlatformAdmin && Number.isInteger(agency.agency_id) && agency.lifecycle_status !== "offboarded" && (
+                                                <div className="agency-lifecycle-controls">
+                                                    <label htmlFor={`agency-status-${agency.agency_id}`}>Lifecycle status</label>
+                                                    <select
+                                                        id={`agency-status-${agency.agency_id}`}
+                                                        value={statusDrafts[agency.agency_id]?.status || agency.lifecycle_status || "active"}
+                                                        onChange={(event) => updateLifecycleDraft(agency.agency_id, "status", event.target.value)}
+                                                    >
+                                                        <option value="active">Active</option>
+                                                        <option value="suspended">Suspended</option>
+                                                        <option value="offboarded">Offboarded (permanent)</option>
+                                                    </select>
+                                                    <textarea
+                                                        aria-label={`Reason for changing ${agency.agency_name}`}
+                                                        placeholder="Required operational reason (10+ characters)"
+                                                        value={statusDrafts[agency.agency_id]?.reason || ""}
+                                                        onChange={(event) => updateLifecycleDraft(agency.agency_id, "reason", event.target.value)}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        disabled={lifecycleBusyId === agency.agency_id}
+                                                        onClick={() => submitLifecycleChange(agency)}
+                                                    >
+                                                        {lifecycleBusyId === agency.agency_id ? "Updating..." : "Apply Status Change"}
+                                                    </button>
+                                                </div>
+                                            )}
                                             {agency.website && (
                                                 <a href={agency.website} target="_blank" rel="noreferrer">
                                                     Official Website

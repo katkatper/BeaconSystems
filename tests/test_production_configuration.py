@@ -32,6 +32,8 @@ class ProductionConfigurationTests(unittest.TestCase):
         )
         self.assertIn("ENABLE_LOCAL_SCHEMA_BOOTSTRAP must be false", source)
         self.assertIn("SECRET_KEY must contain at least 32 characters", source)
+        self.assertIn("AUDIT_INTEGRITY_KEY must contain at least 32 characters", source)
+        self.assertIn("AUDIT_INTEGRITY_KEY_ID is required in production", source)
         self.assertIn("BEACON_CASE_ACCESS_CODE must contain at least 16 characters", source)
         self.assertIn("JWT_ISSUER is required in production", source)
         self.assertIn("JWT_AUDIENCE is required in production", source)
@@ -193,6 +195,21 @@ class ProductionConfigurationTests(unittest.TestCase):
             "SECRET_ROTATION_RUNBOOK.md",
         ):
             self.assertTrue((REPOSITORY_ROOT / "docs" / document).is_file())
+
+    def test_phase_five_assurance_artifacts_remain_release_gates(self):
+        phase_five = (
+            REPOSITORY_ROOT / "PHASE_V_OPERATIONAL_ASSURANCE.md"
+        ).read_text(encoding="utf-8")
+        evidence = (
+            REPOSITORY_ROOT / "PHASE_V_ASSURANCE_EVIDENCE_TEMPLATE.md"
+        ).read_text(encoding="utf-8")
+        lifecycle = (
+            REPOSITORY_ROOT / "docs" / "AGENCY_LIFECYCLE_RUNBOOK.md"
+        ).read_text(encoding="utf-8")
+
+        assert "- [ ]" not in phase_five.split("## External acceptance gates")[0]
+        assert "Central immutable log destination" in evidence
+        assert "does not delete investigative records" in lifecycle
 
 
 if __name__ == "__main__":

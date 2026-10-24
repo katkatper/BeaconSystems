@@ -66,6 +66,7 @@ from security.user_management import (
     apply_user_management_scope,
 )
 from services.activity_service import create_activity_log
+from services.agency_lifecycle import agency_is_active
 from services.clock import utc_now
 from services.pagination import PaginationParams, paginate_query
 from services.user_administration import (
@@ -268,6 +269,9 @@ def login(
 
     if not user.is_active:
         raise HTTPException(status_code=403, detail="User account is inactive")
+
+    if not agency_is_active(db, user.agency_id):
+        raise HTTPException(status_code=403, detail="Agency access is inactive")
 
     configure_tenant_session(
         db,

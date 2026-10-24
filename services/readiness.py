@@ -37,6 +37,7 @@ class ReadinessService:
         }
         self._dependency_results: dict[str, bool] = {}
         self._dependency_expires_at = 0.0
+        self._last_components: dict[str, bool] = {}
         self._lock = threading.Lock()
 
     @staticmethod
@@ -69,11 +70,18 @@ class ReadinessService:
     def check(self, *, force_dependencies: bool = False) -> dict:
         database_ready = self._run_probe("database", self._check_database)
         dependencies = self._check_dependencies(force=force_dependencies)
-        return {
+        result = {
             "ready": database_ready,
             "degraded": any(not ready for ready in dependencies.values()),
             "components": {"database": database_ready, **dependencies},
         }
+        with self._lock:
+            self._last_components = dict(result["components"])
+        return result
+
+    def snapshot(self) -> dict[str, bool]:
+        with self._lock:
+            return dict(self._last_components)
 
     def _check_database(self) -> None:
         with self.database_engine.connect() as connection:

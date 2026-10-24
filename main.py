@@ -88,6 +88,7 @@ from routes.users_routes import router as users_router
 from security.http_middleware import SecurityHeadersMiddleware
 from security.rate_limit import validate_rate_limit_backend
 from services.malware_scanner import malware_scanner
+from services.http_metrics import http_metrics
 from services.object_storage import object_storage
 from services.readiness import readiness_service
 
@@ -167,6 +168,13 @@ async def request_context(request: Request, call_next):
         raise
 
     duration_ms = round((time.perf_counter() - started) * 1000, 2)
+    route = getattr(request.scope.get("route"), "path", "unmatched")
+    http_metrics.record(
+        method=request.method,
+        route=route,
+        status_code=response.status_code,
+        duration=duration_ms / 1000,
+    )
     response.headers["X-Request-ID"] = request.state.request_id
     request_logger.info(json.dumps({
         "event": "http_request_completed",

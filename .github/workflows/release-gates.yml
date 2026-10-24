@@ -48,6 +48,8 @@ jobs:
         run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Verify repository hygiene
         run: python scripts/check_repository_hygiene.py
+      - name: Validate production configuration inventory
+        run: python scripts/validate_deployment_config.py --check-manifest
       - name: Audit Python dependencies
         # python-jose currently installs ecdsa, but Beacon signs only with HS256.
         # PYSEC-2026-1325 affects ECDSA operations and has no fixed release.
@@ -80,6 +82,42 @@ jobs:
         run: docker build --tag beacon-api:${{ github.sha }} .
       - name: Build production worker image
         run: docker build --file Dockerfile.worker --tag beacon-worker:${{ github.sha }} .
+      - name: Generate API image SBOM
+        uses: anchore/sbom-action@v0.24.0
+        with:
+          image: beacon-api:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: beacon-api-sbom.cdx.json
+      - name: Generate worker image SBOM
+        uses: anchore/sbom-action@v0.24.0
+        with:
+          image: beacon-worker:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: beacon-worker-sbom.cdx.json
+      - name: Preserve image SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: beacon-image-sboms-${{ github.sha }}
+          path: |
+            beacon-api-sbom.cdx.json
+            beacon-worker-sbom.cdx.json
+          retention-days: 30
+      - name: Scan production API image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: beacon-api:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Scan production worker image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: beacon-worker:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
       - name: Verify production image runtime metadata
         run: |
           test "$(docker image inspect beacon-api:${{ github.sha }} --format '{{.Config.User}}')" = "10001:10001"

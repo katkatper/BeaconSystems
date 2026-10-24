@@ -2,7 +2,8 @@ import json
 import logging
 
 from models.activity_log import ActivityLog
-
+from services.audit_integrity import sign_activity_log
+from services.clock import utc_now
 
 security_event_logger = logging.getLogger("beacon.security.audit")
 security_event_logger.setLevel(logging.INFO)
@@ -44,8 +45,10 @@ def create_activity_log(
         details=details,
 
         ip_address=ip_address,
+        timestamp=utc_now(),
     )
 
+    sign_activity_log(db, log)
     db.add(log)
     db.commit()
     db.refresh(log)
@@ -63,6 +66,9 @@ def create_activity_log(
         "entity": log.entity,
         "entity_id": log.entity_id,
         "ip_address": log.ip_address,
+        "previous_hash": log.previous_hash,
+        "event_hash": log.event_hash,
+        "integrity_key_id": log.integrity_key_id,
     }))
 
 

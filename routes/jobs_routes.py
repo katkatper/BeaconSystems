@@ -3,16 +3,17 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from config.settings import QUEUE_BACKLOG_WARNING, WORKER_HEARTBEAT_TIMEOUT_SECONDS
 from database.connection import get_db
 from models.async_job import AsyncJob
 from models.user import User
 from security.auth import require_role
-from services.pagination import PaginationParams, paginate_query
 from services.activity_service import create_activity_log
 from services.clock import utc_now
+from services.http_metrics import http_metrics
+from services.pagination import PaginationParams, paginate_query
+from services.readiness import readiness_service
 from services.worker_monitoring import active_workers
-from config.settings import QUEUE_BACKLOG_WARNING, WORKER_HEARTBEAT_TIMEOUT_SECONDS
-
 
 router = APIRouter(prefix="/operations/jobs", tags=["Operations Jobs"])
 
@@ -150,6 +151,20 @@ def export_job_metrics(
     )
     return Response(
         content=body,
+        media_type="text/plain; version=0.0.4",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.get("/metrics/system/prometheus", response_class=Response)
+def export_system_metrics(
+    current_user: User = Depends(
+        require_role("platform_admin", "agency_admin", "supervisor")
+    ),
+):
+    del current_user
+    return Response(
+        content=http_metrics.render_prometheus(readiness_service.snapshot()),
         media_type="text/plain; version=0.0.4",
         headers={"Cache-Control": "no-store"},
     )

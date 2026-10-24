@@ -108,6 +108,8 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 DB_SSLMODE = os.getenv("DB_SSLMODE", "").strip()
 DB_SSLROOTCERT = os.getenv("DB_SSLROOTCERT", "").strip()
 SECRET_KEY = os.getenv("SECRET_KEY")
+AUDIT_INTEGRITY_KEY = os.getenv("AUDIT_INTEGRITY_KEY", "").strip()
+AUDIT_INTEGRITY_KEY_ID = os.getenv("AUDIT_INTEGRITY_KEY_ID", "").strip()
 MFA_SECRET_ENCRYPTION_KEY = os.getenv("MFA_SECRET_ENCRYPTION_KEY", "").strip()
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
@@ -139,6 +141,11 @@ def validate_runtime_settings() -> None:
 
     if not SECRET_KEY or len(SECRET_KEY) < 32:
         errors.append("SECRET_KEY must contain at least 32 characters")
+
+    if len(AUDIT_INTEGRITY_KEY) < 32:
+        errors.append("AUDIT_INTEGRITY_KEY must contain at least 32 characters")
+    if not AUDIT_INTEGRITY_KEY_ID:
+        errors.append("AUDIT_INTEGRITY_KEY_ID is required in production")
 
     if len(CASE_ACCESS_CODE) < 16:
         errors.append("BEACON_CASE_ACCESS_CODE must contain at least 16 characters")

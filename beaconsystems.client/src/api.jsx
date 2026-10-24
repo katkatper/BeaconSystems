@@ -85,6 +85,16 @@ export async function apiPost(path, payload) {
     });
 }
 
+export async function apiPatch(path, payload) {
+    return apiRequest(path, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+    });
+}
+
 export async function apiPostForm(path, formData) {
     return apiRequest(path, {
         method: "POST",

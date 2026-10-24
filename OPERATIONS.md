@@ -133,3 +133,22 @@ uses a read-only transaction, verifies the current Alembic head and required tab
 checks core relationships, and prints only table counts—not investigative records.
 Save its JSON output with the timed restore evidence, then destroy the isolated
 restore according to the approved data-handling procedure.
+
+## Phase V monitoring and configuration governance
+
+Authorized supervisors and administrators can scrape low-cardinality API and cached
+dependency metrics from `/operations/jobs/metrics/system/prometheus`. Route labels
+use FastAPI templates such as `/cases/{case_id}`, never raw paths or record IDs;
+status labels use classes such as `2xx`. Each process keeps local counters, so the
+monitoring platform must aggregate across API replicas. Scraping does not trigger
+new database, S3, Redis or malware-scanner probes.
+
+Before deployment, run `python scripts/validate_deployment_config.py` in the target
+environment. Retain its configuration fingerprint and missing-control report. The
+output contains no secret values. Compare fingerprints to the approved release;
+unexpected drift blocks deployment until reviewed. CI separately validates the
+versioned manifest with `--check-manifest`.
+
+Phase V agency onboarding, suspension and offboarding procedures are documented in
+`docs/AGENCY_LIFECYCLE_RUNBOOK.md`. Suspension and offboarding revoke user access;
+neither operation deletes cases, evidence or audit history.

@@ -19,6 +19,7 @@ from database.connection import get_db
 from database.tenant_context import configure_tenant_session
 from models.auth_session import AuthSession
 from models.user import User
+from services.agency_lifecycle import agency_is_active
 from services.clock import utc_now, utc_now_aware
 
 if not SECRET_KEY:
@@ -134,6 +135,13 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not agency_is_active(db, user.agency_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Agency access is inactive",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
