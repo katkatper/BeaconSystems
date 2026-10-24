@@ -34,7 +34,9 @@ async function parseResponse(response) {
             ? await response.json().catch(() => ({}))
             : {};
         const fallback = await response.text().catch(() => "");
-        throw new Error(errorData.detail || fallback || `Request failed (${response.status})`);
+        const error = new Error(errorData.detail || fallback || `Request failed (${response.status})`);
+        error.status = response.status;
+        throw error;
     }
 
     if (contentType.includes("application/json")) {

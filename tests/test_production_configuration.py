@@ -211,6 +211,32 @@ class ProductionConfigurationTests(unittest.TestCase):
         assert "Central immutable log destination" in evidence
         assert "does not delete investigative records" in lifecycle
 
+    def test_phase_six_governance_artifacts_remain_visible(self):
+        required = (
+            "PHASE_VI_COMPLIANCE_PRODUCT_READINESS.md",
+            "SECURITY_RISK_ASSESSMENT.md",
+            "DATA_CLASSIFICATION_RETENTION_POLICY.md",
+            "INCIDENT_RESPONSE_TABLETOP.md",
+            "ACCESS_REVIEW_TERMINATION_POLICY.md",
+            "BUSINESS_ASSOCIATE_AGREEMENT_REVIEW.md",
+            "CJIS_SECURITY_POLICY_MAPPING.md",
+            "PERSONNEL_SECURITY_AWARENESS_POLICY.md",
+            "ENCRYPTION_KEY_EVIDENCE.md",
+            "VENDOR_SUBPROCESSOR_ASSESSMENT.md",
+            "PRIVACY_LEGAL_LAUNCH_REVIEW.md",
+            "USER_ACCEPTANCE_TEST_PLAN.md",
+            "PHASE_VI_TEST_EVIDENCE.md",
+            "COMPLIANCE_SOURCE_REGISTER.md",
+        )
+        for document in required:
+            self.assertTrue((REPOSITORY_ROOT / document).is_file(), document)
+
+        phase_six = (
+            REPOSITORY_ROOT / "PHASE_VI_COMPLIANCE_PRODUCT_READINESS.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Automated browser/accessibility matrix", phase_six)
+        self.assertIn("may not be represented as complete", phase_six)
+
 
 if __name__ == "__main__":
     unittest.main()

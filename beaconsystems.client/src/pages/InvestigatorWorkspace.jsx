@@ -8,6 +8,7 @@ export default function InvestigatorWorkspace() {
     const [error, setError] = useState("");
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [announcement, setAnnouncement] = useState("");
+    const [markingNotificationId, setMarkingNotificationId] = useState(null);
     const loadWorkspace = useCallback(async (isActive = () => true) => {
         setIsRefreshing(true);
         try {
@@ -17,12 +18,13 @@ export default function InvestigatorWorkspace() {
                 setError("");
             }
         } catch (err) {
-            if (isActive()) setError(err.message);
+            if (isActive()) setError(err);
         } finally {
             if (isActive()) setIsRefreshing(false);
         }
     }, []);
     const markNotificationRead = async (notificationId) => {
+        setMarkingNotificationId(notificationId);
         try {
             await apiPost(`/notifications/${notificationId}/read`, {});
             setWorkspace((current) => ({
@@ -33,7 +35,9 @@ export default function InvestigatorWorkspace() {
             }));
             setAnnouncement("Notification marked read.");
         } catch (err) {
-            setError(err.message);
+            setError(err);
+        } finally {
+            setMarkingNotificationId(null);
         }
     };
     useVisiblePolling(loadWorkspace, 30000);
@@ -49,8 +53,18 @@ export default function InvestigatorWorkspace() {
                 </button></nav>
         </header>
         <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
-        {error && <p role="alert">Could not refresh your work: {error}{workspace && " Previously loaded work is shown below."}</p>}
-        {!workspace && !error && <p role="status">Loading your work…</p>}
+        {error && (
+            <section className="workspace-state workspace-error-state" role="alert" aria-labelledby="workspace-error-heading">
+                <h2 id="workspace-error-heading">{error.status === 403 ? "Workspace access unavailable" : "Workspace could not refresh"}</h2>
+                <p>{error.message || error}{workspace && " Previously loaded work is shown below."}</p>
+                {error.status !== 403 && (
+                    <button type="button" onClick={() => loadWorkspace()} disabled={isRefreshing}>
+                        {isRefreshing ? "Retrying…" : "Try again"}
+                    </button>
+                )}
+            </section>
+        )}
+        {!workspace && !error && <div className="workspace-state" role="status" aria-live="polite"><span className="workspace-loading-indicator" aria-hidden="true" />Loading your work…</div>}
         {workspace && <div className="beacon-three-panel">
             <section className="beacon-panel" aria-labelledby="assigned-cases-heading"><h2 id="assigned-cases-heading">Assigned cases</h2>
                 {workspace.assigned_cases.length === 0 && <p>No active cases are assigned to you.</p>}
@@ -84,8 +98,12 @@ export default function InvestigatorWorkspace() {
                         {item.title}
                     </Link>
                     <p>{item.message}</p>
-                    <button type="button" onClick={() => markNotificationRead(item.notification_id)}>
-                        Mark read
+                    <button
+                        type="button"
+                        onClick={() => markNotificationRead(item.notification_id)}
+                        disabled={markingNotificationId === item.notification_id}
+                    >
+                        {markingNotificationId === item.notification_id ? "Marking read…" : "Mark read"}
                     </button>
                 </li>)}</ul>
                 {workspace.has_more.unread_notifications && <Link to="/command/notifications">Review all notifications</Link>}

@@ -146,7 +146,7 @@ function Navbar() {
             >
                 <div className="navbar-topline">
                     <div className="navbar-brand-row">
-                        <Link className="navbar-brand" to="/" aria-label="Go to Beacon dashboard">
+                        <Link className="navbar-brand" to="/">
                             <div className="brand-mark" aria-hidden="true">
                                 <span className="brand-ray brand-ray-main"></span>
                                 <span className="brand-ray brand-ray-soft"></span>

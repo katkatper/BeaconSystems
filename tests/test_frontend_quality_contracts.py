@@ -106,7 +106,29 @@ def test_investigator_workspace_has_refresh_and_live_notification_feedback():
     assert "Refresh workspace" in source
     assert 'aria-live="polite"' in source
     assert "Notification marked read." in source
+    assert "Workspace access unavailable" in source
+    assert "Try again" in source
+    assert "markingNotificationId" in source
     styles = (
         REPOSITORY_ROOT / "beaconsystems.client" / "src" / "App.css"
     ).read_text(encoding="utf-8")
     assert ".sr-only" in styles
+    assert ".workspace-error-state" in styles
+
+
+def test_api_errors_preserve_http_status_for_permission_states():
+    source = (
+        REPOSITORY_ROOT / "beaconsystems.client" / "src" / "api.jsx"
+    ).read_text(encoding="utf-8")
+    assert "error.status = response.status" in source
+
+
+def test_beacon_insight_starts_collapsed_on_small_screens():
+    source = (
+        REPOSITORY_ROOT
+        / "beaconsystems.client"
+        / "src"
+        / "components"
+        / "BeaconInsight.jsx"
+    ).read_text(encoding="utf-8")
+    assert 'window.matchMedia("(max-width: 700px)").matches' in source

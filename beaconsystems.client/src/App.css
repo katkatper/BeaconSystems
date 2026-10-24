@@ -6778,6 +6778,50 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     grid-column: span 2;
 }
 
+.workspace-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: min(100%, 720px);
+    min-height: 96px;
+    margin: 0 auto 18px;
+    padding: 18px;
+    box-sizing: border-box;
+    color: #dbeafe;
+    text-align: center;
+    background: rgba(15, 23, 42, 0.84);
+    border: 1px solid rgba(147, 197, 253, 0.28);
+    border-radius: 8px;
+}
+
+.workspace-error-state {
+    display: grid;
+    border-color: rgba(248, 113, 113, 0.55);
+}
+
+.workspace-error-state h2,
+.workspace-error-state p {
+    margin: 0;
+}
+
+.workspace-error-state button {
+    justify-self: center;
+}
+
+.workspace-loading-indicator {
+    width: 18px;
+    height: 18px;
+    border: 3px solid rgba(191, 219, 254, 0.35);
+    border-top-color: #bfdbfe;
+    border-radius: 50%;
+    animation: workspace-loading 0.8s linear infinite;
+}
+
+@keyframes workspace-loading {
+    to { transform: rotate(360deg); }
+}
+
 .compact-card-list {
     display: grid;
     gap: 10px;

@@ -79,7 +79,9 @@ function BeaconInsight() {
     const { pathname } = useLocation();
     const [summary, setSummary] = useState(null);
     const [error, setError] = useState("");
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(() =>
+        typeof window !== "undefined" && window.matchMedia("(max-width: 700px)").matches
+    );
     const [updatedAt, setUpdatedAt] = useState(null);
 
     const loadInsights = () => {
