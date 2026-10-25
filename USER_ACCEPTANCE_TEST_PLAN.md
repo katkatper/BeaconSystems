@@ -17,6 +17,11 @@ UTC time, expected/actual result, evidence and defect ID.
 | Empty/loading/denied/network failure/retry | All | Pending |
 | Keyboard-only, 200% zoom, screen-reader names/live status | All | Pending |
 
+Automated role-boundary coverage now verifies platform-admin and agency-admin
+entry to their management workspaces plus supervisor, investigator, analyst and
+viewer denial from representative restricted routes. Human workflow execution and
+authorization evidence remain required before the table above can be signed off.
+
 Launch matrix: current/previous Chrome, Edge and Firefox; current Safari; 360×800,
 768×1024, 1366×768 and 1920×1080. Claims require real browser/device or approved
 cloud-lab execution. Release requires no critical/high defects and Product, Security,

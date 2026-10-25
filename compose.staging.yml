@@ -1,0 +1,103 @@
+name: beacon-staging
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: beacon_staging
+      POSTGRES_USER: beacon_staging
+      POSTGRES_PASSWORD: ${BEACON_STAGING_DB_PASSWORD:?set BEACON_STAGING_DB_PASSWORD}
+    volumes:
+      - staging-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beacon_staging -d beacon_staging"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - staging-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  clamav:
+    image: clamav/clamav:1.4
+    volumes:
+      - staging-clamav:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+
+  migrate:
+    build: .
+    env_file: ${BEACON_STAGING_ENV_FILE:-config/staging.env}
+    environment:
+      DATABASE_URL: postgresql+psycopg2://beacon_staging:${BEACON_STAGING_DB_PASSWORD}@postgres:5432/beacon_staging
+      MIGRATION_DATABASE_URL: postgresql+psycopg2://beacon_staging:${BEACON_STAGING_DB_PASSWORD}@postgres:5432/beacon_staging
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    env_file: ${BEACON_STAGING_ENV_FILE:-config/staging.env}
+    environment:
+      DATABASE_URL: postgresql+psycopg2://beacon_staging:${BEACON_STAGING_DB_PASSWORD}@postgres:5432/beacon_staging
+    volumes:
+      - staging-evidence:/data/evidence
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file: ${BEACON_STAGING_ENV_FILE:-config/staging.env}
+    environment:
+      DATABASE_URL: postgresql+psycopg2://beacon_staging:${BEACON_STAGING_DB_PASSWORD}@postgres:5432/beacon_staging
+    volumes:
+      - staging-evidence:/data/evidence
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: beaconsystems.client
+      args:
+        VITE_API_BASE_URL: ${BEACON_STAGING_API_URL:-http://localhost:8000}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  staging-postgres:
+  staging-redis:
+  staging-clamav:
+  staging-evidence:

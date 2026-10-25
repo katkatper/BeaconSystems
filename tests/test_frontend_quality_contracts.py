@@ -132,3 +132,14 @@ def test_beacon_insight_starts_collapsed_on_small_screens():
         / "BeaconInsight.jsx"
     ).read_text(encoding="utf-8")
     assert 'window.matchMedia("(max-width: 700px)").matches' in source
+
+
+def test_frontend_restricted_routes_have_role_guards_and_safe_denial_state():
+    source = (
+        REPOSITORY_ROOT / "beaconsystems.client" / "src" / "App.jsx"
+    ).read_text(encoding="utf-8")
+    assert "function RoleRoute" in source
+    assert 'role="alert"' in source
+    assert "No restricted data was loaded." in source
+    assert 'const administratorRoles = ["platform_admin", "agency_admin"]' in source
+    assert source.count("<RoleRoute allowedRoles=") >= 20

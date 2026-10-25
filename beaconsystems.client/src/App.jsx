@@ -80,6 +80,28 @@ function ProtectedRoute({ children }) {
 
     return children;
 }
+
+function RoleRoute({ allowedRoles, children }) {
+    const role = localStorage.getItem("role") || "viewer";
+
+    if (!allowedRoles.includes(role)) {
+        return (
+            <section className="access-denied-state" role="alert" aria-labelledby="access-denied-heading">
+                <span>Restricted workspace</span>
+                <h1 id="access-denied-heading">Access unavailable</h1>
+                <p>Your current Beacon role does not permit this workspace. No restricted data was loaded.</p>
+                <a href="/">Return to your dashboard</a>
+            </section>
+        );
+    }
+
+    return children;
+}
+
+const operationalRoles = ["platform_admin", "agency_admin", "supervisor"];
+const investigativeRoles = [...operationalRoles, "investigator", "analyst"];
+const caseMutationRoles = [...operationalRoles, "investigator"];
+const administratorRoles = ["platform_admin", "agency_admin"];
 // AppLayout owns the shared navigation and page routes. Login hides the navbar
 // so unauthenticated users only see the sign-in screen.
 function AppLayout() {
@@ -144,7 +166,7 @@ function AppLayout() {
                     </div>
                 )}>
                 <Routes>
-                <Route path="/operations" element={<ProtectedRoute><JobOperations /></ProtectedRoute>} />
+                <Route path="/operations" element={<ProtectedRoute><RoleRoute allowedRoles={operationalRoles}><JobOperations /></RoleRoute></ProtectedRoute>} />
 
                 <Route path="/login" element={<Login />} />
 
@@ -170,7 +192,7 @@ function AppLayout() {
                     path="/add"
                     element={
                         <ProtectedRoute>
-                            <AddPerson />
+                            <RoleRoute allowedRoles={caseMutationRoles}><AddPerson /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -197,7 +219,7 @@ function AppLayout() {
                     path="/create-case"
                     element={
                         <ProtectedRoute>
-                            <CreateCase />
+                            <RoleRoute allowedRoles={caseMutationRoles}><CreateCase /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -206,7 +228,7 @@ function AppLayout() {
                     path="/external-records/add"
                     element={
                         <ProtectedRoute>
-                            <AddExternalRecord />
+                            <RoleRoute allowedRoles={caseMutationRoles}><AddExternalRecord /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -224,7 +246,7 @@ function AppLayout() {
                     path="/alerts"
                     element={
                         <ProtectedRoute>
-                            <Alerts />
+                            <RoleRoute allowedRoles={investigativeRoles}><Alerts /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -233,7 +255,7 @@ function AppLayout() {
                     path="/agencies"
                     element={
                         <ProtectedRoute>
-                            <AgencyManagement />
+                            <RoleRoute allowedRoles={operationalRoles}><AgencyManagement /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -241,7 +263,7 @@ function AppLayout() {
                     path="/admin/users"
                     element={
                         <ProtectedRoute>
-                            <UserManagement />
+                            <RoleRoute allowedRoles={administratorRoles}><UserManagement /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -249,7 +271,7 @@ function AppLayout() {
                     path="/users"
                     element={
                         <ProtectedRoute>
-                            <UserManagement />
+                            <RoleRoute allowedRoles={administratorRoles}><UserManagement /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -265,7 +287,7 @@ function AppLayout() {
                     path="/intelligence"
                     element={
                         <ProtectedRoute>
-                            <IntelligenceCenter />
+                            <RoleRoute allowedRoles={investigativeRoles}><IntelligenceCenter /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -273,7 +295,7 @@ function AppLayout() {
                     path="/escape-routes"
                     element={
                         <ProtectedRoute>
-                            <EscapeRouteAnalysis />
+                            <RoleRoute allowedRoles={investigativeRoles}><EscapeRouteAnalysis /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -281,7 +303,7 @@ function AppLayout() {
                     path="/sightings"
                     element={
                         <ProtectedRoute>
-                            <Sightings />
+                            <RoleRoute allowedRoles={investigativeRoles}><Sightings /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -289,7 +311,7 @@ function AppLayout() {
                     path="/analytics"
                     element={
                         <ProtectedRoute>
-                            <Analytics />
+                            <RoleRoute allowedRoles={[...operationalRoles, "analyst"]}><Analytics /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -297,7 +319,7 @@ function AppLayout() {
                     path="/administration"
                     element={
                         <ProtectedRoute>
-                            <Administration />
+                            <RoleRoute allowedRoles={administratorRoles}><Administration /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -305,7 +327,7 @@ function AppLayout() {
                     path="/command/:tool"
                     element={
                         <ProtectedRoute>
-                            <CommandTools />
+                            <RoleRoute allowedRoles={operationalRoles}><CommandTools /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -313,7 +335,7 @@ function AppLayout() {
                     path="/evidence-upload"
                     element={
                         <ProtectedRoute>
-                            <EvidenceUpload />
+                            <RoleRoute allowedRoles={caseMutationRoles}><EvidenceUpload /></RoleRoute>
                         </ProtectedRoute>
                     }   
                     />
@@ -321,7 +343,7 @@ function AppLayout() {
                     path="/legal-access"
                     element={
                         <ProtectedRoute>
-                            <LegalAccessRequests />
+                            <RoleRoute allowedRoles={caseMutationRoles}><LegalAccessRequests /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -329,7 +351,7 @@ function AppLayout() {
                     path="/legal-orders"
                     element={
                         <ProtectedRoute>
-                            <LegalOrders />
+                            <RoleRoute allowedRoles={caseMutationRoles}><LegalOrders /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -337,7 +359,7 @@ function AppLayout() {
                     path="/partner-sources"
                     element={
                         <ProtectedRoute>
-                            <PartnerSources />
+                            <RoleRoute allowedRoles={operationalRoles}><PartnerSources /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -345,7 +367,7 @@ function AppLayout() {
                     path="/case-access"
                     element={
                         <ProtectedRoute>
-                            <CaseAccess />
+                            <RoleRoute allowedRoles={caseMutationRoles}><CaseAccess /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -353,7 +375,7 @@ function AppLayout() {
                     path="/bolos"
                     element={
                         <ProtectedRoute>
-                            <BoloBoard />
+                            <RoleRoute allowedRoles={operationalRoles}><BoloBoard /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -362,7 +384,7 @@ function AppLayout() {
                     path="/supervisor"
                     element={
                         <ProtectedRoute>
-                            <SupervisorQueue />
+                            <RoleRoute allowedRoles={operationalRoles}><SupervisorQueue /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -370,7 +392,7 @@ function AppLayout() {
                     path="/legal-orders/:id"
                     element={
                         <ProtectedRoute>
-                            <LegalOrderDetail />
+                            <RoleRoute allowedRoles={caseMutationRoles}><LegalOrderDetail /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -378,7 +400,7 @@ function AppLayout() {
                     path="/supervisor/:workspace"
                     element={
                         <ProtectedRoute>
-                            <SupervisorQueue />
+                            <RoleRoute allowedRoles={operationalRoles}><SupervisorQueue /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />
@@ -387,7 +409,7 @@ function AppLayout() {
                     path="/audit"
                     element={
                         <ProtectedRoute>
-                            <AuditCenter />
+                            <RoleRoute allowedRoles={operationalRoles}><AuditCenter /></RoleRoute>
                         </ProtectedRoute>
                     }
                 />

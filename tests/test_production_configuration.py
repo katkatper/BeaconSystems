@@ -227,6 +227,8 @@ class ProductionConfigurationTests(unittest.TestCase):
             "USER_ACCEPTANCE_TEST_PLAN.md",
             "PHASE_VI_TEST_EVIDENCE.md",
             "COMPLIANCE_SOURCE_REGISTER.md",
+            "PRODUCTION_ACCEPTANCE_EXERCISES.md",
+            "STAGING_VALIDATION_RUNBOOK.md",
         )
         for document in required:
             self.assertTrue((REPOSITORY_ROOT / document).is_file(), document)
@@ -236,6 +238,21 @@ class ProductionConfigurationTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("Automated browser/accessibility matrix", phase_six)
         self.assertIn("may not be represented as complete", phase_six)
+
+    def test_staging_definition_keeps_production_boundaries_visible(self):
+        compose = (REPOSITORY_ROOT / "compose.staging.yml").read_text(encoding="utf-8")
+        runbook = (REPOSITORY_ROOT / "STAGING_VALIDATION_RUNBOOK.md").read_text(
+            encoding="utf-8"
+        )
+        client_dockerfile = (
+            REPOSITORY_ROOT / "beaconsystems.client" / "Dockerfile"
+        ).read_text(encoding="utf-8")
+
+        for service in ("postgres:", "redis:", "clamav:", "migrate:", "api:", "worker:", "frontend:"):
+            self.assertIn(service, compose)
+        self.assertIn("service_completed_successfully", compose)
+        self.assertIn("cannot satisfy production encryption evidence", runbook)
+        self.assertIn("nginx-unprivileged", client_dockerfile)
 
 
 if __name__ == "__main__":

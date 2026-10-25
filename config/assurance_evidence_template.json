@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "release_id": "PENDING",
+  "commit": "PENDING",
+  "environment": "staging",
+  "evidence_date_utc": "PENDING",
+  "owners": {
+    "engineering": "UNASSIGNED",
+    "security": "UNASSIGNED",
+    "operations": "UNASSIGNED",
+    "privacy_legal": "UNASSIGNED",
+    "agency_representative": "UNASSIGNED"
+  },
+  "exercises": {
+    "incident_tabletop": "pending",
+    "access_review": "pending",
+    "agency_lifecycle": "pending",
+    "audit_integrity": "pending",
+    "backup_restore": "pending",
+    "failover": "pending",
+    "key_rotation": "pending",
+    "role_uat": "pending",
+    "accessibility_manual": "pending",
+    "penetration_test": "pending"
+  },
+  "production_evidence": {
+    "tls": "pending",
+    "kms": "pending",
+    "immutable_logs": "pending",
+    "monitoring_on_call": "pending",
+    "vulnerability_review": "pending",
+    "vendor_reviews": "pending"
+  },
+  "approvals": {
+    "security": "pending",
+    "operations": "pending",
+    "privacy_legal": "pending",
+    "agency": "pending"
+  },
+  "evidence_links": [],
+  "open_risks": []
+}

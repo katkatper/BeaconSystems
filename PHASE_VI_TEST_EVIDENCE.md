@@ -6,11 +6,16 @@ Data: synthetic mocked investigator workspace responses
 
 ## Passed matrix
 
-Twelve Playwright scenarios passed across Chromium laptop (1366×768), WebKit
+Twenty-four Playwright scenarios passed across Chromium laptop (1366×768), WebKit
 desktop, Chromium Android phone and Chromium iPad-sized tablet. Each profile
 validated the investigator empty state, recoverable network failure and explicit
-permission-denied state. Axe found no automated accessibility violations in the
-tested workspace state.
+permission-denied state, plus viewer denial before restricted administration data
+loads, populated investigator work/notification handling and the six-role
+route-boundary matrix. Axe found no automated accessibility
+violations in the tested states.
+
+Role routing also covers platform administrator, agency administrator, supervisor,
+investigator, analyst and viewer boundaries in `role-access.spec.js`.
 
 The phone test initially found Beacon Insight blocking the retry action. Beacon
 Insight now starts collapsed at 700px and below; the full four-profile rerun passed.

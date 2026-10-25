@@ -6818,6 +6818,43 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     animation: workspace-loading 0.8s linear infinite;
 }
 
+.access-denied-state {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    width: min(calc(100% - 28px), 680px);
+    margin: 40px auto;
+    padding: 32px 22px;
+    box-sizing: border-box;
+    color: #e5edff;
+    text-align: center;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(248, 113, 113, 0.48);
+    border-radius: 10px;
+}
+
+.access-denied-state span {
+    color: #fca5a5;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.access-denied-state h1,
+.access-denied-state p {
+    margin: 0;
+}
+
+.access-denied-state a {
+    padding: 10px 14px;
+    color: #eff6ff;
+    font-weight: 800;
+    text-decoration: none;
+    background: #1d4ed8;
+    border-radius: 8px;
+}
+
 @keyframes workspace-loading {
     to { transform: rotate(360deg); }
 }
