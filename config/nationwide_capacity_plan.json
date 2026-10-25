@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "status": "provisional",
+  "targets": {
+    "agencies": 1000,
+    "registered_users": 100000,
+    "peak_concurrent_users": 10000,
+    "api_requests_per_second": 1000,
+    "alert_deliveries_per_minute": 1000,
+    "background_jobs_per_minute": 5000,
+    "evidence_uploads_per_minute": 500,
+    "stored_evidence_terabytes": 250
+  },
+  "service_levels": {
+    "api_p95_ms": 750,
+    "maximum_error_rate": 0.01,
+    "queue_oldest_job_seconds": 120,
+    "availability_target": 0.999,
+    "recovery_time_minutes": 60,
+    "recovery_point_minutes": 15
+  },
+  "required_results": [
+    "api_load",
+    "database_contention",
+    "queue_and_worker_soak",
+    "object_storage_upload",
+    "alert_fanout",
+    "multi_tenant_isolation_under_load",
+    "rolling_deployment",
+    "regional_recovery",
+    "cost_forecast"
+  ]
+}

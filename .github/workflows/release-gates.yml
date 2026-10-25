@@ -52,6 +52,8 @@ jobs:
         run: python scripts/validate_deployment_config.py --check-manifest
       - name: Validate assurance evidence template
         run: python scripts/validate_assurance_evidence.py
+      - name: Validate nationwide capacity plan
+        run: python scripts/validate_capacity_plan.py
       - name: Validate staging deployment definition
         env:
           BEACON_STAGING_DB_PASSWORD: ci-compose-validation

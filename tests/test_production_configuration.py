@@ -229,6 +229,13 @@ class ProductionConfigurationTests(unittest.TestCase):
             "COMPLIANCE_SOURCE_REGISTER.md",
             "PRODUCTION_ACCEPTANCE_EXERCISES.md",
             "STAGING_VALIDATION_RUNBOOK.md",
+            "PHASE_VII_NATIONWIDE_SCALE.md",
+            "REGIONAL_SUPPORT_DECISION_RECORD.md",
+            "PHASE_VIII_DATA_LIFECYCLE_PRIVACY.md",
+            "PRIVACY_REQUEST_RUNBOOK.md",
+            "DATA_FLOW_INVENTORY.md",
+            "PHASE_IX_RELEASE_AUTHORIZATION.md",
+            "PILOT_TO_NATIONAL_ROLLOUT.md",
         )
         for document in required:
             self.assertTrue((REPOSITORY_ROOT / document).is_file(), document)
@@ -236,7 +243,7 @@ class ProductionConfigurationTests(unittest.TestCase):
         phase_six = (
             REPOSITORY_ROOT / "PHASE_VI_COMPLIANCE_PRODUCT_READINESS.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("Automated browser/accessibility matrix", phase_six)
+        self.assertIn("Automated Chromium/WebKit browser and accessibility matrix", phase_six)
         self.assertIn("may not be represented as complete", phase_six)
 
     def test_staging_definition_keeps_production_boundaries_visible(self):

@@ -25,20 +25,20 @@ the release record.
 | External alert delivery | Blocked on provider selection | Provider contract, authenticated callback tests, retry/dead-letter evidence |
 | Vulnerability management | Implemented in part; verification required | Dependency, image scanning and retained SBOMs implemented; patch SLA, triage and remediation records required |
 | Independent security test | Blocked on assessor | Scoped penetration test and closure of critical/high findings |
-| Incident and breach response | External decision | Approved plan, contact tree, tabletop exercise and notification responsibilities |
-| Retention and disposal | External decision | Agency/legal approval by data class and tested deletion/legal-hold procedures |
+| Incident and breach response | Implemented in part; verification required | Plan and tabletop package implemented; approved contact tree, exercise and notification responsibilities required |
+| Retention and disposal | Implemented in part; external approval required | Classification, proposed schedule and legal-hold controls implemented; agency/legal approval and tested disposition required |
 
 ## Nationwide deployment controls
 
 | Control | Current status | Required evidence before nationwide rollout |
 | --- | --- | --- |
 | Agency provisioning | Implemented in part; verification required | Audited creation, suspension/offboarding revocation and runbook implemented; approval, training and lifecycle exercise required |
-| Capacity model | Verification required | Per-agency/user/case/evidence assumptions, peak targets and cost forecast |
+| Capacity model | Implemented in part; verification required | Versioned provisional targets implemented; measured results, approved assumptions and cost forecast required |
 | Load and soak testing | Verification required | Production-shaped PostgreSQL, API, queue, worker and object-storage results |
-| Regional architecture | External decision | Primary/secondary region, recovery objectives, data-residency and failover decisions |
+| Regional architecture | External decision prepared | Decision record implemented; primary/secondary region, recovery objectives, residency and failover approval required |
 | Zero-downtime deployment | Implemented in part; verification required | Graceful API/worker shutdown and rollback runbook implemented; migration compatibility, rolling deployment and rollback exercise required |
 | Cross-agency exchange | Implemented; verification required | Legal-authority workflow, recipient validation, audit and revocation tests |
-| Support operations | External decision | Service levels, escalation paths, after-hours coverage and agency communications |
+| Support operations | External decision prepared | Decision record implemented; service levels, escalation, staffing and agency communications required |
 | Configuration governance | Implemented in part; verification required | Versioned inventory, secret-safe validation and fingerprint implemented; deployment integration, change approval and drift-response exercise required |
 
 ## HIPAA readiness evidence
@@ -46,10 +46,10 @@ the release record.
 | Requirement area | Current status | Required evidence |
 | --- | --- | --- |
 | Applicability and role determination | External decision | Counsel determination of covered-entity/business-associate roles and system boundary |
-| Security risk analysis | Blocked on formal assessment | Documented asset/data-flow inventory, threats, likelihood, impact and risk register |
+| Security risk analysis | Implemented in part; external validation required | Risk register and data-flow inventory implemented; Security/Privacy validation and deployed-environment assessment required |
 | Risk management | Verification required | Owners, remediation dates, accepted residual risks and periodic review process |
 | Business associate agreements | External decision | BAAs with customers and every applicable subcontractor handling ePHI |
-| Administrative safeguards | External decision | Workforce access, sanctions, training, contingency and evaluation policies |
+| Administrative safeguards | Implemented in part; external evidence required | Access, termination, screening, training, contingency and assessment policies implemented; approval and execution records required |
 | Physical safeguards | External decision | Hosting/provider evidence and workforce-device/facility procedures |
 | Technical safeguards | Implemented in part | Access control, MFA, audit, integrity, authentication and transmission evidence |
 | Breach notification | External decision | Contractual responsibilities, assessment workflow and notification procedures |
@@ -60,12 +60,12 @@ the release record.
 | Requirement area | Current status | Required evidence |
 | --- | --- | --- |
 | CJIS applicability and CJI boundary | External decision | Participating agency and CJIS Systems Agency determination |
-| CJIS v6.1 control mapping | Blocked on formal assessment | Applicable-control matrix with implementation statements and evidence links |
-| Personnel and training | External decision | Screening, security awareness, role training and termination procedures |
+| CJIS v6.1 control mapping | Implemented in part; CJIS ISO validation required | Family mapping implemented; requirement-level applicability, evidence and CSA approval required |
+| Personnel and training | Implemented in part; external evidence required | Screening, awareness and termination procedures implemented; authorized screening/training records required |
 | Identification and authentication | Implemented in part | Enforced MFA evidence, account lifecycle, privileged access and recovery approval |
 | Encryption and cryptography | Verification required | CJIS-approved deployment design and cryptographic module/configuration evidence |
 | Logging and accountability | Verification required | Event coverage, centralized protection, review procedures and retention approval |
-| Incident response | External decision | CSA-aligned reporting contacts, playbooks and exercise results |
+| Incident response | Implemented in part; external validation required | Playbook and exercise packet implemented; CSA-aligned contacts and completed exercise required |
 | Cloud/provider authorization | External decision | Agency/CSA review, contracts, data location and provider responsibility matrix |
 | Mobile and remote access | Verification required | Device management, session controls, encryption and agency approval |
 

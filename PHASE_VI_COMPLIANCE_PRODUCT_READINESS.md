@@ -16,7 +16,7 @@ they do not constitute HIPAA, CJIS, privacy or legal certification.
 - [x] Encryption/key-management evidence register.
 - [x] Vendor/subprocessor assessment.
 - [x] Nationwide/international privacy launch gate.
-- [ ] Automated browser/accessibility matrix completed.
+- [x] Automated Chromium/WebKit browser and accessibility matrix completed.
 - [ ] Role-based UAT completed by designated users.
 - [ ] Security, privacy/legal and agency approvals obtained.
 
