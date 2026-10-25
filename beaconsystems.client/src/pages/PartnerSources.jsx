@@ -24,6 +24,11 @@ const emptySourceForm = {
     source_type: "hospital",
     api_url: "",
     description: "",
+    allowed_record_types: "",
+    authorized_agency_ids: "",
+    match_threshold: "60",
+    field_mapping: "",
+    webhook_token: "",
 };
 
 const emptyIntakeForm = {
@@ -246,10 +251,26 @@ function PartnerSources() {
         e.preventDefault();
 
         try {
+            const payload = {
+                ...sourceForm,
+                match_threshold: Number(sourceForm.match_threshold),
+                allowed_record_types: sourceForm.allowed_record_types
+                    .split(",")
+                    .map((value) => value.trim())
+                    .filter(Boolean),
+                authorized_agency_ids: sourceForm.authorized_agency_ids
+                    .split(",")
+                    .map((value) => Number(value.trim()))
+                    .filter((value) => Number.isInteger(value) && value > 0),
+                field_mapping: sourceForm.field_mapping
+                    ? JSON.parse(sourceForm.field_mapping)
+                    : null,
+                webhook_token: sourceForm.webhook_token || null,
+            };
             const response = await fetch(apiUrl("/integrations/"), {
                 method: "POST",
                 headers: authHeaders(true),
-                body: JSON.stringify(sourceForm),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
@@ -261,7 +282,11 @@ function PartnerSources() {
             await loadPartnerWorkspace();
         } catch (err) {
             console.error(err);
-            setMessage("Could not create partner source.");
+            setMessage(
+                err instanceof SyntaxError
+                    ? "Field mapping must be valid JSON."
+                    : "Could not create partner source."
+            );
         }
     };
 
@@ -579,7 +604,10 @@ function PartnerSources() {
                                     {record.suggested_case_id ? (
                                         <div className="partner-match-suggestion">
                                             <strong>
-                                                Suggested match: Case {record.suggested_case_id}
+                                                Possible match: Case {record.suggested_case_id}
+                                                {record.suggested_bolo_id
+                                                    ? ` · BOLO ${record.suggested_bolo_id}`
+                                                    : ""}
                                             </strong>
                                             <span>
                                                 {record.match_score || 0}% confidence
@@ -594,6 +622,31 @@ function PartnerSources() {
                                             <strong>No strong case match</strong>
                                             <span>Investigator review required</span>
                                         </div>
+                                    )}
+
+                                    {record.canonical_data && (
+                                        <dl className="partner-observation-details">
+                                            {record.canonical_data.plate_number && (
+                                                <div><dt>Observed plate</dt><dd>{record.canonical_data.plate_number}{record.canonical_data.plate_state ? ` (${record.canonical_data.plate_state})` : ""}</dd></div>
+                                            )}
+                                            {(record.canonical_data.vehicle_make || record.canonical_data.vehicle_model) && (
+                                                <div><dt>Observed vehicle</dt><dd>{[
+                                                    record.canonical_data.vehicle_year,
+                                                    record.canonical_data.vehicle_color,
+                                                    record.canonical_data.vehicle_make,
+                                                    record.canonical_data.vehicle_model,
+                                                ].filter(Boolean).join(" ")}</dd></div>
+                                            )}
+                                            {record.canonical_data.observed_at && (
+                                                <div><dt>Observed</dt><dd>{new Date(record.canonical_data.observed_at).toLocaleString()}</dd></div>
+                                            )}
+                                            {record.canonical_data.camera_id && (
+                                                <div><dt>Camera</dt><dd>{record.canonical_data.camera_id}</dd></div>
+                                            )}
+                                            {record.canonical_data.travel_direction && (
+                                                <div><dt>Direction</dt><dd>{record.canonical_data.travel_direction}</dd></div>
+                                            )}
+                                        </dl>
                                     )}
 
                                     <dl className="partner-intake-details">
@@ -796,6 +849,19 @@ function PartnerSources() {
                                                     : "Inactive until approved"}
                                             </p>
                                             <p>{recordCount} external records linked</p>
+                                            <p>
+                                                Webhook credential: {source.webhook_configured
+                                                    ? "Configured"
+                                                    : "Not configured"}
+                                            </p>
+                                            <p>
+                                                Match threshold: {source.match_threshold || 60}%
+                                            </p>
+                                            <p>
+                                                Authorized agencies: {source.authorized_agency_ids?.length
+                                                    ? source.authorized_agency_ids.join(", ")
+                                                    : "Not scoped — automated intake blocked"}
+                                            </p>
 
                                             <div className="partner-actions">
                                                 <button
@@ -873,6 +939,48 @@ function PartnerSources() {
                                 name="description"
                                 placeholder="Agreement notes, coverage area, data types, and legal limits"
                                 value={sourceForm.description}
+                                onChange={updateSourceForm}
+                            />
+
+                            <input
+                                name="allowed_record_types"
+                                placeholder="Authorized record types, comma separated"
+                                value={sourceForm.allowed_record_types}
+                                onChange={updateSourceForm}
+                            />
+
+                            <input
+                                name="authorized_agency_ids"
+                                placeholder="Authorized Beacon agency IDs, comma separated"
+                                value={sourceForm.authorized_agency_ids}
+                                onChange={updateSourceForm}
+                            />
+
+                            <input
+                                name="match_threshold"
+                                type="number"
+                                min="1"
+                                max="100"
+                                placeholder="Candidate review threshold"
+                                value={sourceForm.match_threshold}
+                                onChange={updateSourceForm}
+                                required
+                            />
+
+                            <textarea
+                                name="field_mapping"
+                                placeholder={'Provider field map JSON, for example {"plate_number":"vehicle.plate","observed_at":"event.time"}'}
+                                value={sourceForm.field_mapping}
+                                onChange={updateSourceForm}
+                            />
+
+                            <input
+                                name="webhook_token"
+                                type="password"
+                                minLength="32"
+                                autoComplete="new-password"
+                                placeholder="Provider webhook token (32+ characters)"
+                                value={sourceForm.webhook_token}
                                 onChange={updateSourceForm}
                             />
 

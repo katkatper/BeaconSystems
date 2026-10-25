@@ -23,6 +23,7 @@ class PartnerIntakeRecord(Base):
     attached_external_record_id = Column(Integer, ForeignKey("external_records.id"), nullable=True)
     suggested_case_id = Column(Integer, ForeignKey("cases.case_id"), nullable=True)
     suggested_person_id = Column(Integer, ForeignKey("persons.person_id"), nullable=True)
+    suggested_bolo_id = Column(Integer, ForeignKey("bolo_alerts.bolo_id"), nullable=True)
 
     record_type = Column(String(100), nullable=False)
     external_id = Column(String(255), nullable=True)
@@ -38,6 +39,8 @@ class PartnerIntakeRecord(Base):
     geocoded_at = Column(DateTime, nullable=True)
     summary = Column(Text, nullable=False)
     raw_data = Column(JSON, nullable=True)
+    canonical_data = Column(JSON, nullable=True)
+    schema_version = Column(String(20), default="1.0", nullable=False)
     match_score = Column(Integer, nullable=True)
     match_reason = Column(Text, nullable=True)
     match_case_status = Column(String(50), nullable=True)

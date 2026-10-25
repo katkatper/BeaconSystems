@@ -31,6 +31,12 @@ function BoloBoard() {
         last_known_location: "",
         description: "",
         vehicle: "",
+        vehicle_year: "",
+        vehicle_make: "",
+        vehicle_model: "",
+        vehicle_color: "",
+        plate_number: "",
+        plate_state: "",
         occupants: "",
         photo_url: "",
         risk_level: "high",
@@ -110,6 +116,13 @@ function BoloBoard() {
             risk_level: form.risk_level,
             share_with_partners: form.distribution.some((recipient) => partnerRecipients.includes(recipient)),
             expires_at: form.expires_at || null,
+            vehicle_year: form.vehicle_year ? Number(form.vehicle_year) : null,
+            vehicle_make: form.vehicle_make || null,
+            vehicle_model: form.vehicle_model || null,
+            vehicle_color: form.vehicle_color || null,
+            plate_number: form.plate_number || null,
+            plate_state: form.plate_state || null,
+            vehicle_identifiers: form.vehicle || null,
         };
 
         const response = await fetch(apiUrl("/bolos/"), {
@@ -137,6 +150,12 @@ function BoloBoard() {
             last_known_location: "",
             description: "",
             vehicle: "",
+            vehicle_year: "",
+            vehicle_make: "",
+            vehicle_model: "",
+            vehicle_color: "",
+            plate_number: "",
+            plate_state: "",
             occupants: "",
             photo_url: "",
             risk_level: "high",
@@ -217,7 +236,15 @@ function BoloBoard() {
 
                         <fieldset>
                             <legend>Vehicle</legend>
-                            <textarea name="vehicle" value={form.vehicle} onChange={handleChange} placeholder="Year, make, model, color, plate, VIN, distinguishing features" />
+                            <div className="bolo-vehicle-grid">
+                                <input name="vehicle_year" type="number" min="1900" max="2100" value={form.vehicle_year} onChange={handleChange} placeholder="Year" />
+                                <input name="vehicle_make" value={form.vehicle_make} onChange={handleChange} placeholder="Make" />
+                                <input name="vehicle_model" value={form.vehicle_model} onChange={handleChange} placeholder="Model" />
+                                <input name="vehicle_color" value={form.vehicle_color} onChange={handleChange} placeholder="Color" />
+                                <input name="plate_number" value={form.plate_number} onChange={handleChange} placeholder="License plate" />
+                                <input name="plate_state" value={form.plate_state} onChange={handleChange} placeholder="Plate state" />
+                            </div>
+                            <textarea name="vehicle" value={form.vehicle} onChange={handleChange} placeholder="VIN and distinguishing features" />
                         </fieldset>
 
                         <fieldset>
@@ -297,6 +324,14 @@ function BoloBoard() {
                                     </div>
 
                                     <p>{bolo.description}</p>
+
+                                    {(bolo.plate_number || bolo.vehicle_make || bolo.vehicle_model) && (
+                                        <p>
+                                            Vehicle: {[bolo.vehicle_year, bolo.vehicle_color, bolo.vehicle_make, bolo.vehicle_model]
+                                                .filter(Boolean).join(" ") || "Details recorded"}
+                                            {bolo.plate_number ? ` · Plate ${bolo.plate_number}${bolo.plate_state ? ` (${bolo.plate_state})` : ""}` : ""}
+                                        </p>
+                                    )}
 
                                     <small>
                                         Case {bolo.case_id}

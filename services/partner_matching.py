@@ -1,6 +1,5 @@
 from typing import Any
 
-
 STOP_WORDS = {"the", "and", "for", "with", "near", "from"}
 
 
@@ -10,8 +9,7 @@ def normalize_text(value: Any) -> str:
 
 def text_tokens(value: str) -> set[str]:
     normalized = "".join(
-        character if character.isalnum() else " "
-        for character in normalize_text(value)
+        character if character.isalnum() else " " for character in normalize_text(value)
     )
     return {
         token
@@ -112,5 +110,45 @@ def score_case_match(case: Any, intake: Any) -> tuple[int, list[str]]:
 
     if normalize_text(case.case_status) in {"closed", "cold"}:
         reasons.append(f"{case.case_status.lower()} case considered")
+
+    return min(score, 100), reasons
+
+
+def score_bolo_vehicle_match(
+    bolo: Any, canonical_data: dict[str, Any]
+) -> tuple[int, list[str]]:
+    """Score a vehicle observation against an active BOLO with explainable factors."""
+    from services.provider_observations import normalize_identifier
+
+    score = 0
+    reasons: list[str] = []
+    observed_plate = normalize_identifier(canonical_data.get("plate_number"))
+    bolo_plate = normalize_identifier(getattr(bolo, "plate_number", None))
+    if observed_plate and bolo_plate and observed_plate == bolo_plate:
+        score += 65
+        reasons.append("license plate matched exactly")
+
+    observed_state = normalize_identifier(canonical_data.get("plate_state"))
+    bolo_state = normalize_identifier(getattr(bolo, "plate_state", None))
+    if observed_state and bolo_state and observed_state == bolo_state:
+        score += 5
+        reasons.append("plate state matched")
+
+    for field, points, label in (
+        ("vehicle_make", 12, "vehicle make matched"),
+        ("vehicle_model", 10, "vehicle model matched"),
+        ("vehicle_color", 8, "vehicle color matched"),
+    ):
+        observed = normalize_text(canonical_data.get(field))
+        expected = normalize_text(getattr(bolo, field, None))
+        if observed and expected and observed == expected:
+            score += points
+            reasons.append(label)
+
+    observed_year = canonical_data.get("vehicle_year")
+    bolo_year = getattr(bolo, "vehicle_year", None)
+    if observed_year and bolo_year and int(observed_year) == int(bolo_year):
+        score += 5
+        reasons.append("vehicle year matched")
 
     return min(score, 100), reasons

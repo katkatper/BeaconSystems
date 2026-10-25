@@ -27,6 +27,13 @@ class BoloAlert(Base):
     geocoded_address = Column(String(500), nullable=True)
     geocoded_at = Column(DateTime, nullable=True)
     description = Column(Text, nullable=False)
+    vehicle_year = Column(Integer, nullable=True)
+    vehicle_make = Column(String(100), nullable=True)
+    vehicle_model = Column(String(100), nullable=True)
+    vehicle_color = Column(String(100), nullable=True)
+    plate_number = Column(String(32), nullable=True)
+    plate_state = Column(String(16), nullable=True)
+    vehicle_identifiers = Column(Text, nullable=True)
     risk_level = Column(String(50), default="high", nullable=False)
     status = Column(String(50), default="active", nullable=False)
 

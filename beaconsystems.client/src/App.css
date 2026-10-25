@@ -4890,6 +4890,39 @@ button,
     margin: 12px 0;
 }
 
+.partner-observation-details,
+.bolo-vehicle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.partner-observation-details {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.72);
+}
+
+.partner-observation-details dt {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.partner-observation-details dd {
+    margin: 3px 0 0;
+    color: #f8fafc;
+}
+
+@media (max-width: 700px) {
+    .partner-observation-details,
+    .bolo-vehicle-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .partner-intake-details dd {
     margin: 2px 0 0;
     color: #e2e8f0;

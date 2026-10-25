@@ -10,20 +10,27 @@ from database.connection import get_db
 from database.tenant_context import configure_tenant_session
 from models.IntegrationSource import IntegrationSource
 from models.agencies import Agencies
+from models.bolo_alert import BoloAlert
 from models.case import Cases
 from models.external_record import ExternalRecord
 from models.partner_intake_record import PartnerIntakeRecord
 from models.person import Person
 from models.timeline_events import Timeline_Event
 from models.user import User
-from security.auth import get_current_user, require_role
+from security.auth import get_current_user, require_role, verify_password
 from security.case_access import assert_case_write_access
 from security.tenant_scope import apply_partner_intake_agency_scope
 from services.activity_service import create_activity_log
 from services.geocoding_fields import apply_geocode_result, copy_geocode_fields
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
-from services.partner_matching import normalize_text, score_case_match, split_subject_name
+from services.partner_matching import (
+    normalize_text,
+    score_bolo_vehicle_match,
+    score_case_match,
+    split_subject_name,
+)
+from services.provider_observations import normalize_provider_payload
 from services.job_queue import enqueue_job
 
 
@@ -66,6 +73,31 @@ LEGAL_AUTHORITY_TYPES = {
 }
 
 
+def authenticate_partner_source(source: IntegrationSource, token: str | None) -> None:
+    if source.webhook_secret_hash:
+        if not token or not verify_password(token, source.webhook_secret_hash):
+            raise HTTPException(status_code=401, detail="Invalid partner webhook token")
+        return
+    if not PARTNER_WEBHOOK_TOKEN:
+        raise HTTPException(status_code=503, detail="Partner webhook token is not configured")
+    if token != PARTNER_WEBHOOK_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid partner webhook token")
+
+
+def authorize_partner_destination(source: IntegrationSource, agency_id: int) -> None:
+    authorized_agencies = source.authorized_agency_ids or []
+    if source.webhook_secret_hash and not authorized_agencies:
+        raise HTTPException(
+            status_code=403,
+            detail="Partner source has no authorized destination agencies",
+        )
+    if authorized_agencies and agency_id not in authorized_agencies:
+        raise HTTPException(
+            status_code=403,
+            detail="Partner source is not authorized for the destination agency",
+        )
+
+
 def apply_geocode_fields(target, geocoded: dict[str, Any] | None) -> None:
     apply_geocode_result(target, geocoded)
 
@@ -74,8 +106,15 @@ def copy_intake_geocode_fields(external_record: ExternalRecord, intake: PartnerI
     copy_geocode_fields(external_record, intake)
 
 
-def find_best_case_match(db: Session, data: PartnerIntakeCreate, agency_id: int):
+def find_best_case_match(
+    db: Session,
+    data: PartnerIntakeCreate,
+    agency_id: int,
+    canonical_data: dict[str, Any],
+    match_threshold: int,
+):
     best_match = None
+    best_bolo = None
     best_score = 0
     best_reasons: list[str] = []
 
@@ -95,10 +134,25 @@ def find_best_case_match(db: Session, data: PartnerIntakeCreate, agency_id: int)
             best_score = score
             best_reasons = reasons
 
-    if not best_match or best_score < 35:
-        return None, 0, "No strong case match found"
+    active_bolos = db.query(BoloAlert).filter(
+        BoloAlert.agency_id == agency_id,
+        BoloAlert.status == "active",
+    ).limit(500).all()
+    for bolo in active_bolos:
+        score, reasons = score_bolo_vehicle_match(bolo, canonical_data)
+        if score > best_score:
+            best_match = next(
+                (case for case in cases if case.case_id == bolo.case_id),
+                None,
+            )
+            best_bolo = bolo
+            best_score = score
+            best_reasons = reasons
 
-    return best_match, best_score, "; ".join(best_reasons)
+    if not best_match or best_score < match_threshold:
+        return None, None, best_score, "No match met the configured review threshold"
+
+    return best_match, best_bolo, best_score, "; ".join(best_reasons)
 
 
 def create_intake_record(
@@ -118,10 +172,33 @@ def create_intake_record(
         ).first()
         if existing:
             return existing
-    matched_case, match_score, match_reason = find_best_case_match(
+    if source.allowed_record_types and data.record_type not in source.allowed_record_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Record type is not authorized for this partner source",
+        )
+
+    try:
+        canonical_data = normalize_provider_payload(
+            data.raw_data or {},
+            source.field_mapping,
+        )
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Provider payload could not be normalized: {exc}",
+        ) from exc
+    if data.subject_name and not canonical_data.get("subject_name"):
+        canonical_data["subject_name"] = data.subject_name
+    if data.location and not canonical_data.get("location"):
+        canonical_data["location"] = data.location
+
+    matched_case, matched_bolo, match_score, match_reason = find_best_case_match(
         db,
         data,
         agency_id,
+        canonical_data,
+        source.match_threshold or 60,
     )
     status = "matched_pending_review" if matched_case else "pending_review"
     geocoded = geocode_address(data.location)
@@ -132,6 +209,7 @@ def create_intake_record(
         received_by_user_id=received_by_user_id,
         suggested_case_id=matched_case.case_id if matched_case else None,
         suggested_person_id=matched_case.person_id if matched_case else None,
+        suggested_bolo_id=matched_bolo.bolo_id if matched_bolo else None,
         record_type=data.record_type,
         external_id=data.external_id,
         ingestion_key=ingestion_key,
@@ -139,6 +217,8 @@ def create_intake_record(
         location=data.location,
         summary=data.summary,
         raw_data=data.raw_data,
+        canonical_data=canonical_data,
+        schema_version="1.0",
         match_score=match_score,
         match_reason=match_reason,
         match_case_status=matched_case.case_status if matched_case else None,
@@ -166,16 +246,14 @@ def queue_automated_partner_intake_record(
         max_length=160,
     ),
 ):
-    if not PARTNER_WEBHOOK_TOKEN:
-        raise HTTPException(status_code=503, detail="Partner webhook token is not configured")
-    if x_beacon_partner_token != PARTNER_WEBHOOK_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid partner webhook token")
-    get_approved_source(db, data.integration_source_id)
+    source = get_approved_source(db, data.integration_source_id)
+    authenticate_partner_source(source, x_beacon_partner_token)
     if data.agency_id is None:
         raise HTTPException(
             status_code=400,
             detail="Automated partner intake must identify its destination agency",
         )
+    authorize_partner_destination(source, data.agency_id)
     if not db.query(Agencies).filter(Agencies.agency_id == data.agency_id).first():
         raise HTTPException(status_code=404, detail="Agency not found")
 
@@ -225,6 +303,7 @@ def serialize_partner_intake(intake: PartnerIntakeRecord) -> dict[str, Any]:
         "attached_external_record_id": intake.attached_external_record_id,
         "suggested_case_id": intake.suggested_case_id,
         "suggested_person_id": intake.suggested_person_id,
+        "suggested_bolo_id": intake.suggested_bolo_id,
         "record_type": intake.record_type,
         "external_id": intake.external_id,
         "subject_name": intake.subject_name,
@@ -238,6 +317,8 @@ def serialize_partner_intake(intake: PartnerIntakeRecord) -> dict[str, Any]:
         "geocoded_at": intake.geocoded_at,
         "summary": intake.summary,
         "raw_data": intake.raw_data,
+        "canonical_data": intake.canonical_data,
+        "schema_version": intake.schema_version,
         "match_score": intake.match_score,
         "match_reason": intake.match_reason,
         "match_case_status": intake.match_case_status,
@@ -332,21 +413,14 @@ def receive_automated_partner_intake_record(
     db: Session = Depends(get_db),
     x_beacon_partner_token: Optional[str] = Header(None),
 ):
-    if not PARTNER_WEBHOOK_TOKEN:
-        raise HTTPException(
-            status_code=503,
-            detail="Partner webhook token is not configured",
-        )
-
-    if x_beacon_partner_token != PARTNER_WEBHOOK_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid partner webhook token")
-
     source = get_approved_source(db, data.integration_source_id)
+    authenticate_partner_source(source, x_beacon_partner_token)
     if data.agency_id is None:
         raise HTTPException(
             status_code=400,
             detail="Automated partner intake must identify its destination agency",
         )
+    authorize_partner_destination(source, data.agency_id)
 
     if not db.query(Agencies).filter(Agencies.agency_id == data.agency_id).first():
         raise HTTPException(status_code=404, detail="Agency not found")
@@ -421,6 +495,7 @@ def attach_partner_intake_to_case(
     first_name, last_name = split_subject_name(intake.subject_name)
     reviewed_at = datetime.utcnow()
     linked_raw_data = dict(intake.raw_data or {})
+    linked_raw_data["beacon_canonical_observation"] = intake.canonical_data or {}
     linked_raw_data["beacon_legal_authority"] = {
         "type": legal_authority_type,
         "reference": data.legal_authority_reference,

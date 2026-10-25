@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from database.connection import get_db
 from models.IntegrationSource import IntegrationSource
 from models.user import User
-from security.auth import get_current_user, require_role
+from security.auth import get_current_user, hash_password, require_role
 from services.activity_service import create_activity_log
 from services.pagination import PaginationParams, paginate_query
 
@@ -20,11 +20,50 @@ class IntegrationSourceCreate(BaseModel):
     source_type: str
     api_url: Optional[str] = None
     description: Optional[str] = None
+    adapter_key: str = "canonical_v1"
+    field_mapping: dict[str, str] | None = None
+    allowed_record_types: list[str] | None = None
+    authorized_agency_ids: list[int] | None = None
+    match_threshold: int = 60
+    webhook_token: str | None = None
 
 
 class IntegrationSourceUpdate(BaseModel):
     status: Optional[str] = None
     is_active: Optional[bool] = None
+    adapter_key: Optional[str] = None
+    field_mapping: dict[str, str] | None = None
+    allowed_record_types: list[str] | None = None
+    authorized_agency_ids: list[int] | None = None
+    match_threshold: Optional[int] = None
+    webhook_token: str | None = None
+
+
+def serialize_integration_source(source: IntegrationSource) -> dict:
+    return {
+        "id": source.id,
+        "name": source.name,
+        "source_type": source.source_type,
+        "status": source.status,
+        "is_active": source.is_active,
+        "api_url": source.api_url,
+        "description": source.description,
+        "adapter_key": source.adapter_key,
+        "field_mapping": source.field_mapping,
+        "allowed_record_types": source.allowed_record_types,
+        "authorized_agency_ids": source.authorized_agency_ids,
+        "match_threshold": source.match_threshold,
+        "webhook_configured": bool(source.webhook_secret_hash),
+        "created_at": source.created_at,
+    }
+
+
+def validate_webhook_token(token: str | None) -> str | None:
+    if token is None:
+        return None
+    if len(token) < 32:
+        raise HTTPException(status_code=400, detail="Partner webhook token must be at least 32 characters")
+    return hash_password(token)
 
 
 @router.post("/")
@@ -59,6 +98,12 @@ def create_integration_source(
         source_type=data.source_type,
         api_url=data.api_url,
         description=data.description,
+        adapter_key=data.adapter_key,
+        field_mapping=data.field_mapping,
+        allowed_record_types=data.allowed_record_types,
+        authorized_agency_ids=data.authorized_agency_ids,
+        match_threshold=max(1, min(data.match_threshold, 100)),
+        webhook_secret_hash=validate_webhook_token(data.webhook_token),
         status="pending",
         is_active=False,
     )
@@ -77,7 +122,7 @@ def create_integration_source(
         details=f"Partner source created: {source.name}",
     )
 
-    return source
+    return serialize_integration_source(source)
 
 
 @router.get("/")
@@ -95,11 +140,12 @@ def get_integration_sources(
             IntegrationSource.is_active == True,  # noqa: E712
         )
 
-    return paginate_query(
+    sources = paginate_query(
         query.order_by(IntegrationSource.created_at.desc()),
         pagination,
         response,
     )
+    return [serialize_integration_source(source) for source in sources]
 
 
 @router.put("/{source_id}")
@@ -127,6 +173,19 @@ def update_integration_source(
     if data.is_active is not None:
         source.is_active = data.is_active
 
+    if data.adapter_key is not None:
+        source.adapter_key = data.adapter_key
+    if data.field_mapping is not None:
+        source.field_mapping = data.field_mapping
+    if data.allowed_record_types is not None:
+        source.allowed_record_types = data.allowed_record_types
+    if data.authorized_agency_ids is not None:
+        source.authorized_agency_ids = data.authorized_agency_ids
+    if data.match_threshold is not None:
+        source.match_threshold = max(1, min(data.match_threshold, 100))
+    if data.webhook_token is not None:
+        source.webhook_secret_hash = validate_webhook_token(data.webhook_token)
+
     db.commit()
     db.refresh(source)
 
@@ -140,4 +199,4 @@ def update_integration_source(
         details=f"Partner source updated: {source.name}",
     )
 
-    return source
+    return serialize_integration_source(source)

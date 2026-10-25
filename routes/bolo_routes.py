@@ -16,6 +16,7 @@ from services.activity_service import create_activity_log
 from services.geocoding_fields import apply_geocode_result
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
+from services.provider_observations import normalize_identifier
 
 
 router = APIRouter(prefix="/bolos", tags=["BOLO Alerts"])
@@ -30,6 +31,13 @@ class BoloCreate(BaseModel):
     risk_level: str = "high"
     share_with_partners: bool = False
     expires_at: datetime | None = None
+    vehicle_year: int | None = None
+    vehicle_make: str | None = None
+    vehicle_model: str | None = None
+    vehicle_color: str | None = None
+    plate_number: str | None = None
+    plate_state: str | None = None
+    vehicle_identifiers: str | None = None
 
     @field_validator("case_id", mode="before")
     @classmethod
@@ -57,6 +65,13 @@ class BoloUpdate(BaseModel):
     status: str | None = None
     share_with_partners: bool | None = None
     expires_at: datetime | None = None
+    vehicle_year: int | None = None
+    vehicle_make: str | None = None
+    vehicle_model: str | None = None
+    vehicle_color: str | None = None
+    plate_number: str | None = None
+    plate_state: str | None = None
+    vehicle_identifiers: str | None = None
 
     @field_validator("expires_at", mode="before")
     @classmethod
@@ -133,6 +148,13 @@ def create_bolo(
         risk_level=data.risk_level,
         share_with_partners=data.share_with_partners,
         expires_at=data.expires_at,
+        vehicle_year=data.vehicle_year,
+        vehicle_make=data.vehicle_make,
+        vehicle_model=data.vehicle_model,
+        vehicle_color=data.vehicle_color,
+        plate_number=normalize_identifier(data.plate_number),
+        plate_state=normalize_identifier(data.plate_state),
+        vehicle_identifiers=data.vehicle_identifiers,
     )
     apply_geocode_fields(bolo, data.last_known_location)
 
@@ -173,6 +195,8 @@ def update_bolo(
     update_data = data.model_dump(exclude_unset=True)
 
     for field, value in update_data.items():
+        if field in {"plate_number", "plate_state"}:
+            value = normalize_identifier(value)
         setattr(bolo, field, value)
 
     if "last_known_location" in update_data:
