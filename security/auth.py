@@ -1,9 +1,10 @@
 import uuid
 from datetime import timedelta
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
@@ -90,7 +91,7 @@ def decode_access_token(token: str) -> dict:
         issuer=JWT_ISSUER,
     )
     if payload.get("token_type") != "access":
-        raise JWTError("Invalid token type")
+        raise InvalidTokenError("Invalid token type")
     return payload
 
 
@@ -118,7 +119,7 @@ def get_current_user(
         if user_id <= 0 or auth_version < 0 or not session_id:
             raise credentials_exception
 
-    except (JWTError, TypeError, ValueError):
+    except (InvalidTokenError, TypeError, ValueError):
         raise credentials_exception
 
     user = (

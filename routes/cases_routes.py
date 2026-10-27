@@ -1,25 +1,25 @@
 
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List, Optional
 
 from database.connection import get_db
 from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
-from models.person import Person
 from models.external_record import ExternalRecord
+from models.person import Person
 from models.sighting import Sighting
 from models.user import User
+from schemas.case_schema import CaseCreate, CaseResponse, CaseUpdate, MessageResponse
 from security.auth import get_current_user, require_role
 from security.case_access import apply_case_access_filter, get_authorized_case
 from security.case_access_requests import case_access_code_matches, decide_case_access
-from schemas.case_schema import CaseCreate, CaseUpdate, CaseResponse, MessageResponse
 from services.activity_service import create_activity_log
 from services.case_correlation import build_case_correlations
 from services.clock import utc_now
 from services.pagination import PaginationParams, paginate_query, paginate_query_values
-
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
 

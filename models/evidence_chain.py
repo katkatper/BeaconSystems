@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
-from database.connection import Base
 from datetime import datetime
 
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+
+from database.connection import Base
 
 
 class EvidenceChain(Base):

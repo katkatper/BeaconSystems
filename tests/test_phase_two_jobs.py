@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from models.agencies import Agencies
 from models.async_job import AsyncJob
 from models.worker_heartbeat import WorkerHeartbeat
+from services.alert_delivery_jobs import handle_alert_delivery
 from services.job_queue import (
     claim_next_job,
     complete_job,
@@ -17,9 +18,7 @@ from services.job_queue import (
     recover_stale_jobs,
 )
 from services.job_retention import prune_operational_history
-from services.alert_delivery_jobs import handle_alert_delivery
 from services.worker_monitoring import active_workers, record_worker_heartbeat
-
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 

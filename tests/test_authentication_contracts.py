@@ -4,8 +4,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import jwt
 from fastapi import HTTPException
-from jose import JWTError, jwt
+from jwt.exceptions import InvalidTokenError
 
 from config.settings import ALGORITHM, JWT_AUDIENCE, JWT_ISSUER, SECRET_KEY
 from security.auth import create_access_token
@@ -33,7 +34,7 @@ class AuthenticationContractTests(unittest.TestCase):
         self.assertEqual(claims["token_type"], "access")
         self.assertTrue(claims["jti"])
 
-        with self.assertRaises(JWTError):
+        with self.assertRaises(InvalidTokenError):
             jwt.decode(
                 token,
                 SECRET_KEY,

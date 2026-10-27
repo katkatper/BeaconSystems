@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Float, Index
-from database.connection import Base
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
+
+from database.connection import Base
+
 
 class Person(Base):
     __tablename__ = "persons"

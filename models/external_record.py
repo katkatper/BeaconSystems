@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.sql import func
-from database.connection import Base
 
+from database.connection import Base
 
 #EXTERNAL INTELLIGENCE DIGESTION
 

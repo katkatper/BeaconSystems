@@ -4,7 +4,6 @@ from models.user import User
 from security.auth import get_current_user
 from services.geocoding_service import geocode_address
 
-
 router = APIRouter(prefix="/geocoding", tags=["Geocoding"])
 
 

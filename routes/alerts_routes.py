@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
@@ -153,15 +153,27 @@ def get_alert_receipts(
     query = db.query(AlertDelivery).filter(AlertDelivery.alert_id == alert.alert_id)
     if current_user.role != "platform_admin":
         query = query.filter(AlertDelivery.agency_id == current_user.agency_id)
-    deliveries = query.order_by(AlertDelivery.delivery_id).all()
+    totals = query.with_entities(
+        func.count(AlertDelivery.delivery_id),
+        func.sum(case((AlertDelivery.sent_at.isnot(None), 1), else_=0)),
+        func.sum(case((AlertDelivery.delivered_at.isnot(None), 1), else_=0)),
+        func.sum(case((AlertDelivery.viewed_at.isnot(None), 1), else_=0)),
+        func.sum(case((AlertDelivery.acknowledged_at.isnot(None), 1), else_=0)),
+        func.sum(
+            case((AlertDelivery.status.in_(("pending", "queued")), 1), else_=0)
+        ),
+    ).one()
+    deliveries = query.order_by(AlertDelivery.delivery_id).limit(100).all()
     return {
         "alert_id": alert.alert_id,
-        "sent": sum(item.sent_at is not None for item in deliveries),
-        "delivered": sum(item.delivered_at is not None for item in deliveries),
-        "viewed": sum(item.viewed_at is not None for item in deliveries),
-        "acknowledged": sum(item.acknowledged_at is not None for item in deliveries),
-        "pending": sum(item.status in {"pending", "queued"} for item in deliveries),
+        "delivery_count": int(totals[0] or 0),
+        "sent": int(totals[1] or 0),
+        "delivered": int(totals[2] or 0),
+        "viewed": int(totals[3] or 0),
+        "acknowledged": int(totals[4] or 0),
+        "pending": int(totals[5] or 0),
         "deliveries": deliveries,
+        "deliveries_truncated": int(totals[0] or 0) > len(deliveries),
     }
 
 

@@ -1,18 +1,15 @@
 import json
 from pathlib import Path
-
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse
-from fastapi import Response
-from sqlalchemy.orm import Session
 from typing import List, Optional
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
+from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from models.case import Cases
 from models.person import Person
 from models.user import User
-from security.auth import get_current_user, require_role
-from security.tenant_scope import apply_person_agency_scope
 from schemas.person_schema import (
     MessageResponse,
     PersonCreate,
@@ -20,6 +17,8 @@ from schemas.person_schema import (
     PersonResponse,
     PersonUpdate,
 )
+from security.auth import get_current_user, require_role
+from security.tenant_scope import apply_person_agency_scope
 from services.activity_service import create_activity_log
 from services.case_numbering import (
     missing_person_case_prefix,
@@ -27,13 +26,12 @@ from services.case_numbering import (
 )
 from services.clock import utc_now
 from services.geocoding_service import geocode_address
-from services.pagination import paginate_query_values
+from services.malware_scanner import scan_upload
 from services.object_storage import object_storage
+from services.pagination import paginate_query_values
 from services.person_filters import apply_person_query_filters
 from services.person_risk import infer_missing_person_risk
 from services.upload_validation import validate_upload
-from services.malware_scanner import scan_upload
-
 
 router = APIRouter(prefix="/persons", tags=["Persons"])
 

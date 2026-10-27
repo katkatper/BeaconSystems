@@ -1,16 +1,13 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
-
 from models.agencies import Agencies
 from models.external_record import ExternalRecord
-from models.user import User
-
 from models.timeline_events import Timeline_Event
+from models.user import User
 from security.auth import get_current_user, require_role
 from security.case_access import (
     apply_related_case_access_filter,
@@ -20,8 +17,6 @@ from security.case_access import (
 from services.geocoding_fields import apply_geocode_result
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
-
-
 
 # EXTERNAL RECORDS ROUTES - FOR DIGESTING EXTERNAL INTELLIGENCE INTO THE SYSTEM
 

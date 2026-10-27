@@ -1,6 +1,5 @@
 from sqlalchemy import text
 
-
 RLS_TABLES = (
     "activity_log",
     "cases",

@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from models.async_job import AsyncJob
 from services.clock import utc_now
 
-
 QUEUED_STATUSES = ("queued", "retry")
 
 

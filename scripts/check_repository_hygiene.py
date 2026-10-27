@@ -6,7 +6,6 @@ import subprocess
 import sys
 from pathlib import PurePosixPath
 
-
 FORBIDDEN_PARTS = {
     ".bin",
     ".venv",

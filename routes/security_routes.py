@@ -15,7 +15,7 @@ from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
 from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
-from models.IntegrationSource import IntegrationSource
+from models.integration_source import IntegrationSource
 from models.user import User
 from security.auth import require_role
 from services.object_storage import object_storage

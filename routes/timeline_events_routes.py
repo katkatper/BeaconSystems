@@ -1,18 +1,20 @@
-from fastapi import APIRouter, Depends, Query
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel
-from fastapi import Response
 from sqlalchemy.orm import Session
-from typing import Optional, List
 
 from database.connection import get_db
 from models.timeline_events import Timeline_Event
-from security.auth import get_current_user, require_role
 from models.user import User
-from security.case_access import apply_related_case_access_filter, assert_case_write_access, get_authorized_case
+from security.auth import get_current_user, require_role
+from security.case_access import (
+    apply_related_case_access_filter,
+    assert_case_write_access,
+    get_authorized_case,
+)
 from services.activity_service import create_activity_log
 from services.pagination import PaginationParams, paginate_query
-
-
 
 router = APIRouter(
     prefix="/timeline-events",

@@ -1,5 +1,5 @@
-from models.case import Cases
 from models.agencies import Agencies
+from models.case import Cases
 from models.partner_intake_record import PartnerIntakeRecord
 from models.person import Person
 from models.user import User

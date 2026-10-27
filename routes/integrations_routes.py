@@ -5,12 +5,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
-from models.IntegrationSource import IntegrationSource
+from models.agencies import Agencies
+from models.integration_source import IntegrationSource
+from models.integration_source_agency import IntegrationSourceAgency
 from models.user import User
-from security.auth import get_current_user, hash_password, require_role
+from security.auth import get_current_user, require_role
+from security.partner_tokens import hash_partner_token
 from services.activity_service import create_activity_log
 from services.pagination import PaginationParams, paginate_query
-
 
 router = APIRouter(prefix="/integrations", tags=["Integrations"])
 
@@ -51,7 +53,9 @@ def serialize_integration_source(source: IntegrationSource) -> dict:
         "adapter_key": source.adapter_key,
         "field_mapping": source.field_mapping,
         "allowed_record_types": source.allowed_record_types,
-        "authorized_agency_ids": source.authorized_agency_ids,
+        "authorized_agency_ids": sorted(
+            item.agency_id for item in source.authorized_agencies
+        ),
         "match_threshold": source.match_threshold,
         "webhook_configured": bool(source.webhook_secret_hash),
         "created_at": source.created_at,
@@ -63,7 +67,37 @@ def validate_webhook_token(token: str | None) -> str | None:
         return None
     if len(token) < 32:
         raise HTTPException(status_code=400, detail="Partner webhook token must be at least 32 characters")
-    return hash_password(token)
+    return hash_partner_token(token)
+
+
+def replace_authorized_agencies(
+    db: Session,
+    source: IntegrationSource,
+    agency_ids: list[int] | None,
+) -> None:
+    if agency_ids is None:
+        return
+    normalized_ids = sorted(set(agency_ids))
+    found_ids = (
+        {
+            agency_id
+            for (agency_id,) in db.query(Agencies.agency_id)
+            .filter(Agencies.agency_id.in_(normalized_ids))
+            .all()
+        }
+        if normalized_ids
+        else set()
+    )
+    missing_ids = set(normalized_ids).difference(found_ids)
+    if missing_ids:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown authorized agency IDs: {', '.join(map(str, sorted(missing_ids)))}",
+        )
+    source.authorized_agencies = [
+        IntegrationSourceAgency(agency_id=agency_id)
+        for agency_id in normalized_ids
+    ]
 
 
 @router.post("/")
@@ -101,7 +135,6 @@ def create_integration_source(
         adapter_key=data.adapter_key,
         field_mapping=data.field_mapping,
         allowed_record_types=data.allowed_record_types,
-        authorized_agency_ids=data.authorized_agency_ids,
         match_threshold=max(1, min(data.match_threshold, 100)),
         webhook_secret_hash=validate_webhook_token(data.webhook_token),
         status="pending",
@@ -109,6 +142,7 @@ def create_integration_source(
     )
 
     db.add(source)
+    replace_authorized_agencies(db, source, data.authorized_agency_ids)
     db.commit()
     db.refresh(source)
 
@@ -137,7 +171,10 @@ def get_integration_sources(
     if current_user.role != "platform_admin":
         query = query.filter(
             IntegrationSource.status == "approved",
-            IntegrationSource.is_active == True,  # noqa: E712
+            IntegrationSource.is_active.is_(True),
+            IntegrationSource.authorized_agencies.any(
+                IntegrationSourceAgency.agency_id == current_user.agency_id
+            ),
         )
 
     sources = paginate_query(
@@ -179,8 +216,7 @@ def update_integration_source(
         source.field_mapping = data.field_mapping
     if data.allowed_record_types is not None:
         source.allowed_record_types = data.allowed_record_types
-    if data.authorized_agency_ids is not None:
-        source.authorized_agency_ids = data.authorized_agency_ids
+    replace_authorized_agencies(db, source, data.authorized_agency_ids)
     if data.match_threshold is not None:
         source.match_threshold = max(1, min(data.match_threshold, 100))
     if data.webhook_token is not None:

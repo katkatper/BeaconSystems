@@ -6,7 +6,6 @@ import struct
 import time
 from urllib.parse import quote
 
-
 MFA_ISSUER = "Beacon"
 MFA_STEP_SECONDS = 30
 MFA_DIGITS = 6

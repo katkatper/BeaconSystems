@@ -5,7 +5,6 @@ from services.case_numbering import (
     select_missing_person_case_number,
 )
 
-
 OPENED_AT = datetime(2026, 10, 10, 12, 0, 0)
 
 

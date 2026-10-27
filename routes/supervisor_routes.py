@@ -2,11 +2,11 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import case as sql_case
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
-from models.IntegrationSource import IntegrationSource
 from models.activity_log import ActivityLog
 from models.agency_exchange import AgencyExchange
 from models.alerts import Alerts
@@ -15,6 +15,7 @@ from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
 from models.case_team_member import CaseTeamMember
 from models.evidence import Evidence
+from models.integration_source import IntegrationSource
 from models.leads import Leads
 from models.legal_access_request import LegalAccessRequest
 from models.sighting import Sighting
@@ -22,7 +23,6 @@ from models.timeline_events import Timeline_Event
 from models.user import User
 from security.auth import require_role
 from services.activity_service import create_activity_log
-
 
 router = APIRouter(prefix="/supervisor", tags=["Supervisor Review"])
 
@@ -111,9 +111,7 @@ def get_supervisor_queue(
             ~func.lower(Cases.case_status).in_(inactive_statuses),
         )
     )
-    open_cases = open_case_query.all()
-    open_case_ids = [case.case_id for case in open_cases]
-    open_case_filter = open_case_ids or [-1]
+    open_case_filter = open_case_query.with_entities(Cases.case_id)
 
     evidence_query = evidence_query.filter(Evidence.case_id.in_(open_case_filter))
     exchange_query = exchange_query.filter(AgencyExchange.case_id.in_(open_case_filter))
@@ -133,18 +131,23 @@ def get_supervisor_queue(
             .all()
         )
     }
+    activity_count_query = db.query(
+        ActivityLog.user_id,
+        func.count(ActivityLog.id),
+    ).filter(ActivityLog.timestamp >= fourteen_days_ago)
+    if current_user.role != "platform_admin":
+        activity_count_query = activity_count_query.filter(
+            ActivityLog.agency_id == current_user.agency_id
+        )
     recent_activity_counts = {
         user_id: count
         for user_id, count in (
-            db.query(ActivityLog.user_id, func.count(ActivityLog.id))
-            .filter(ActivityLog.timestamp >= fourteen_days_ago)
-            .group_by(ActivityLog.user_id)
-            .all()
+            activity_count_query.group_by(ActivityLog.user_id).all()
         )
     }
     investigator_workload = []
 
-    for investigator in investigator_query.order_by(User.username.asc()).all():
+    for investigator in investigator_query.order_by(User.username.asc()).limit(500).all():
         active_cases = active_case_counts.get(investigator.user_id, 0)
         recent_results = recent_activity_counts.get(investigator.user_id, 0)
         workload_status = "balanced"
@@ -187,32 +190,57 @@ def get_supervisor_queue(
             "updated_at": case.updated_at,
         })
 
+    normalized_lead_status = func.lower(func.coalesce(Leads.status, "new"))
+    lead_row = leads_query.with_entities(
+        func.count(Leads.lead_id).label("total"),
+        func.sum(
+            sql_case(
+                (
+                    ~normalized_lead_status.in_(
+                        ("assigned", "open", "active", "pending", "closed", "unassigned")
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ).label("new"),
+        func.sum(
+            sql_case(
+                (normalized_lead_status.in_(("assigned", "open", "active")), 1),
+                else_=0,
+            )
+        ).label("assigned"),
+        func.sum(sql_case((normalized_lead_status == "pending", 1), else_=0)).label("pending"),
+        func.sum(sql_case((normalized_lead_status == "closed", 1), else_=0)).label("closed"),
+        func.sum(
+            sql_case(
+                (normalized_lead_status.in_(("new", "unassigned")), 1),
+                else_=0,
+            )
+        ).label("unassigned"),
+        func.sum(
+            sql_case(
+                (
+                    normalized_lead_status.in_(("pending", "assigned", "open", "active"))
+                    & (Leads.created_at <= seven_days_ago),
+                    1,
+                ),
+                else_=0,
+            )
+        ).label("overdue_followups"),
+    ).one()
     lead_status_counts = {
-        "total": 0,
-        "new": 0,
-        "assigned": 0,
-        "pending": 0,
-        "closed": 0,
-        "unassigned": 0,
-        "overdue_followups": 0,
+        key: int(getattr(lead_row, key) or 0)
+        for key in (
+            "total",
+            "new",
+            "assigned",
+            "pending",
+            "closed",
+            "unassigned",
+            "overdue_followups",
+        )
     }
-
-    for lead in leads_query.all():
-        lead_status_counts["total"] += 1
-        status = (lead.status or "new").strip().lower()
-
-        if status in lead_status_counts:
-            lead_status_counts[status] += 1
-        elif status in {"open", "active"}:
-            lead_status_counts["assigned"] += 1
-        else:
-            lead_status_counts["new"] += 1
-
-        if status in {"new", "unassigned"}:
-            lead_status_counts["unassigned"] += 1
-
-        if status in {"pending", "assigned", "open", "active"} and lead.created_at <= seven_days_ago:
-            lead_status_counts["overdue_followups"] += 1
 
     unassigned_case_count = open_case_query.filter(
         Cases.investigator_id == None  # noqa: E711
@@ -225,10 +253,10 @@ def get_supervisor_queue(
         )
         .count()
     )
-    missing_reports = len([
-        case for case in open_cases
-        if (case.updated_at or case.created_at or now) <= fourteen_days_ago
-    ])
+    missing_reports = open_case_query.filter(
+        func.coalesce(Cases.updated_at, Cases.created_at) <= fourteen_days_ago
+    ).count()
+    active_case_count = open_case_query.count()
     high_risk_case_count = (
         open_case_query
         .filter(func.lower(Cases.priority_level).in_(["high", "critical"]))
@@ -255,7 +283,7 @@ def get_supervisor_queue(
     )
 
     command_dashboard = {
-        "active_cases": len(open_cases),
+        "active_cases": active_case_count,
         "high_risk_missing_persons": high_risk_case_count,
         "critical_alerts": critical_alert_count,
         "active_alerts": active_alert_count,
@@ -416,7 +444,26 @@ def get_supervisor_queue(
         .limit(10)
         .all()
     )
-    case_lookup = {case.case_id: case for case in open_cases}
+    label_case_ids = {
+        item.case_id
+        for collection in (
+            recent_timeline_events,
+            recent_sightings,
+            recent_evidence,
+            recent_exchanges,
+            active_bolos,
+        )
+        for item in collection
+        if item.case_id is not None
+    }
+    case_lookup = (
+        {
+            case.case_id: case
+            for case in db.query(Cases).filter(Cases.case_id.in_(label_case_ids)).all()
+        }
+        if label_case_ids
+        else {}
+    )
 
     def case_label(case_id: int):
         case = case_lookup.get(case_id)

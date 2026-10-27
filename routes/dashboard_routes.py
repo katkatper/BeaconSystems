@@ -1,24 +1,25 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import case as sql_case
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
-from models.IntegrationSource import IntegrationSource
-from models.agency_exchange import AgencyExchange
 from models.activity_log import ActivityLog
+from models.agency_exchange import AgencyExchange
 from models.alerts import Alerts
+from models.bolo_alert import BoloAlert
 from models.case import Cases
 from models.case_access_grant import CaseAccessGrant
 from models.evidence import Evidence
-from models.legal_access_request import LegalAccessRequest
+from models.integration_source import IntegrationSource
 from models.leads import Leads
+from models.legal_access_request import LegalAccessRequest
 from models.person import Person
 from models.sighting import Sighting
 from models.user import User
 from security.auth import get_current_user, require_role
-from models.bolo_alert import BoloAlert
 from security.case_access import accessible_case_id_query, apply_case_access_filter
 from services.clock import utc_now
 from services.dashboard_metrics import load_case_dashboard_metrics
@@ -86,14 +87,16 @@ def get_dashboard_summary(
         (Alerts.title.is_(None)) | (~func.lower(Alerts.title).like("%deleted%")),
     )
 
-    new_alerts = dashboard_alert_query.filter(
-        func.lower(Alerts.alert_status) == "active"
-    ).count()
-    amber_alerts = dashboard_alert_query.filter(
-        func.lower(Alerts.alert_status) == "active",
-        (func.lower(func.coalesce(Alerts.alert_type, "")).like("%amber%"))
-        | (func.lower(func.coalesce(Alerts.title, "")).like("%amber%")),
-    ).count()
+    alert_active = func.lower(Alerts.alert_status) == "active"
+    alert_is_amber = (
+        func.lower(func.coalesce(Alerts.alert_type, "")).like("%amber%")
+    ) | (func.lower(func.coalesce(Alerts.title, "")).like("%amber%"))
+    alert_counts = dashboard_alert_query.with_entities(
+        func.sum(sql_case((alert_active, 1), else_=0)),
+        func.sum(sql_case((alert_active & alert_is_amber, 1), else_=0)),
+    ).one()
+    new_alerts = int(alert_counts[0] or 0)
+    amber_alerts = int(alert_counts[1] or 0)
 
     open_legal_statuses = [
         "draft", "submitted_for_supervisor_review", "returned_for_edits",
@@ -101,37 +104,49 @@ def get_dashboard_summary(
         "awaiting_response", "signed_approved", "served", "pending",
         "approved", "missing_info",
     ]
-    open_warrants = legal_query.filter(
-        func.lower(LegalAccessRequest.status).in_(open_legal_statuses),
-        (func.lower(func.coalesce(LegalAccessRequest.request_type, "")).like("%warrant%"))
-        | (func.lower(func.coalesce(LegalAccessRequest.authority_type, "")).like("%warrant%")),
-    ).count()
-
-    pending_legal_requests = legal_query.filter(
-        LegalAccessRequest.status == "pending"
-    ).count()
-    missing_info_legal_requests = legal_query.filter(
-        LegalAccessRequest.status == "missing_info"
-    ).count()
-    denied_legal_requests = legal_query.filter(
-        LegalAccessRequest.status == "denied"
-    ).count()
-    approved_legal_requests = legal_query.filter(
-        LegalAccessRequest.status == "approved"
-    ).count()
+    legal_status = func.lower(LegalAccessRequest.status)
+    is_warrant = (
+        func.lower(func.coalesce(LegalAccessRequest.request_type, "")).like("%warrant%")
+    ) | (
+        func.lower(func.coalesce(LegalAccessRequest.authority_type, "")).like("%warrant%")
+    )
+    legal_counts = legal_query.with_entities(
+        func.sum(
+            sql_case((legal_status.in_(open_legal_statuses) & is_warrant, 1), else_=0)
+        ),
+        func.sum(sql_case((legal_status == "pending", 1), else_=0)),
+        func.sum(sql_case((legal_status == "missing_info", 1), else_=0)),
+        func.sum(sql_case((legal_status == "denied", 1), else_=0)),
+        func.sum(sql_case((legal_status == "approved", 1), else_=0)),
+    ).one()
+    (
+        open_warrants,
+        pending_legal_requests,
+        missing_info_legal_requests,
+        denied_legal_requests,
+        approved_legal_requests,
+    ) = (int(value or 0) for value in legal_counts)
 
     pending_partner_sources = partner_query.filter(
         IntegrationSource.status == "pending"
     ).count()
 
-    evidence_uploaded_today = evidence_query.filter(
-        Evidence.created_at >= today
-    ).count()
-    pending_evidence = evidence_query.filter(
-        func.lower(func.coalesce(Evidence.custody_status, "collected")).notin_(
-            ["completed", "released", "returned", "destroyed", "closed"]
-        )
-    ).count()
+    evidence_counts = evidence_query.with_entities(
+        func.sum(sql_case((Evidence.created_at >= today, 1), else_=0)),
+        func.sum(
+            sql_case(
+                (
+                    func.lower(func.coalesce(Evidence.custody_status, "collected")).notin_(
+                        ["completed", "released", "returned", "destroyed", "closed"]
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ),
+    ).one()
+    evidence_uploaded_today = int(evidence_counts[0] or 0)
+    pending_evidence = int(evidence_counts[1] or 0)
 
     leads_query = db.query(Leads)
     agency_exchange_query = db.query(AgencyExchange)
@@ -271,7 +286,7 @@ def get_dashboard_summary(
     ).count()
 
     active_partner_sources = partner_query.filter(
-        IntegrationSource.is_active == True
+        IntegrationSource.is_active.is_(True)
     ).count()
 
     stalled_cases = case_metrics.inactive_7_days

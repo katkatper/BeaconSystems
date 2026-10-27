@@ -3,7 +3,6 @@
 from collections.abc import Mapping
 from typing import Any
 
-
 RISK_LEVELS = ("low", "medium", "high", "critical")
 RISK_PRIORITY = {level: priority for priority, level in enumerate(RISK_LEVELS)}
 VULNERABLE_HOUSING_STATUSES = {"homeless", "unhoused", "transient"}

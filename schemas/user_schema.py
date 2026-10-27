@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 # SCHEMAS FOR USER CREATION, LOGIN, AND RESPONSE
 
@@ -45,13 +45,12 @@ class AdminPasswordReset(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     user_id: int
     username: str
     email: str
     role: str
-
-    class Config:
-        from_attributes = True
 
 class UserRoleUpdate(BaseModel):
     role: str

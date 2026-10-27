@@ -7,7 +7,6 @@ from models.case import Cases
 from models.user import User
 from services.clock import utc_now
 
-
 AUTO_APPROVED_REASON_CATEGORIES = {
     "assisting_investigator",
     "shift_coverage",

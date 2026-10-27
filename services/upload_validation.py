@@ -5,7 +5,6 @@ from fastapi import HTTPException
 
 from config.settings import MAX_UPLOAD_BYTES
 
-
 IMAGE_SIGNATURES = {
     "image/jpeg": (b"\xff\xd8\xff",),
     "image/png": (b"\x89PNG\r\n\x1a\n",),

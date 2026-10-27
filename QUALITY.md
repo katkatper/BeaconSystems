@@ -44,10 +44,12 @@ A production-bound change must:
 
 ## Current measured baseline
 
-As of October 10, 2026, the backend suite has 141 passing tests plus seven
-parameterized subtests and approximately 25.0 percent statement coverage across
-the measured Python application packages. This is a floor, not a production
-target. Most API routes still lack behavioral execution coverage.
+As of October 27, 2026, the backend suite has 238 passing tests plus seven
+parameterized subtests and approximately 46 percent statement coverage across
+the measured Python application packages. CI enforces a 40 percent floor. This
+is a floor, not a production target; authentication, tenant isolation, partner
+authorization, provider normalization, and candidate matching receive priority
+over percentage-only test additions.
 
 The largest modules also exceed normal review-friendly size, including several
 route modules and React pages over 700 lines. They should be split by domain as

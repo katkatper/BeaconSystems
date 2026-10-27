@@ -2,7 +2,6 @@ from fastapi import HTTPException, status
 
 from models.user import User
 
-
 USER_MANAGER_ROLES = ("platform_admin", "agency_admin")
 ASSIGNABLE_ROLES = {
     "platform_admin",

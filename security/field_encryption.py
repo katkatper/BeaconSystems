@@ -5,7 +5,6 @@ from cryptography.fernet import Fernet, InvalidToken
 
 from config.settings import IS_PRODUCTION, MFA_SECRET_ENCRYPTION_KEY, SECRET_KEY
 
-
 ENCRYPTED_PREFIX = "enc:v1:"
 
 

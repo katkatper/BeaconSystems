@@ -5,6 +5,9 @@ import socket
 from threading import Event
 from time import monotonic
 
+import services.alert_delivery_jobs  # noqa: F401, E402
+import services.matching_jobs  # noqa: F401, E402
+import services.partner_intake_jobs  # noqa: F401, E402
 from config.settings import (
     IS_PRODUCTION,
     JOB_COMPLETED_RETENTION_DAYS,
@@ -20,10 +23,6 @@ from services.job_handlers import dispatch_job
 from services.job_queue import claim_next_job, complete_job, fail_job, recover_stale_jobs
 from services.job_retention import prune_operational_history
 from services.worker_monitoring import record_worker_heartbeat
-import services.matching_jobs  # noqa: F401, E402
-import services.alert_delivery_jobs  # noqa: F401, E402
-import services.partner_intake_jobs  # noqa: F401, E402
-
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("beacon.worker")

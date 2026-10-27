@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
-from fastapi import Response
-from sqlalchemy.orm import Session
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from models.agency_exchange import AgencyExchange
@@ -10,9 +10,8 @@ from models.case import Cases
 from models.user import User
 from security.auth import require_role
 from security.case_access import accessible_case_ids
-from services.pagination import PaginationParams, paginate_query
 from services.activity_service import create_activity_log
-
+from services.pagination import PaginationParams, paginate_query
 
 router = APIRouter(prefix="/agency-exchanges", tags=["Agency Exchanges"])
 

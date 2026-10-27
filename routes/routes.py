@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from routes.users_routes import router as users_router
 from routes.cases_routes import router as cases_router
 from routes.sightings_routes import router as sightings_router
+from routes.users_routes import router as users_router
 
 router = APIRouter()
 

@@ -9,6 +9,7 @@ from routes.partner_intake_routes import (
     authorize_partner_destination,
 )
 from security.auth import hash_password
+from security.partner_tokens import hash_partner_token
 from services.partner_matching import score_bolo_vehicle_match
 from services.provider_observations import (
     normalize_identifier,
@@ -105,11 +106,17 @@ def test_identifier_normalization_handles_empty_values():
 
 
 def test_source_specific_webhook_credential_is_enforced():
-    source = SimpleNamespace(webhook_secret_hash=hash_password("a" * 32))
+    source = SimpleNamespace(webhook_secret_hash=hash_partner_token("a" * 32))
 
     authenticate_partner_source(source, "a" * 32)
     with pytest.raises(HTTPException, match="Invalid partner webhook token"):
         authenticate_partner_source(source, "b" * 32)
+
+
+def test_legacy_bcrypt_provider_credential_remains_valid_until_rotation():
+    source = SimpleNamespace(webhook_secret_hash=hash_password("a" * 32))
+
+    authenticate_partner_source(source, "a" * 32)
 
 
 def test_source_serialization_never_exposes_webhook_hash():
@@ -124,7 +131,7 @@ def test_source_serialization_never_exposes_webhook_hash():
         adapter_key="canonical_v1",
         field_mapping={"plate_number": "vehicle.plate"},
         allowed_record_types=["vehicle_observation"],
-        authorized_agency_ids=[12],
+        authorized_agencies=[SimpleNamespace(agency_id=12)],
         match_threshold=60,
         webhook_secret_hash="secret-hash",
         created_at=None,
@@ -139,13 +146,16 @@ def test_source_serialization_never_exposes_webhook_hash():
 def test_source_specific_webhook_is_tenant_destination_scoped():
     source = SimpleNamespace(
         webhook_secret_hash="configured",
-        authorized_agency_ids=[12, 13],
+        authorized_agencies=[
+            SimpleNamespace(agency_id=12),
+            SimpleNamespace(agency_id=13),
+        ],
     )
 
     authorize_partner_destination(source, 12)
     with pytest.raises(HTTPException, match="not authorized"):
         authorize_partner_destination(source, 99)
 
-    source.authorized_agency_ids = []
+    source.authorized_agencies = []
     with pytest.raises(HTTPException, match="no authorized destination"):
         authorize_partner_destination(source, 12)

@@ -1,9 +1,8 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
-from fastapi import Response
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
@@ -15,7 +14,6 @@ from security.auth import get_current_user, require_role
 from security.case_access import apply_case_access_filter, get_authorized_case
 from services.activity_service import create_activity_log
 from services.pagination import PaginationParams, paginate_query
-
 
 router = APIRouter(prefix="/legal-access", tags=["Legal Access Requests"])
 

@@ -84,21 +84,27 @@ def mark_all_notifications_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    unread = user_notifications(db, current_user).filter(Notification.read_at.is_(None)).all()
     read_at = utc_now_aware()
-    for notification in unread:
-        notification.read_at = read_at
+    updated_count = user_notifications(db, current_user).filter(
+        Notification.read_at.is_(None)
+    ).update(
+        {Notification.read_at: read_at},
+        synchronize_session=False,
+    )
     db.flush()
-    if unread:
+    if updated_count:
         create_activity_log(
             db=db,
             user_id=current_user.user_id,
             agency_id=current_user.agency_id,
             action="READ_ALL_NOTIFICATIONS",
             entity="notification",
-            details=f"{current_user.username} read {len(unread)} notifications",
+            details=f"{current_user.username} read {updated_count} notifications",
             ip_address=request.client.host if request.client else None,
         )
     else:
         db.commit()
-    return {"read_count": len(unread), "read_at": read_at if unread else None}
+    return {
+        "read_count": updated_count,
+        "read_at": read_at if updated_count else None,
+    }

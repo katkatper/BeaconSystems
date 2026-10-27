@@ -1,0 +1,17 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".venv",
+    ".venv-py314-backup",
+    "migrations/legacy_versions",
+    "node_modules",
+    "beaconsystems.client/dist",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

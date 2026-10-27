@@ -1,5 +1,5 @@
-import re
 import json
+import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import urlopen
@@ -12,7 +12,6 @@ from config.settings import (
     ARCGIS_GEOCODE_URL,
     ARCGIS_GEOCODING_ENABLED,
 )
-
 
 KNOWN_LOCATIONS = {
     "1001 california st houston tx 77006": (29.7436, -95.3913),

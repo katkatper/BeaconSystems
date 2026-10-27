@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float
-from database.connection import Base
 from datetime import datetime
 
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+
+from database.connection import Base
 
 
 class Cameras(Base):

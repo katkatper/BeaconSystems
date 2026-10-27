@@ -1,6 +1,5 @@
 from typing import Any
 
-
 HIGH_CONFIDENCE_TERMS = (
     "confirmed",
     "identified",

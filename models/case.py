@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Index
-from database.connection import Base
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
+
+from database.connection import Base
 
 
 class Cases(Base):

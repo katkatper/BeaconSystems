@@ -60,13 +60,11 @@ jobs:
           BEACON_STAGING_ENV_FILE: config/staging.env.example
         run: docker compose -f compose.staging.yml config --quiet
       - name: Audit Python dependencies
-        # python-jose currently installs ecdsa, but Beacon signs only with HS256.
-        # PYSEC-2026-1325 affects ECDSA operations and has no fixed release.
-        run: python -m pip_audit -r requirements.txt --progress-spinner off --ignore-vuln PYSEC-2026-1325
+        run: python -m pip_audit -r requirements.txt --progress-spinner off
       - name: Scan Python source for security issues
         run: python -m bandit -r config database integrations models routes security services -ll
-      - name: Reject critical Python correctness errors
-        run: python -m ruff check config database integrations models routes schemas security services main.py scripts tests --select E9,F63,F7,F82
+      - name: Enforce Python correctness and import hygiene
+        run: python -m ruff check config database integrations models routes schemas security services main.py scripts tests
       - name: Require one migration head
         run: test "$(alembic heads | wc -l)" -eq 1
       - name: Apply migrations to PostgreSQL
@@ -78,7 +76,7 @@ jobs:
           python -m pytest tests -q -p no:cacheprovider
           --cov=config --cov=database --cov=integrations --cov=models
           --cov=routes --cov=schemas --cov=security --cov=services
-          --cov-fail-under=24 --cov-report=term
+          --cov-fail-under=40 --cov-report=term
       - name: Verify PostgreSQL multi-worker queue claims
         env:
           BEACON_QUEUE_TEST_DATABASE_URL: postgresql+psycopg2://beacon_ci:beacon_ci_password@127.0.0.1:5432/beacon_ci

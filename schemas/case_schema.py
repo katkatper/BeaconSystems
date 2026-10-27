@@ -1,6 +1,6 @@
 from typing import Optional
-from pydantic import BaseModel
 
+from pydantic import BaseModel, ConfigDict
 
 
 class CaseCreate(BaseModel):
@@ -52,6 +52,7 @@ class CaseUpdate(BaseModel):
 
 
 class CaseResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
     case_id: int
 
@@ -76,10 +77,6 @@ class CaseResponse(BaseModel):
     missing_person_last_name: Optional[str] = None
 
     investigator_name: Optional[str] = None
-
-
-    class Config:
-        from_attributes = True
 
 
 class CaseCreateResponse(BaseModel):

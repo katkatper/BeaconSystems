@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 from sqlalchemy.orm import Session
 
-from models.IntegrationSource import IntegrationSource
 from models.activity_log import ActivityLog
+from models.integration_source import IntegrationSource
 from models.partner_intake_record import PartnerIntakeRecord
 from services.activity_service import create_activity_log
 from services.job_handlers import register_job_handler

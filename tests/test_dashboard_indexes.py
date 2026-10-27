@@ -1,7 +1,6 @@
 import ast
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MIGRATION_PATH = (
     REPOSITORY_ROOT

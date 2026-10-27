@@ -1,6 +1,7 @@
-from typing import Optional
-from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
 
 #PYDANTIC MODELS FOR SIGHTINGS
 
@@ -41,6 +42,7 @@ class SightingUpdate(BaseModel):
 
 
 class SightingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
     sighting_id: int
 
@@ -71,11 +73,6 @@ class SightingResponse(BaseModel):
     confidence_score: Optional[float] = None
 
     created_at: Optional[datetime] = None
-
-
-    class Config:
-
-        from_attributes = True
 
 
 class MessageResponse(BaseModel):

@@ -14,7 +14,6 @@ from services.activity_service import create_activity_log
 from services.clock import utc_now
 from services.pagination import PaginationParams, paginate_query
 
-
 router = APIRouter(prefix="/leads", tags=["Leads"])
 LEAD_STATUSES = {"new", "assigned", "in_progress", "pending", "resolved", "closed"}
 LEAD_PRIORITIES = {"low", "medium", "high", "critical"}

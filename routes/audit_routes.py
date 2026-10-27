@@ -3,14 +3,13 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
-from models.IntegrationSource import IntegrationSource
 from models.activity_log import ActivityLog
 from models.case_access_grant import CaseAccessGrant
 from models.evidence_chain import EvidenceChain
+from models.integration_source import IntegrationSource
 from models.legal_access_request import LegalAccessRequest
 from models.user import User
 from security.auth import require_role
-
 
 router = APIRouter(prefix="/audit", tags=["Audit & Compliance"])
 

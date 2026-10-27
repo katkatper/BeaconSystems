@@ -7,10 +7,11 @@ from sqlalchemy.pool import StaticPool
 
 from database.connection import Base
 from database.tenant_context import configure_tenant_session
-from models.IntegrationSource import IntegrationSource
 from models.agencies import Agencies
 from models.case import Cases
 from models.external_record import ExternalRecord
+from models.integration_source import IntegrationSource
+from models.integration_source_agency import IntegrationSourceAgency
 from models.partner_intake_record import PartnerIntakeRecord
 from models.person import Person
 from models.user import User
@@ -42,6 +43,7 @@ class TenantIsolationDatabaseTests(unittest.TestCase):
                 Person.__table__,
                 Cases.__table__,
                 IntegrationSource.__table__,
+                IntegrationSourceAgency.__table__,
                 ExternalRecord.__table__,
                 PartnerIntakeRecord.__table__,
             ],

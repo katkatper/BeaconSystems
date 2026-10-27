@@ -21,7 +21,8 @@ from models.data_sources import Data_Source
 from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
 from models.external_record import ExternalRecord
-from models.IntegrationSource import IntegrationSource
+from models.integration_source import IntegrationSource
+from models.integration_source_agency import IntegrationSourceAgency
 from models.investigators import Investigators
 from models.leads import Leads
 from models.legal_access_request import LegalAccessRequest

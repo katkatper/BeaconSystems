@@ -9,6 +9,21 @@ class BoloAlert(Base):
     __tablename__ = "bolo_alerts"
     __table_args__ = (
         Index("ix_bolo_alerts_agency_status_created", "agency_id", "status", "created_at"),
+        Index(
+            "ix_bolo_alerts_agency_status_plate",
+            "agency_id",
+            "status",
+            "plate_number",
+            "plate_state",
+        ),
+        Index(
+            "ix_bolo_alerts_agency_status_vehicle",
+            "agency_id",
+            "status",
+            "vehicle_make",
+            "vehicle_model",
+            "vehicle_color",
+        ),
     )
 
     bolo_id = Column(Integer, primary_key=True, index=True)

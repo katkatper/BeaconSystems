@@ -1,8 +1,7 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, field_validator
-from fastapi import Response
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -17,7 +16,6 @@ from services.geocoding_fields import apply_geocode_result
 from services.geocoding_service import geocode_address
 from services.pagination import PaginationParams, paginate_query
 from services.provider_observations import normalize_identifier
-
 
 router = APIRouter(prefix="/bolos", tags=["BOLO Alerts"])
 

@@ -1,8 +1,9 @@
 
 from datetime import datetime, timedelta
 
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from jose import JWTError, jwt
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy.orm import Session
 
 from config.settings import (
@@ -150,7 +151,7 @@ def verify_mfa_challenge_token(token: str, expected_type: str) -> tuple[int, int
         )
         user_id = int(payload.get("sub"))
         auth_version = int(payload.get("auth_version"))
-    except (JWTError, TypeError, ValueError):
+    except (InvalidTokenError, TypeError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA challenge")
 
     if payload.get("token_type") != expected_type or user_id <= 0 or auth_version < 0:
@@ -669,7 +670,7 @@ def logout(
 ):
     try:
         session_id = str(decode_access_token(token).get("sid") or "")
-    except JWTError:
+    except InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid authentication")
 
     auth_session = db.query(AuthSession).filter(
@@ -689,7 +690,7 @@ def logout(
 def current_session_id(token: str) -> str:
     try:
         return str(decode_access_token(token).get("sid") or "")
-    except JWTError:
+    except InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid authentication")
 
 

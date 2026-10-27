@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class PersonCreate(BaseModel):
@@ -199,6 +199,7 @@ class PersonUpdate(BaseModel):
 
 
 class PersonResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
     person_id: int
 
@@ -298,18 +299,11 @@ class PersonResponse(BaseModel):
 
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
-
-
 class PersonRegistrySummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     person_id: int
     first_name: str
     last_name: str
-
-    class Config:
-        from_attributes = True
-
 
 class MessageResponse(BaseModel):
     message: str

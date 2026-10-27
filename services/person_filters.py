@@ -5,7 +5,6 @@ from datetime import datetime, time, timedelta
 
 from sqlalchemy import or_
 
-
 REPORTED_ON_FORMAT = "%Y-%m-%d"
 
 

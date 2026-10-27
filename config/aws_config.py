@@ -3,6 +3,7 @@ from botocore.config import Config
 
 from config.settings import AWS_CONNECT_TIMEOUT_SECONDS, AWS_READ_TIMEOUT_SECONDS
 
+
 def get_s3_client():
     session = boto3.Session()
     region = session.region_name

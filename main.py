@@ -22,38 +22,9 @@ from config.settings import (
 )
 from database.connection import engine
 from database.security_posture import validate_database_security
-from models.activity_log import ActivityLog
-from models.agencies import Agencies
-from models.agency_exchange import AgencyExchange
-from models.alert_delivery import AlertDelivery
-from models.alerts import Alerts
-from models.async_job import AsyncJob
-from models.auth_session import AuthSession
-from models.bolo_alert import BoloAlert
-from models.cameras import Cameras
-from models.case import Cases
-from models.case_access_grant import CaseAccessGrant
-from models.case_team_member import CaseTeamMember
-from models.data_matches import Data_Matches
-from models.data_sources import Data_Source
-from models.evidence import Evidence
-from models.evidence_chain import EvidenceChain
 
 # Import application models so SQLAlchemy/Alembic metadata includes all tables.
 # Alembic is the source of truth for schema changes.
-from models.external_record import ExternalRecord
-from models.IntegrationSource import IntegrationSource
-from models.investigators import Investigators
-from models.leads import Leads
-from models.legal_access_request import LegalAccessRequest
-from models.match import Match
-from models.notification import Notification
-from models.partner_intake_record import PartnerIntakeRecord
-from models.person import Person
-from models.sighting import Sighting
-from models.timeline_events import Timeline_Event
-from models.user import User
-from models.worker_heartbeat import WorkerHeartbeat
 from routes import (
     external_records_routes,
     integrations_routes,
@@ -87,8 +58,8 @@ from routes.timeline_events_routes import router as timeline_events_router
 from routes.users_routes import router as users_router
 from security.http_middleware import SecurityHeadersMiddleware
 from security.rate_limit import validate_rate_limit_backend
-from services.malware_scanner import malware_scanner
 from services.http_metrics import http_metrics
+from services.malware_scanner import malware_scanner
 from services.object_storage import object_storage
 from services.readiness import readiness_service
 

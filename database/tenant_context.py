@@ -1,7 +1,6 @@
 from sqlalchemy import event, text
 from sqlalchemy.orm import Session
 
-
 TENANT_AGENCY_KEY = "beacon.agency_id"
 PLATFORM_ADMIN_KEY = "beacon.platform_admin"
 

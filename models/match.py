@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.sql import func
 
 from database.connection import Base
@@ -8,6 +8,12 @@ class Match(Base):
     __tablename__ = "matches"
     __table_args__ = (
         Index("ix_matches_agency_status_created", "agency_id", "status", "created_at"),
+        UniqueConstraint(
+            "agency_id",
+            "person_id",
+            "external_record_id",
+            name="uq_matches_agency_person_record",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)

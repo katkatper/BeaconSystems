@@ -1,8 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Float, Index
-from database.connection import Base
 from datetime import datetime
 
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
 
+from database.connection import Base
 
 
 class Evidence(Base):

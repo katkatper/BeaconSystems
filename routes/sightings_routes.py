@@ -1,20 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from fastapi import Response
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy.orm import Session
+
 from database.connection import get_db
 from models.sighting import Sighting
+from models.timeline_events import Timeline_Event
 from models.user import User
+from schemas.sighting_schema import (
+    MessageResponse,
+    SightingCreate,
+    SightingResponse,
+    SightingUpdate,
+)
 from security.auth import get_current_user, require_role
 from security.case_access import (
     apply_related_case_access_filter,
     assert_case_write_access,
     get_authorized_case,
 )
-from services.activity_service import create_activity_log 
-from schemas.sighting_schema import SightingCreate, SightingUpdate, SightingResponse, MessageResponse
-from models.timeline_events import Timeline_Event
+from services.activity_service import create_activity_log
 from services.alert_service import create_alert
 from services.geocoding_fields import apply_geocode_result
 from services.geocoding_service import geocode_address

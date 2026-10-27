@@ -13,7 +13,6 @@ from config.settings import (
     RATE_LIMIT_REDIS_URL,
 )
 
-
 logger = logging.getLogger("beacon.security")
 _redis_client = (
     Redis.from_url(

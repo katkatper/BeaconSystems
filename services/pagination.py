@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 from fastapi import HTTPException, Query, Response
 
-
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
 

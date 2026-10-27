@@ -1,6 +1,9 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float
-from database.connection import Base
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Integer, String
+
+from database.connection import Base
+
 
 class Investigators(Base):
 
