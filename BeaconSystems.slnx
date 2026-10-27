@@ -6,5 +6,4 @@
     <Build />
     <Deploy />
   </Project>
-  <Project Path="BeaconSystems.Server/BeaconSystems.Server.csproj" />
 </Solution>

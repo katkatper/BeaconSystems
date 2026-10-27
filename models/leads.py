@@ -33,7 +33,12 @@ class Leads(Base):
 
     resolution = Column(Text, nullable=True)
 
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
 
     closed_at = Column(DateTime, nullable=True)
 

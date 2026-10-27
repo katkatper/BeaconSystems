@@ -1,3 +1,5 @@
+# ruff: noqa: F401
+
 import os
 from logging.config import fileConfig
 
@@ -9,7 +11,9 @@ from database.connection import Base
 from models.activity_log import ActivityLog
 from models.agencies import Agencies
 from models.agency_exchange import AgencyExchange
+from models.alert_delivery import AlertDelivery
 from models.alerts import Alerts
+from models.async_job import AsyncJob
 from models.auth_session import AuthSession
 from models.bolo_alert import BoloAlert
 from models.cameras import Cameras
@@ -33,6 +37,7 @@ from models.person import Person
 from models.sighting import Sighting
 from models.timeline_events import Timeline_Event
 from models.user import User
+from models.worker_heartbeat import WorkerHeartbeat
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

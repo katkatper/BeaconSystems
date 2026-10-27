@@ -26,7 +26,6 @@ def upgrade():
         sa.Column("priority", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("max_attempts", sa.Integer(), nullable=False, server_default="5"),
-        sa.Column("replay_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("available_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
         sa.Column("locked_at", sa.DateTime(), nullable=True),
         sa.Column("locked_by", sa.String(length=200), nullable=True),

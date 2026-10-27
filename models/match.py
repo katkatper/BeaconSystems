@@ -36,7 +36,12 @@ class Match(Base):
 
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
 
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,6 +1,17 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 
 from database.connection import Base
 
@@ -10,6 +21,16 @@ class Evidence(Base):
     __tablename__ = "evidence"
     __table_args__ = (
         Index("ix_evidence_case_created", "case_id", "created_at"),
+        Index(
+            "ix_evidence_retention_disposition",
+            "legal_hold",
+            "disposition_status",
+            "retention_until",
+        ),
+        CheckConstraint(
+            "legal_hold = false OR legal_hold_reason IS NOT NULL",
+            name="ck_evidence_legal_hold_reason",
+        ),
     )
 
 

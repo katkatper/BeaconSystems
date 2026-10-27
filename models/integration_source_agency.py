@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -13,6 +13,8 @@ class IntegrationSourceAgency(Base):
             "agency_id",
             name="uq_integration_source_agency",
         ),
+        Index("ix_integration_source_agencies_source", "integration_source_id"),
+        Index("ix_integration_source_agencies_agency", "agency_id"),
     )
 
     id = Column(Integer, primary_key=True)
@@ -20,13 +22,11 @@ class IntegrationSourceAgency(Base):
         Integer,
         ForeignKey("integration_sources.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     agency_id = Column(
         Integer,
         ForeignKey("agencies.agency_id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     jurisdiction = Column(String(255), nullable=True)
     allowed_record_types = Column(JSON, nullable=True)

@@ -10,6 +10,7 @@ class ActivityLog(Base):
     __tablename__ = "activity_log"
     __table_args__ = (
         Index("ix_activity_log_agency_created", "agency_id", "timestamp"),
+        Index("ix_activity_log_agency_integrity", "agency_id", "id", "event_hash"),
     )
 
 

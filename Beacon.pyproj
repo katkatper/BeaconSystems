@@ -4,6 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>911ebf75-e25e-40dc-8fb2-c712eabc442e</ProjectGuid>
     <ProjectHome>.</ProjectHome>
+    <ProjectView>ProjectFiles</ProjectView>
     <StartupFile>main.py</StartupFile>
     <SearchPath>
     </SearchPath>
@@ -103,9 +104,6 @@
     <Compile Include="services\auth_service.py" />
     <Compile Include="services\case_service.py" />
     <Compile Include="services\match_service.py" />
-    <Compile Include="test_rds.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Utility Logger\logger.py" />
   </ItemGroup>
   <ItemGroup>
