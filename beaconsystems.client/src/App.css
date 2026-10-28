@@ -1,6 +1,6 @@
 .main-background {
     min-height: 100vh;
-    background-image: url("/src/assets/BeaconLogo.png");
+    background-image: url("/src/assets/BeaconLogo.jpg");
     background-size: cover;
     background-position: center 72%;
     background-repeat: no-repeat;
@@ -6719,6 +6719,8 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
 .beacon-page-header h1,
 .dashboard-header h1 {
     margin: 0 0 8px;
+    color: #f8fafc;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
 }
 
 .beacon-page-header p,
