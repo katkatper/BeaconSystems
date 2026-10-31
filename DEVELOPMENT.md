@@ -47,6 +47,11 @@ The example frontend environment points to the local API. Production builds must
 set `VITE_API_BASE_URL` to the approved HTTPS API address, or leave it unset when
 the API is served from the same origin.
 
+Vite reads `.env` only when it starts. Restart `npm run dev` after creating or
+changing the file. If sign-in reports that Beacon's login service was not found,
+confirm that `beaconsystems.client/.env` exists and that the API is listening at
+the address configured by `VITE_API_BASE_URL`.
+
 ## Visual Studio
 
 Open `BeaconSystems.slnx`. In the Python Environments node, add the existing

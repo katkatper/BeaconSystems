@@ -2,6 +2,24 @@ import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const LOGIN_ERROR_MESSAGES = {
+    401: "Invalid username or password.",
+    403: "This account or agency is inactive. Contact your Beacon administrator.",
+    404: "Beacon's login service was not found. Confirm the frontend API address is configured.",
+    429: "Too many sign-in attempts. Wait a few minutes and try again.",
+    503: "Beacon authentication is temporarily unavailable. Try again shortly.",
+};
+
+async function loginError(response) {
+    const payload = await response.json().catch(() => ({}));
+    const message = LOGIN_ERROR_MESSAGES[response.status]
+        || payload.detail
+        || `Beacon could not complete sign-in (error ${response.status}).`;
+    const error = new Error(message);
+    error.status = response.status;
+    return error;
+}
+
 
 
 function Login({ onLogin }) {
@@ -19,6 +37,7 @@ function Login({ onLogin }) {
     const [mfaToken, setMfaToken] = useState("");
     const [mfaCode, setMfaCode] = useState("");
     const [mfaEnrollment, setMfaEnrollment] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
 
     const getLandingPath = (role) => {
@@ -63,6 +82,9 @@ function Login({ onLogin }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
         setError("");
         setMessage("");
         setMfaToken("");
@@ -77,13 +99,13 @@ function Login({ onLogin }) {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    username: username,
+                    username: username.trim(),
                     password: password,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error("Login failed");
+                throw await loginError(response);
             }
 
             const data = await response.json();
@@ -115,12 +137,21 @@ function Login({ onLogin }) {
             completeLogin(data);
         } catch (err) {
             console.error(err);
-            setError("Invalid username or password");
+            setError(
+                err instanceof TypeError
+                    ? "Cannot reach Beacon. Confirm the API is running and the frontend API address is configured."
+                    : err.message || "Beacon could not complete sign-in."
+            );
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleMfaEnrollment = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
         setError("");
         setMessage("");
 
@@ -143,11 +174,16 @@ function Login({ onLogin }) {
         } catch (err) {
             console.error(err);
             setError(err.message || "Could not complete MFA enrollment");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleMfaVerify = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
         setError("");
         setMessage("");
 
@@ -176,6 +212,8 @@ function Login({ onLogin }) {
         } catch (err) {
             console.error(err);
             setError(err.message || "Could not verify MFA code");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -189,6 +227,9 @@ function Login({ onLogin }) {
             return;
         }
 
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
         try {
             const response = await fetch(apiUrl("/users/change-password"), {
                 method: "PUT",
@@ -216,6 +257,8 @@ function Login({ onLogin }) {
         } catch (err) {
             console.error(err);
             setError(err.message || "Could not update password");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -225,7 +268,7 @@ function Login({ onLogin }) {
                 <h1>Beacon</h1>
 
                 {mfaEnrollment ? (
-                    <form className="mfa-challenge-panel" onSubmit={handleMfaEnrollment}>
+                    <form className="mfa-challenge-panel" onSubmit={handleMfaEnrollment} aria-busy={isSubmitting}>
                         <h2>MFA Enrollment Required</h2>
                         <p>Add this account to your authenticator app, then enter its six-digit code.</p>
                         <div className="mfa-secret-box">
@@ -243,29 +286,35 @@ function Login({ onLogin }) {
                             value={mfaCode}
                             onChange={(e) => setMfaCode(e.target.value)}
                         />
-                        <button type="submit">Enable MFA and Sign In</button>
+                        <button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? "Enabling MFA…" : "Enable MFA and Sign In"}
+                        </button>
                     </form>
                 ) : mfaToken ? (
-                    <form className="mfa-challenge-panel" onSubmit={handleMfaVerify}>
+                    <form className="mfa-challenge-panel" onSubmit={handleMfaVerify} aria-busy={isSubmitting}>
                         <h2>MFA Verification</h2>
                         <p>Enter the six-digit code from your authenticator app.</p>
 
                         <input
                             type="text"
                             inputMode="numeric"
+                            autoComplete="one-time-code"
+                            aria-label="MFA verification code"
                             placeholder="MFA code"
                             value={mfaCode}
                             onChange={(e) => setMfaCode(e.target.value)}
                         />
 
-                        <button type="submit">
-                            Verify Code
+                        <button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? "Verifying…" : "Verify Code"}
                         </button>
                     </form>
                 ) : !pendingToken ? (
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} aria-busy={isSubmitting}>
                         <input
                             type="text"
+                            aria-label="Username"
+                            autoComplete="username"
                             placeholder="Username"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
@@ -273,17 +322,19 @@ function Login({ onLogin }) {
 
                         <input
                             type="password"
+                            aria-label="Password"
+                            autoComplete="current-password"
                             placeholder="Password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                         />
 
-                        <button type="submit">
-                            Secure Login
+                        <button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? "Signing in…" : "Secure Login"}
                         </button>
                     </form>
                 ) : (
-                    <form className="password-change-panel" onSubmit={handlePasswordChange}>
+                    <form className="password-change-panel" onSubmit={handlePasswordChange} aria-busy={isSubmitting}>
                         <h2>Password Update Required</h2>
                         <p>
                             Beacon requires a password change every 120 days.
@@ -292,6 +343,8 @@ function Login({ onLogin }) {
 
                         <input
                             type="password"
+                            aria-label="New password"
+                            autoComplete="new-password"
                             placeholder="New password"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
@@ -299,13 +352,15 @@ function Login({ onLogin }) {
 
                         <input
                             type="password"
+                            aria-label="Confirm new password"
+                            autoComplete="new-password"
                             placeholder="Confirm new password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                         />
 
-                        <button type="submit">
-                            Update Password
+                        <button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? "Updating password…" : "Update Password"}
                         </button>
                     </form>
                 )}
@@ -341,7 +396,7 @@ function Login({ onLogin }) {
                     </div>
                 )}
 
-                {error && <p className="error-text">{error}</p>}
+                {error && <p className="error-text" role="alert">{error}</p>}
                 {message && <p className="login-message">{message}</p>}
             </div>
         </div>

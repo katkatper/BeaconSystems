@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 # SCHEMAS FOR USER CREATION, LOGIN, AND RESPONSE
 
@@ -16,6 +16,14 @@ class AdminUserCreate(UserCreate):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+    @field_validator("username")
+    @classmethod
+    def normalize_username(cls, value: str) -> str:
+        username = value.strip()
+        if not username:
+            raise ValueError("Username is required")
+        return username
 
 
 class PasswordChange(BaseModel):

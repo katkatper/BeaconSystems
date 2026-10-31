@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from jwt.exceptions import InvalidTokenError
 
 from config.settings import ALGORITHM, JWT_AUDIENCE, JWT_ISSUER, SECRET_KEY
+from schemas.user_schema import UserLogin
 from security.auth import create_access_token
 from services.user_administration import (
     assign_user_role,
@@ -20,6 +21,11 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
 class AuthenticationContractTests(unittest.TestCase):
+    def test_login_username_ignores_accidental_surrounding_whitespace(self):
+        credentials = UserLogin(username="  testsupervisor1  ", password="not-secret")
+
+        self.assertEqual(credentials.username, "testsupervisor1")
+
     def test_token_validation_rejects_the_wrong_audience(self):
         token = create_access_token({"sub": "1", "auth_version": 0})
         claims = jwt.decode(
