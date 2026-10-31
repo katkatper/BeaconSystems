@@ -31,10 +31,11 @@ from security.case_access import (
 from services.activity_service import create_activity_log
 from services.capacity_usage import agency_storage_bytes
 from services.clock import utc_now
+from services.evidence_preview import PREVIEW_CONTENT_TYPE, create_image_preview
 from services.evidence_retention import retention_decision
 from services.geocoding_service import geocode_address
 from services.malware_scanner import scan_upload
-from services.object_storage import object_storage
+from services.object_storage import fingerprint_stream, object_storage
 from services.pagination import PaginationParams, paginate_query
 from services.upload_validation import validate_upload
 
@@ -157,6 +158,7 @@ def serialize_evidence_items(items: list[Evidence], db: Session):
     return [
         {
             "evidence_id": item.evidence_id,
+            "agency_id": item.agency_id,
             "case_id": item.case_id,
             "case_number": cases.get(item.case_id).case_number if cases.get(item.case_id) else None,
             "case_title": cases.get(item.case_id).title if cases.get(item.case_id) else None,
@@ -189,6 +191,8 @@ def serialize_evidence_items(items: list[Evidence], db: Session):
             "disposition_status": item.disposition_status,
             "disposition_eligible": retention_decision(item).eligible,
             "file_name": item.file_name,
+            "has_preview": bool(item.preview_path),
+            "storage_tier": item.storage_tier,
             "collected_at": item.collected_at,
             "created_at": item.created_at,
         }
@@ -268,23 +272,49 @@ def upload_evidence(
     agency_id = case.agency_id or current_user.agency_id
     if not agency_id:
         raise HTTPException(status_code=400, detail="Evidence requires an owning agency")
-    current_position = file.file.tell()
-    file.file.seek(0, 2)
-    upload_size = file.file.tell()
-    file.file.seek(current_position)
+    content_sha256, upload_size = fingerprint_stream(file.file)
+    preview_stream = create_image_preview(file.file, file.content_type)
+    preview_size = len(preview_stream.getbuffer()) if preview_stream else 0
+    duplicate = (
+        db.query(Evidence.evidence_id)
+        .filter(
+            Evidence.agency_id == agency_id,
+            Evidence.content_sha256 == content_sha256,
+        )
+        .first()
+    )
+    if duplicate:
+        create_activity_log(
+            db=db,
+            user_id=current_user.user_id,
+            agency_id=agency_id,
+            action="REJECT_DUPLICATE_EVIDENCE",
+            entity="evidence",
+            details=f"Duplicate evidence upload rejected for case {case_id}",
+            ip_address=request.client.host if request and request.client else None,
+        )
+        raise HTTPException(status_code=409, detail="This file was already uploaded")
     agency = db.query(Agencies).filter(Agencies.agency_id == agency_id).first()
     if (
         agency
         and agency.storage_quota_bytes is not None
-        and agency_storage_bytes(db, agency_id) + upload_size > agency.storage_quota_bytes
+        and agency_storage_bytes(db, agency_id) + upload_size + preview_size
+        > agency.storage_quota_bytes
     ):
         raise HTTPException(status_code=413, detail="Agency storage quota exceeded")
     storage_key = object_storage.create_key(agency_id, "evidence", original_file_name)
+    file.file.seek(0)
     stored = object_storage.put(file.file, storage_key, file.content_type)
-    content_sha256 = stored.sha256
+    if stored.sha256 != content_sha256:
+        raise HTTPException(status_code=500, detail="Evidence integrity check failed during upload")
+    preview_stored = None
+    if preview_stream:
+        preview_key = object_storage.create_key(agency_id, "evidence-previews", "preview.jpg")
+        preview_stored = object_storage.put(preview_stream, preview_key, PREVIEW_CONTENT_TYPE)
     geocoded_location = geocode_address(evidence_location)
 
     evidence = Evidence(
+        agency_id=agency_id,
         case_id=case_id,
         description=description,
         evidence_type=normalized_type,
@@ -305,6 +335,9 @@ def upload_evidence(
         file_name=original_file_name,
         file_path=stored.key,
         file_size_bytes=stored.size_bytes,
+        preview_path=preview_stored.key if preview_stored else None,
+        preview_sha256=preview_stored.sha256 if preview_stored else None,
+        preview_size_bytes=preview_stored.size_bytes if preview_stored else 0,
         is_encrypted=object_storage.is_encrypted,
         encryption_key_id=object_storage.encryption_key_id,
         content_sha256=content_sha256,
@@ -506,6 +539,25 @@ def view_evidence(
             status_code=404,
             detail="Evidence file is missing from storage.",
         )
+    if evidence.storage_tier == "archived":
+        raise HTTPException(status_code=409, detail="Evidence is archived; request a restore first")
+    if evidence.storage_tier == "restore_pending":
+        raise HTTPException(status_code=409, detail="Evidence restore is still pending")
+
+    if evidence.content_sha256 and not object_storage.verify(
+        evidence.file_path, evidence.content_sha256
+    ):
+        create_activity_log(
+            db=db,
+            user_id=current_user.user_id,
+            agency_id=current_user.agency_id,
+            action="EVIDENCE_INTEGRITY_FAILURE",
+            entity="evidence",
+            entity_id=evidence.evidence_id,
+            details="Stored evidence failed SHA-256 verification",
+            ip_address=request.client.host if request.client else None,
+        )
+        raise HTTPException(status_code=409, detail="Evidence integrity verification failed")
 
     chain_event = EvidenceChain(
         evidence_id=evidence.evidence_id,
@@ -544,6 +596,22 @@ def view_evidence(
         storage_path = legacy_path
 
     return FileResponse(path=storage_path, filename=evidence.file_name)
+
+
+@router.get("/preview/{evidence_id}")
+def view_evidence_preview(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    evidence = get_authorized_evidence(db, evidence_id, current_user)
+    if not evidence.preview_path or not evidence.preview_sha256:
+        raise HTTPException(status_code=404, detail="Evidence preview is not available")
+    if not object_storage.verify(evidence.preview_path, evidence.preview_sha256):
+        raise HTTPException(status_code=409, detail="Evidence preview integrity verification failed")
+    if object_storage.backend == "s3":
+        return RedirectResponse(object_storage.signed_url(evidence.preview_path, "preview.jpg"), 307)
+    return FileResponse(object_storage.local_path(evidence.preview_path), media_type=PREVIEW_CONTENT_TYPE)
 
 
 @router.put("/{evidence_id}/sensitive")
@@ -653,3 +721,64 @@ def update_evidence_retention(
         "legal_hold": evidence.legal_hold,
         "disposition_eligible": retention_decision(evidence).eligible,
     }
+
+
+@router.post("/{evidence_id}/archive")
+def archive_evidence(
+    evidence_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
+):
+    evidence = get_authorized_evidence(db, evidence_id, current_user, include_grants=False)
+    assert_case_write_access(db, evidence.case_id, current_user)
+    if not evidence.file_path or not evidence.content_sha256:
+        raise HTTPException(status_code=409, detail="Evidence has no verifiable stored original")
+    if evidence.storage_tier == "archived":
+        return {"evidence_id": evidence_id, "storage_tier": "archived"}
+    object_storage.archive(evidence.file_path, evidence.content_sha256)
+    evidence.storage_tier = "archived"
+    evidence.archived_at = utc_now()
+    db.commit()
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=evidence.agency_id,
+        action="ARCHIVE_EVIDENCE",
+        entity="evidence",
+        entity_id=evidence.evidence_id,
+        details="Evidence original transitioned to archival storage",
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"evidence_id": evidence_id, "storage_tier": evidence.storage_tier}
+
+
+@router.post("/{evidence_id}/restore")
+def restore_evidence(
+    evidence_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("platform_admin", "agency_admin", "supervisor")),
+):
+    evidence = get_authorized_evidence(db, evidence_id, current_user, include_grants=False)
+    assert_case_write_access(db, evidence.case_id, current_user)
+    if evidence.storage_tier not in {"archived", "restore_pending"}:
+        return {"evidence_id": evidence_id, "storage_tier": evidence.storage_tier}
+    if evidence.storage_tier == "archived":
+        object_storage.request_restore(evidence.file_path)
+        evidence.storage_tier = "restore_pending" if object_storage.backend == "s3" else "active"
+        db.commit()
+        create_activity_log(
+            db=db,
+            user_id=current_user.user_id,
+            agency_id=evidence.agency_id,
+            action="RESTORE_EVIDENCE",
+            entity="evidence",
+            entity_id=evidence.evidence_id,
+            details="Evidence restore requested",
+            ip_address=request.client.host if request.client else None,
+        )
+    elif object_storage.restore_ready(evidence.file_path):
+        evidence.storage_tier = "active"
+        db.commit()
+    return {"evidence_id": evidence_id, "storage_tier": evidence.storage_tier}

@@ -69,3 +69,14 @@ npm run build
 
 For browser acceptance tests, install the supported browsers once with
 `npm run test:e2e:install`, then run `npm run test:e2e`.
+
+Before a production release, run the repeatable staging gate against the deployed
+staging API (set `BEACON_LOAD_TEST_TOKEN` when testing protected paths):
+
+```powershell
+python scripts/run_staging_exercise.py --base-url https://staging.example.gov
+```
+
+The gate verifies schema drift, capacity-plan validity, repository hygiene, the
+full backend suite, and bounded concurrent HTTP latency and error thresholds.
+Use synthetic records only and retain the output with the release evidence.

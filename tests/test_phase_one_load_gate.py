@@ -17,8 +17,8 @@ class PhaseOneLoadAndStatelessTests(unittest.TestCase):
             def __init__(self):
                 self.objects = {}
 
-            def upload_fileobj(self, stream, bucket, key, ExtraArgs):
-                self.objects[(bucket, key)] = stream.read()
+            def put_object(self, **params):
+                self.objects[(params["Bucket"], params["Key"])] = params["Body"].read()
 
             def head_bucket(self, **params):
                 assert params["ExpectedBucketOwner"] == "123456789012"

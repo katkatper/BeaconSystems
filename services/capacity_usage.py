@@ -11,7 +11,6 @@ from config.settings import (
 )
 from models.agencies import Agencies
 from models.async_job import AsyncJob
-from models.case import Cases
 from models.evidence import Evidence
 from models.partner_intake_record import PartnerIntakeRecord
 from models.person import Person  # noqa: F401 - registers the Cases relationship mapper
@@ -43,9 +42,12 @@ def _month_start(now: datetime) -> datetime:
 
 def agency_storage_bytes(db: Session, agency_id: int) -> int:
     value = (
-        db.query(func.coalesce(func.sum(Evidence.file_size_bytes), 0))
-        .join(Cases, Cases.case_id == Evidence.case_id)
-        .filter(Cases.agency_id == agency_id)
+        db.query(
+            func.coalesce(
+                func.sum(Evidence.file_size_bytes + Evidence.preview_size_bytes), 0
+            )
+        )
+        .filter(Evidence.agency_id == agency_id)
         .scalar()
     )
     return int(value or 0)

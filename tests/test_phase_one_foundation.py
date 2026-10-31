@@ -88,13 +88,11 @@ class PhaseOneFoundationTests(unittest.TestCase):
                     }
                 }
 
-            def upload_fileobj(self, stream, bucket, key, ExtraArgs):
-                self.upload = {
-                    "body": stream.read(),
-                    "bucket": bucket,
-                    "key": key,
-                    "extra": ExtraArgs,
-                }
+            def put_object(self, **params):
+                self.upload = {**params, "Body": params["Body"].read()}
+
+            def head_object(self, **params):
+                return {"Metadata": self.upload["Metadata"]}
 
         storage = ObjectStorage.__new__(ObjectStorage)
         storage.backend = "s3"
@@ -112,9 +110,11 @@ class PhaseOneFoundationTests(unittest.TestCase):
 
         self.assertEqual(len(stored.sha256), 64)
         self.assertEqual(stored.size_bytes, len(b"investigative evidence"))
-        self.assertEqual(storage._s3.upload["extra"]["ServerSideEncryption"], "aws:kms")
-        self.assertEqual(storage._s3.upload["extra"]["SSEKMSKeyId"], storage.kms_key_id)
-        self.assertEqual(storage._s3.upload["extra"]["ExpectedBucketOwner"], "123456789012")
+        self.assertEqual(storage._s3.upload["ServerSideEncryption"], "aws:kms")
+        self.assertEqual(storage._s3.upload["SSEKMSKeyId"], storage.kms_key_id)
+        self.assertEqual(storage._s3.upload["ExpectedBucketOwner"], "123456789012")
+        self.assertEqual(storage._s3.upload["IfNoneMatch"], "*")
+        self.assertTrue(storage.verify(stored.key, stored.sha256))
 
         storage.validate_production_access()
         self.assertEqual(

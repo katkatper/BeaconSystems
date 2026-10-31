@@ -146,12 +146,14 @@ def claim_next_job(db: Session, *, worker_id: str, now=None) -> AsyncJob | None:
     effective_now = now or utc_now()
     job = (
         db.query(AsyncJob)
+        .outerjoin(Agencies, Agencies.agency_id == AsyncJob.agency_id)
         .filter(
             AsyncJob.status.in_(QUEUED_STATUSES),
             AsyncJob.available_at <= effective_now,
             AsyncJob.attempts < AsyncJob.max_attempts,
         )
         .order_by(
+            Agencies.queue_last_claimed_at.asc().nullsfirst(),
             AsyncJob.priority.desc(),
             AsyncJob.available_at.asc(),
             AsyncJob.job_id.asc(),
@@ -167,6 +169,9 @@ def claim_next_job(db: Session, *, worker_id: str, now=None) -> AsyncJob | None:
     job.locked_at = effective_now
     job.locked_by = worker_id[:200]
     job.updated_at = effective_now
+    agency = db.query(Agencies).filter(Agencies.agency_id == job.agency_id).first()
+    if agency:
+        agency.queue_last_claimed_at = effective_now
     db.commit()
     db.refresh(job)
     return job
@@ -180,6 +185,7 @@ def complete_job(db: Session, job: AsyncJob, *, now=None) -> None:
     job.locked_at = None
     job.locked_by = None
     job.last_error = None
+    _record_provider_result(db, job, succeeded=True, now=effective_now)
     db.commit()
 
 
@@ -203,4 +209,39 @@ def fail_job(
         job.status = "retry"
         delay = retry_base_seconds * (2 ** max(0, min(job.attempts - 1, 8)))
         job.available_at = effective_now + timedelta(seconds=delay)
+    _record_provider_result(db, job, succeeded=False, now=effective_now, error=str(error))
     db.commit()
+
+
+def _record_provider_result(
+    db: Session,
+    job: AsyncJob,
+    *,
+    succeeded: bool,
+    now,
+    error: str | None = None,
+) -> None:
+    if job.job_type != "partner_intake.process":
+        return
+    # Imported only for provider jobs so isolated queue tests do not need the
+    # complete integrations relationship graph.
+    from models.integration_source import IntegrationSource
+    from models.integration_source_agency import IntegrationSourceAgency  # noqa: F401
+
+    source_id = (job.payload.get("data") or {}).get("integration_source_id")
+    if not source_id:
+        return
+    source = db.query(IntegrationSource).filter(IntegrationSource.id == int(source_id)).first()
+    if not source:
+        return
+    if succeeded:
+        source.consecutive_failures = 0
+        source.circuit_open_until = None
+        source.last_success_at = now
+        source.last_failure_reason = None
+        return
+    source.consecutive_failures = int(source.consecutive_failures or 0) + 1
+    source.last_failure_at = now
+    source.last_failure_reason = (error or "Provider job failed")[:1000]
+    if source.consecutive_failures >= 5:
+        source.circuit_open_until = now + timedelta(minutes=5)

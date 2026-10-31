@@ -50,4 +50,5 @@ class Agencies(Base):
     storage_quota_bytes = Column(BigInteger, nullable=True)
     monthly_provider_request_quota = Column(Integer, nullable=True)
     monthly_job_quota = Column(Integer, nullable=True)
+    queue_last_claimed_at = Column(DateTime, nullable=True)
 

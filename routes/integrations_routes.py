@@ -28,6 +28,7 @@ class IntegrationSourceCreate(BaseModel):
     authorized_agency_ids: list[int] | None = None
     match_threshold: int = 60
     webhook_token: str | None = None
+    rate_limit_per_minute: int = 120
 
 
 class IntegrationSourceUpdate(BaseModel):
@@ -39,6 +40,8 @@ class IntegrationSourceUpdate(BaseModel):
     authorized_agency_ids: list[int] | None = None
     match_threshold: Optional[int] = None
     webhook_token: str | None = None
+    rate_limit_per_minute: Optional[int] = None
+    reset_circuit: bool = False
 
 
 def serialize_integration_source(source: IntegrationSource) -> dict:
@@ -58,6 +61,17 @@ def serialize_integration_source(source: IntegrationSource) -> dict:
         ),
         "match_threshold": source.match_threshold,
         "webhook_configured": bool(source.webhook_secret_hash),
+        "rate_limit_per_minute": getattr(source, "rate_limit_per_minute", 120),
+        "health": {
+            "status": "circuit_open"
+            if getattr(source, "circuit_open_until", None)
+            else "available",
+            "consecutive_failures": getattr(source, "consecutive_failures", 0),
+            "circuit_open_until": getattr(source, "circuit_open_until", None),
+            "last_success_at": getattr(source, "last_success_at", None),
+            "last_failure_at": getattr(source, "last_failure_at", None),
+            "last_failure_reason": getattr(source, "last_failure_reason", None),
+        },
         "created_at": source.created_at,
     }
 
@@ -137,6 +151,7 @@ def create_integration_source(
         allowed_record_types=data.allowed_record_types,
         match_threshold=max(1, min(data.match_threshold, 100)),
         webhook_secret_hash=validate_webhook_token(data.webhook_token),
+        rate_limit_per_minute=max(1, min(data.rate_limit_per_minute, 10_000)),
         status="pending",
         is_active=False,
     )
@@ -221,6 +236,12 @@ def update_integration_source(
         source.match_threshold = max(1, min(data.match_threshold, 100))
     if data.webhook_token is not None:
         source.webhook_secret_hash = validate_webhook_token(data.webhook_token)
+    if data.rate_limit_per_minute is not None:
+        source.rate_limit_per_minute = max(1, min(data.rate_limit_per_minute, 10_000))
+    if data.reset_circuit:
+        source.consecutive_failures = 0
+        source.circuit_open_until = None
+        source.last_failure_reason = None
 
     db.commit()
     db.refresh(source)

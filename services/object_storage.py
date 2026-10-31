@@ -29,6 +29,19 @@ class StoredObject:
     size_bytes: int
 
 
+def fingerprint_stream(stream: BinaryIO) -> tuple[str, int]:
+    """Hash a seekable upload without changing its caller-visible position."""
+    position = stream.tell()
+    stream.seek(0)
+    digest = hashlib.sha256()
+    size_bytes = 0
+    while chunk := stream.read(1024 * 1024):
+        digest.update(chunk)
+        size_bytes += len(chunk)
+    stream.seek(position)
+    return digest.hexdigest(), size_bytes
+
+
 class ObjectStorage:
     """Tenant-scoped storage with a local development and S3 production backend."""
 
@@ -129,18 +142,28 @@ class ObjectStorage:
                     buffered.write(chunk)
                 buffered.seek(0)
                 extra = {
+                    "Body": buffered,
+                    "Bucket": self.bucket,
+                    "Key": key,
                     "ServerSideEncryption": "aws:kms",
                     "SSEKMSKeyId": self.kms_key_id,
+                    "IfNoneMatch": "*",
+                    "Metadata": {"sha256": digest.hexdigest()},
                 }
                 if self.expected_owner:
                     extra["ExpectedBucketOwner"] = self.expected_owner
                 if content_type:
                     extra["ContentType"] = content_type
-                self._s3.upload_fileobj(buffered, self.bucket, key, ExtraArgs=extra)
+                try:
+                    self._s3.put_object(**extra)
+                except ClientError as exc:
+                    if exc.response.get("Error", {}).get("Code") in {"PreconditionFailed", "412"}:
+                        raise FileExistsError(f"Object already exists: {key}") from exc
+                    raise
         elif self.backend == "local":
             target = self.local_path(key)
             target.parent.mkdir(parents=True, exist_ok=True)
-            with target.open("wb") as output:
+            with target.open("xb") as output:
                 while chunk := stream.read(1024 * 1024):
                     digest.update(chunk)
                     size_bytes += len(chunk)
@@ -153,6 +176,67 @@ class ObjectStorage:
             sha256=digest.hexdigest(),
             size_bytes=size_bytes,
         )
+
+    def verify(self, key: str, expected_sha256: str) -> bool:
+        """Verify immutable-object identity without exposing object contents."""
+        if self.backend == "s3":
+            params = {"Bucket": self.bucket, "Key": key}
+            if self.expected_owner:
+                params["ExpectedBucketOwner"] = self.expected_owner
+            response = self._s3.head_object(**params)
+            actual = response.get("Metadata", {}).get("sha256", "")
+            return bool(actual) and actual.lower() == expected_sha256.lower()
+        if self.backend == "local":
+            path = self.local_path(key)
+            if not path.is_file():
+                return False
+            with path.open("rb") as stream:
+                actual, _ = fingerprint_stream(stream)
+            return actual.lower() == expected_sha256.lower()
+        raise RuntimeError(f"Unsupported object storage backend: {self.backend}")
+
+    def archive(self, key: str, sha256: str) -> None:
+        """Transition an immutable S3 object to the lowest-cost archival tier."""
+        if self.backend == "local":
+            return
+        params = {
+            "Bucket": self.bucket,
+            "Key": key,
+            "CopySource": {"Bucket": self.bucket, "Key": key},
+            "StorageClass": "DEEP_ARCHIVE",
+            "MetadataDirective": "REPLACE",
+            "Metadata": {"sha256": sha256},
+            "ServerSideEncryption": "aws:kms",
+            "SSEKMSKeyId": self.kms_key_id,
+        }
+        if self.expected_owner:
+            params["ExpectedBucketOwner"] = self.expected_owner
+            params["ExpectedSourceBucketOwner"] = self.expected_owner
+        self._s3.copy_object(**params)
+
+    def request_restore(self, key: str, days: int = 7) -> None:
+        if self.backend == "local":
+            return
+        params = {
+            "Bucket": self.bucket,
+            "Key": key,
+            "RestoreRequest": {
+                "Days": days,
+                "GlacierJobParameters": {"Tier": "Standard"},
+            },
+        }
+        if self.expected_owner:
+            params["ExpectedBucketOwner"] = self.expected_owner
+        self._s3.restore_object(**params)
+
+    def restore_ready(self, key: str) -> bool:
+        if self.backend == "local":
+            return True
+        params = {"Bucket": self.bucket, "Key": key}
+        if self.expected_owner:
+            params["ExpectedBucketOwner"] = self.expected_owner
+        restore = self._s3.head_object(**params).get("Restore", "")
+        return 'ongoing-request="false"' in restore
 
     def local_path(self, key: str) -> Path:
         target = (self.local_root / key).resolve()

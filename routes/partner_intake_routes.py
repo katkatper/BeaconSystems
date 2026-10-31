@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,7 @@ from config.settings import PARTNER_WEBHOOK_TOKEN
 from database.connection import get_db
 from database.tenant_context import configure_tenant_session
 from models.agencies import Agencies
+from models.async_job import AsyncJob
 from models.bolo_alert import BoloAlert
 from models.case import Cases
 from models.external_record import ExternalRecord
@@ -61,6 +62,10 @@ class PartnerIntakeAttach(BaseModel):
 
 class PartnerIntakeReview(BaseModel):
     review_notes: Optional[str] = None
+
+
+class PartnerIntakeBatch(BaseModel):
+    records: list[PartnerIntakeCreate] = Field(min_length=1, max_length=100)
 
 
 LEGAL_AUTHORITY_TYPES = {
@@ -321,6 +326,18 @@ def queue_automated_partner_intake_record(
         raise HTTPException(status_code=404, detail="Agency not found")
 
     configure_tenant_session(db, agency_id=data.agency_id, platform_admin=False)
+    recent_provider_jobs = (
+        db.query(func.count(AsyncJob.job_id))
+        .filter(
+            AsyncJob.job_type == "partner_intake.process",
+            AsyncJob.created_at >= utc_now() - timedelta(minutes=1),
+            AsyncJob.payload["data"]["integration_source_id"].as_integer()
+            == data.integration_source_id,
+        )
+        .scalar()
+    )
+    if int(recent_provider_jobs or 0) >= source.rate_limit_per_minute:
+        raise HTTPException(status_code=429, detail="Provider intake rate limit exceeded")
     ingestion_key = f"partner:{data.integration_source_id}:{idempotency_key}"
     try:
         job, created = enqueue_job(
@@ -342,6 +359,34 @@ def queue_automated_partner_intake_record(
     return {"job_id": job.job_id, "status": job.status, "created": created}
 
 
+@router.post("/automated-async/batch", status_code=202)
+def queue_automated_partner_intake_batch(
+    batch: PartnerIntakeBatch,
+    db: Session = Depends(get_db),
+    x_beacon_partner_token: Optional[str] = Header(None),
+    idempotency_key: str = Header(
+        ..., alias="Idempotency-Key", min_length=8, max_length=140
+    ),
+):
+    source_ids = {record.integration_source_id for record in batch.records}
+    agency_ids = {record.agency_id for record in batch.records}
+    if len(source_ids) != 1 or len(agency_ids) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="A provider batch must target one source and one agency",
+        )
+    results = [
+        queue_automated_partner_intake_record(
+            data=record,
+            db=db,
+            x_beacon_partner_token=x_beacon_partner_token,
+            idempotency_key=f"{idempotency_key}:{index}",
+        )
+        for index, record in enumerate(batch.records)
+    ]
+    return {"accepted": len(results), "jobs": results}
+
+
 def get_approved_source(db: Session, source_id: int):
     source = db.query(IntegrationSource).filter(
         IntegrationSource.id == source_id
@@ -354,6 +399,12 @@ def get_approved_source(db: Session, source_id: int):
         raise HTTPException(
             status_code=400,
             detail="Partner source must be approved and active before intake",
+        )
+
+    if source.circuit_open_until and source.circuit_open_until > utc_now():
+        raise HTTPException(
+            status_code=503,
+            detail="Partner source is temporarily paused after repeated failures",
         )
 
     return source
