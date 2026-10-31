@@ -26,7 +26,7 @@ from services.activity_service import create_activity_log
 from services.clock import utc_now
 from services.geocoding_fields import apply_geocode_result, copy_geocode_fields
 from services.geocoding_service import geocode_address
-from services.job_queue import enqueue_job
+from services.job_queue import CapacityQuotaExceeded, enqueue_job
 from services.pagination import PaginationParams, paginate_query
 from services.partner_matching import (
     normalize_text,
@@ -322,18 +322,21 @@ def queue_automated_partner_intake_record(
 
     configure_tenant_session(db, agency_id=data.agency_id, platform_admin=False)
     ingestion_key = f"partner:{data.integration_source_id}:{idempotency_key}"
-    job, created = enqueue_job(
-        db,
-        agency_id=data.agency_id,
-        job_type="partner_intake.process",
-        payload={
-            "agency_id": data.agency_id,
-            "ingestion_key": ingestion_key,
-            "data": data.model_dump(mode="json"),
-        },
-        idempotency_key=ingestion_key,
-        priority=40,
-    )
+    try:
+        job, created = enqueue_job(
+            db,
+            agency_id=data.agency_id,
+            job_type="partner_intake.process",
+            payload={
+                "agency_id": data.agency_id,
+                "ingestion_key": ingestion_key,
+                "data": data.model_dump(mode="json"),
+            },
+            idempotency_key=ingestion_key,
+            priority=40,
+        )
+    except CapacityQuotaExceeded as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
     db.commit()
     db.refresh(job)
     return {"job_id": job.job_id, "status": job.status, "created": created}

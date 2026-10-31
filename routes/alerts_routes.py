@@ -14,7 +14,7 @@ from security.case_access import (
 )
 from services.activity_service import create_activity_log
 from services.clock import utc_now
-from services.job_queue import enqueue_job
+from services.job_queue import CapacityQuotaExceeded, enqueue_job
 from services.notification_service import notify_assigned_investigator_of_alert
 from services.pagination import PaginationParams, paginate_query
 
@@ -113,17 +113,20 @@ def create_alerts(
         title=alerts.title,
         severity=alerts.severity,
     )
-    enqueue_job(
-        db,
-        agency_id=case.agency_id,
-        job_type="alert.deliver",
-        payload={
-            "alert_id": alerts.alert_id,
-            "delivery_id": delivery.delivery_id,
-        },
-        idempotency_key=f"alert-delivery:{delivery.delivery_id}",
-        priority=100 if severity.lower() in {"critical", "emergency"} else 50,
-    )
+    try:
+        enqueue_job(
+            db,
+            agency_id=case.agency_id,
+            job_type="alert.deliver",
+            payload={
+                "alert_id": alerts.alert_id,
+                "delivery_id": delivery.delivery_id,
+            },
+            idempotency_key=f"alert-delivery:{delivery.delivery_id}",
+            priority=100 if severity.lower() in {"critical", "emergency"} else 50,
+        )
+    except CapacityQuotaExceeded as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
     db.commit()
     db.refresh(alerts)
 

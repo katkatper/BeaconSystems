@@ -11,6 +11,7 @@ from models.async_job import AsyncJob
 from models.worker_heartbeat import WorkerHeartbeat
 from services.alert_delivery_jobs import handle_alert_delivery
 from services.job_queue import (
+    CapacityQuotaExceeded,
     claim_next_job,
     complete_job,
     enqueue_job,
@@ -63,6 +64,67 @@ class PhaseTwoJobQueueTests(unittest.TestCase):
         )
         self.assertTrue(other_created)
         self.assertNotEqual(first.job_id, other_tenant.job_id)
+
+    def test_enqueue_enforces_monthly_tenant_quotas_after_idempotency_check(self):
+        agency = Agencies(
+            agency_id=20,
+            agency_name="Quota agency",
+            monthly_job_quota=1,
+            monthly_provider_request_quota=1,
+        )
+        self.db.add(agency)
+        self.db.commit()
+
+        first, created = enqueue_job(
+            self.db,
+            agency_id=20,
+            job_type="partner_intake.process",
+            payload={},
+            idempotency_key="provider:first",
+        )
+        self.assertTrue(created)
+        duplicate, duplicate_created = enqueue_job(
+            self.db,
+            agency_id=20,
+            job_type="partner_intake.process",
+            payload={},
+            idempotency_key="provider:first",
+        )
+        self.assertFalse(duplicate_created)
+        self.assertEqual(first.job_id, duplicate.job_id)
+
+        with self.assertRaises(CapacityQuotaExceeded):
+            enqueue_job(
+                self.db,
+                agency_id=20,
+                job_type="matching.run",
+                payload={},
+                idempotency_key="matching:over-quota",
+            )
+
+        provider_agency = Agencies(
+            agency_id=21,
+            agency_name="Provider quota agency",
+            monthly_job_quota=5,
+            monthly_provider_request_quota=1,
+        )
+        self.db.add(provider_agency)
+        self.db.commit()
+        enqueue_job(
+            self.db,
+            agency_id=21,
+            job_type="partner_intake.process",
+            payload={},
+            idempotency_key="provider:allowed",
+        )
+        with self.assertRaises(CapacityQuotaExceeded):
+            enqueue_job(
+                self.db,
+                agency_id=21,
+                job_type="partner_intake.process",
+                payload={},
+                idempotency_key="provider:over-quota",
+            )
 
     def test_claim_complete_retry_and_dead_letter_lifecycle(self):
         now = datetime(2026, 10, 17, 12, 0, 0)

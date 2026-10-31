@@ -14,6 +14,7 @@ from config.settings import (
     DATABASE_POOL_SIZE,
     DATABASE_SLOW_QUERY_MS,
 )
+from services.database_metrics import database_metrics
 
 load_dotenv()
 
@@ -77,11 +78,17 @@ def record_query_start(connection, cursor, statement, parameters, context, execu
 def record_query_duration(connection, cursor, statement, parameters, context, executemany):
     started = connection.info.get("query_started_at", []).pop()
     duration_ms = round((time.perf_counter() - started) * 1000, 2)
+    operation = statement.lstrip().split(None, 1)[0].upper() if statement.strip() else "UNKNOWN"
+    database_metrics.record(
+        operation=operation,
+        duration_seconds=duration_ms / 1000,
+        slow=duration_ms >= DATABASE_SLOW_QUERY_MS,
+    )
     if duration_ms >= DATABASE_SLOW_QUERY_MS:
         query_logger.warning(json.dumps({
             "event": "slow_database_query",
             "duration_ms": duration_ms,
-            "operation": statement.lstrip().split(None, 1)[0].upper() if statement.strip() else "UNKNOWN",
+            "operation": database_metrics.normalize_operation(operation),
         }))
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

@@ -57,3 +57,13 @@ def test_capacity_migration_adds_positive_quotas_and_usage_index():
     assert "monthly_job_quota" in source
     assert "file_size_bytes" in source
     assert "ix_partner_intake_agency_received" in source
+
+
+def test_capacity_report_exposes_explicit_cost_assumptions():
+    source = (REPOSITORY_ROOT / "services" / "capacity_usage.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "CAPACITY_STORAGE_GB_MONTH_COST_MICROS" in source
+    assert '"assumptions_configured"' in source
+    assert '"currency": "USD"' in source

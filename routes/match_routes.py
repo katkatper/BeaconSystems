@@ -19,7 +19,7 @@ from models.user import User
 from security.auth import require_role
 from services.activity_service import create_activity_log
 from services.clock import utc_now_aware
-from services.job_queue import enqueue_job
+from services.job_queue import CapacityQuotaExceeded, enqueue_job
 from services.matching_jobs import run_agency_matching
 from services.pagination import PaginationParams, paginate_query
 
@@ -160,18 +160,21 @@ def queue_matching(
     if target_agency_id is None:
         raise HTTPException(status_code=400, detail="Select an agency for matching")
 
-    job, created = enqueue_job(
-        db,
-        agency_id=target_agency_id,
-        job_type="matching.run",
-        payload={
-            "agency_id": target_agency_id,
-            "candidate_limit": candidate_limit,
-            "requested_by_user_id": current_user.user_id,
-        },
-        idempotency_key=f"matching:{idempotency_key}",
-        priority=10,
-    )
+    try:
+        job, created = enqueue_job(
+            db,
+            agency_id=target_agency_id,
+            job_type="matching.run",
+            payload={
+                "agency_id": target_agency_id,
+                "candidate_limit": candidate_limit,
+                "requested_by_user_id": current_user.user_id,
+            },
+            idempotency_key=f"matching:{idempotency_key}",
+            priority=10,
+        )
+    except CapacityQuotaExceeded as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
     db.commit()
     db.refresh(job)
     return {

@@ -1,13 +1,62 @@
 from datetime import timedelta
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from models.agencies import Agencies
 from models.async_job import AsyncJob
 from services.clock import utc_now
 
 QUEUED_STATUSES = ("queued", "retry")
+
+
+class CapacityQuotaExceeded(RuntimeError):
+    def __init__(self, quota_name: str):
+        self.quota_name = quota_name
+        super().__init__(f"Agency {quota_name} quota exceeded")
+
+
+def _month_start(now):
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def _enforce_enqueue_quotas(
+    db: Session,
+    *,
+    agency_id: int,
+    job_type: str,
+    now,
+) -> None:
+    agency = (
+        db.query(Agencies)
+        .filter(Agencies.agency_id == agency_id)
+        .with_for_update()
+        .first()
+    )
+    if agency is None:
+        return
+
+    month_start = _month_start(now)
+    monthly_jobs = db.query(func.count(AsyncJob.job_id)).filter(
+        AsyncJob.agency_id == agency_id,
+        AsyncJob.created_at >= month_start,
+    ).scalar()
+    if (
+        agency.monthly_job_quota is not None
+        and int(monthly_jobs or 0) >= agency.monthly_job_quota
+    ):
+        raise CapacityQuotaExceeded("monthly job")
+
+    if job_type == "partner_intake.process" and agency.monthly_provider_request_quota is not None:
+        provider_jobs = db.query(func.count(AsyncJob.job_id)).filter(
+            AsyncJob.agency_id == agency_id,
+            AsyncJob.job_type == "partner_intake.process",
+            AsyncJob.created_at >= month_start,
+        ).scalar()
+        if int(provider_jobs or 0) >= agency.monthly_provider_request_quota:
+            raise CapacityQuotaExceeded("monthly provider request")
 
 
 def enqueue_job(
@@ -28,6 +77,15 @@ def enqueue_job(
     if existing:
         return existing, False
 
+    quota_now = utc_now()
+    effective_now = available_at or quota_now
+    _enforce_enqueue_quotas(
+        db,
+        agency_id=agency_id,
+        job_type=job_type,
+        now=quota_now,
+    )
+
     job = AsyncJob(
         agency_id=agency_id,
         job_type=job_type,
@@ -37,7 +95,7 @@ def enqueue_job(
         priority=priority,
         attempts=0,
         max_attempts=max_attempts,
-        available_at=available_at or utc_now(),
+        available_at=effective_now,
     )
     try:
         with db.begin_nested():

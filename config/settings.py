@@ -43,6 +43,13 @@ DATABASE_POOL_RECYCLE_SECONDS = int(
     os.getenv("DATABASE_POOL_RECYCLE_SECONDS", "1800")
 )
 DATABASE_SLOW_QUERY_MS = float(os.getenv("DATABASE_SLOW_QUERY_MS", "500"))
+CAPACITY_STORAGE_GB_MONTH_COST_MICROS = int(
+    os.getenv("CAPACITY_STORAGE_GB_MONTH_COST_MICROS", "0")
+)
+CAPACITY_PROVIDER_REQUEST_COST_MICROS = int(
+    os.getenv("CAPACITY_PROVIDER_REQUEST_COST_MICROS", "0")
+)
+CAPACITY_JOB_COST_MICROS = int(os.getenv("CAPACITY_JOB_COST_MICROS", "0"))
 API_REQUEST_TIMEOUT_SECONDS = float(os.getenv("API_REQUEST_TIMEOUT_SECONDS", "30"))
 API_GRACEFUL_SHUTDOWN_SECONDS = int(
     os.getenv("API_GRACEFUL_SHUTDOWN_SECONDS", "30")
@@ -272,6 +279,15 @@ def validate_runtime_settings() -> None:
 
     if QUEUE_BACKLOG_WARNING <= 0:
         errors.append("QUEUE_BACKLOG_WARNING must be greater than zero")
+
+    capacity_cost_values = {
+        "CAPACITY_STORAGE_GB_MONTH_COST_MICROS": CAPACITY_STORAGE_GB_MONTH_COST_MICROS,
+        "CAPACITY_PROVIDER_REQUEST_COST_MICROS": CAPACITY_PROVIDER_REQUEST_COST_MICROS,
+        "CAPACITY_JOB_COST_MICROS": CAPACITY_JOB_COST_MICROS,
+    }
+    for name, value in capacity_cost_values.items():
+        if value < 0:
+            errors.append(f"{name} cannot be negative")
 
     if WORKER_HEARTBEAT_TIMEOUT_SECONDS <= 0:
         errors.append("WORKER_HEARTBEAT_TIMEOUT_SECONDS must be greater than zero")

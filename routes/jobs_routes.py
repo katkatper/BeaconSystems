@@ -10,6 +10,7 @@ from models.user import User
 from security.auth import require_role
 from services.activity_service import create_activity_log
 from services.clock import utc_now
+from services.database_metrics import database_metrics
 from services.http_metrics import http_metrics
 from services.pagination import PaginationParams, paginate_query
 from services.readiness import readiness_service
@@ -163,8 +164,10 @@ def export_system_metrics(
     ),
 ):
     del current_user
+    body = http_metrics.render_prometheus(readiness_service.snapshot())
+    body += database_metrics.render_prometheus()
     return Response(
-        content=http_metrics.render_prometheus(readiness_service.snapshot()),
+        content=body,
         media_type="text/plain; version=0.0.4",
         headers={"Cache-Control": "no-store"},
     )
