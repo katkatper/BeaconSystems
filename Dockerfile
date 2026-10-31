@@ -17,7 +17,6 @@ COPY requirements.txt ./
 RUN python -m pip install --no-cache-dir --requirement requirements.txt
 
 COPY alembic.ini main.py global-bundle.pem ./
-COPY ai_engine ./ai_engine
 COPY config ./config
 COPY database ./database
 COPY integrations ./integrations

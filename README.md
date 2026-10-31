@@ -1,5 +1,7 @@
 # BeaconSystems
 
+Local development setup is documented in [DEVELOPMENT.md](DEVELOPMENT.md).
+
 ## Phase I capacity gate
 
 Run the API against a production-like database and shared object-storage stack,

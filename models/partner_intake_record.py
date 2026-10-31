@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -23,6 +24,7 @@ class PartnerIntakeRecord(Base):
             "ingestion_key",
             name="uq_partner_intake_agency_ingestion_key",
         ),
+        Index("ix_partner_intake_agency_received", "agency_id", "received_at"),
     )
 
     intake_id = Column(Integer, primary_key=True, index=True)

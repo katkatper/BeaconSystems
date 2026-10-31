@@ -24,10 +24,6 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="ai_engine\face_recognition.py" />
-    <Compile Include="ai_engine\main.py" />
-    <Compile Include="ai_engine\pattern_detection.py" />
-    <Compile Include="ai_engine\check_rds_connection.py" />
     <Compile Include="check_user_dependencies.py" />
     <Compile Include="database\__init__.py" />
     <Compile Include="models\bolo_alert.py" />
@@ -50,7 +46,6 @@
     <Compile Include="routes\routes.py" />
     <Compile Include="routes\sightings_routes.py" />
     <Compile Include="routes\search_routes.py" />
-    <Compile Include="app.py" />
     <Compile Include="config\aws_config.py">
       <SubType>Code</SubType>
     </Compile>
@@ -58,14 +53,9 @@
     <Compile Include="config\settings.py" />
     <Compile Include="config\__init__.py" />
     <Compile Include="database\base.py" />
-    <Compile Include="desktop_app.py" />
-    <Compile Include="Images\Beacon.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="integrations\cameras.py" />
     <Compile Include="integrations\dna.py" />
     <Compile Include="integrations\missing_registry.py" />
-    <Compile Include="Lambda_handler.py" />
     <Compile Include="models\activity_log.py" />
     <Compile Include="models\agency_exchange.py" />
     <Compile Include="models\agencies.py" />
@@ -104,25 +94,21 @@
     <Compile Include="services\auth_service.py" />
     <Compile Include="services\case_service.py" />
     <Compile Include="services\match_service.py" />
-    <Compile Include="Utility Logger\logger.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="config\" />
     <Folder Include="database\" />
     <Folder Include="routes\" />
-    <Folder Include="ai_engine\" />
     <Folder Include="integrations\" />
     <Folder Include="models\" />
     <Folder Include="Images\" />
     <Folder Include="schemas\" />
-    <Folder Include="Utility Logger\" />
     <Folder Include="security\" />
     <Folder Include="services\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include=".env" />
-    <Content Include="ai_engine\Pipfile" />
-    <Content Include="ai_engine\requirements.txt" />
+    <Content Include=".env.example" />
+    <Content Include="DEVELOPMENT.md" />
     <Content Include="Images\Beacon.png" />
     <Content Include="Pipfile" />
     <Content Include="requirements-dev.txt" />

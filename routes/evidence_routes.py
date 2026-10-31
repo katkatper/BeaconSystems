@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
+from models.agencies import Agencies
 from models.case import Cases
 from models.evidence import Evidence
 from models.evidence_chain import EvidenceChain
@@ -28,6 +29,7 @@ from security.case_access import (
     assert_case_write_access as assert_authorized_case_write_access,
 )
 from services.activity_service import create_activity_log
+from services.capacity_usage import agency_storage_bytes
 from services.clock import utc_now
 from services.evidence_retention import retention_decision
 from services.geocoding_service import geocode_address
@@ -266,6 +268,17 @@ def upload_evidence(
     agency_id = case.agency_id or current_user.agency_id
     if not agency_id:
         raise HTTPException(status_code=400, detail="Evidence requires an owning agency")
+    current_position = file.file.tell()
+    file.file.seek(0, 2)
+    upload_size = file.file.tell()
+    file.file.seek(current_position)
+    agency = db.query(Agencies).filter(Agencies.agency_id == agency_id).first()
+    if (
+        agency
+        and agency.storage_quota_bytes is not None
+        and agency_storage_bytes(db, agency_id) + upload_size > agency.storage_quota_bytes
+    ):
+        raise HTTPException(status_code=413, detail="Agency storage quota exceeded")
     storage_key = object_storage.create_key(agency_id, "evidence", original_file_name)
     stored = object_storage.put(file.file, storage_key, file.content_type)
     content_sha256 = stored.sha256
@@ -291,6 +304,7 @@ def upload_evidence(
         retention_policy_code=normalized_retention,
         file_name=original_file_name,
         file_path=stored.key,
+        file_size_bytes=stored.size_bytes,
         is_encrypted=object_storage.is_encrypted,
         encryption_key_id=object_storage.encryption_key_id,
         content_sha256=content_sha256,

@@ -38,6 +38,7 @@ from routes.agency_exchange_routes import router as agency_exchange_router
 from routes.alerts_routes import router as alerts_router
 from routes.audit_routes import router as audit_router
 from routes.bolo_routes import router as bolo_router
+from routes.capacity_routes import router as capacity_router
 from routes.cases_routes import router as cases_router
 from routes.dashboard_routes import router as dashboard_router
 from routes.evidence_routes import router as evidence_router
@@ -197,6 +198,7 @@ app.add_middleware(
 app.include_router(users_router)
 app.include_router(sightings_router)
 app.include_router(cases_router)
+app.include_router(capacity_router)
 app.include_router(alerts_router)
 app.include_router(evidence_router)
 app.include_router(admin_user_router)

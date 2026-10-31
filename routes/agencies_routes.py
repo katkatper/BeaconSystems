@@ -4,7 +4,13 @@ from sqlalchemy.orm import Session
 from database.connection import get_db
 from models.agencies import Agencies
 from models.user import User
-from schemas.agency_schema import AgencyCreate, AgencyResponse, AgencyStatusUpdate
+from schemas.agency_schema import (
+    AgencyCreate,
+    AgencyQuotaResponse,
+    AgencyQuotaUpdate,
+    AgencyResponse,
+    AgencyStatusUpdate,
+)
 from security.auth import get_current_user, require_role
 from security.tenant_scope import apply_agency_directory_scope
 from services.activity_service import create_activity_log
@@ -12,6 +18,37 @@ from services.agency_lifecycle import set_agency_status
 from services.pagination import PaginationParams, paginate_query
 
 router = APIRouter(prefix="/agencies", tags=["Agencies"])
+
+
+@router.patch("/{agency_id}/quotas", response_model=AgencyQuotaResponse)
+def update_agency_quotas(
+    agency_id: int,
+    data: AgencyQuotaUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("platform_admin")),
+):
+    agency = db.query(Agencies).filter(Agencies.agency_id == agency_id).first()
+    if agency is None:
+        raise HTTPException(status_code=404, detail="Agency not found")
+    updates = data.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="At least one quota is required")
+    for field, value in updates.items():
+        setattr(agency, field, value)
+    db.commit()
+    db.refresh(agency)
+    create_activity_log(
+        db=db,
+        user_id=current_user.user_id,
+        agency_id=agency.agency_id,
+        action="UPDATE_AGENCY_QUOTAS",
+        entity="agency",
+        entity_id=agency.agency_id,
+        details="Updated agency capacity quotas",
+        ip_address=request.client.host if request.client else None,
+    )
+    return agency
 
 
 @router.post("/", response_model=AgencyResponse, status_code=201)

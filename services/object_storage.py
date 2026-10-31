@@ -26,6 +26,7 @@ _SAFE_SEGMENT = re.compile(r"[^a-zA-Z0-9._-]+")
 class StoredObject:
     key: str
     sha256: str
+    size_bytes: int
 
 
 class ObjectStorage:
@@ -116,6 +117,7 @@ class ObjectStorage:
 
     def put(self, stream: BinaryIO, key: str, content_type: str | None = None) -> StoredObject:
         digest = hashlib.sha256()
+        size_bytes = 0
 
         if self.backend == "s3":
             from tempfile import SpooledTemporaryFile
@@ -123,6 +125,7 @@ class ObjectStorage:
             with SpooledTemporaryFile(max_size=8 * 1024 * 1024) as buffered:
                 while chunk := stream.read(1024 * 1024):
                     digest.update(chunk)
+                    size_bytes += len(chunk)
                     buffered.write(chunk)
                 buffered.seek(0)
                 extra = {
@@ -140,11 +143,16 @@ class ObjectStorage:
             with target.open("wb") as output:
                 while chunk := stream.read(1024 * 1024):
                     digest.update(chunk)
+                    size_bytes += len(chunk)
                     output.write(chunk)
         else:
             raise RuntimeError(f"Unsupported object storage backend: {self.backend}")
 
-        return StoredObject(key=key, sha256=digest.hexdigest())
+        return StoredObject(
+            key=key,
+            sha256=digest.hexdigest(),
+            size_bytes=size_bytes,
+        )
 
     def local_path(self, key: str) -> Path:
         target = (self.local_root / key).resolve()

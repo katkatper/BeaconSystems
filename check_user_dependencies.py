@@ -1,5 +1,6 @@
-from database.connection import engine
 from sqlalchemy import text
+
+from database.connection import engine
 
 TEST_USER_IDS = (10, 11, 12, 13)
 

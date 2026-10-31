@@ -36,6 +36,7 @@ class PhaseOneFoundationTests(unittest.TestCase):
             stored = storage.put(io.BytesIO(b"beacon evidence"), key, "application/pdf")
             self.assertTrue(storage.local_path(stored.key).is_file())
             self.assertEqual(len(stored.sha256), 64)
+            self.assertEqual(stored.size_bytes, len(b"beacon evidence"))
             with self.assertRaises(ValueError):
                 storage.local_path("../../outside.txt")
 
@@ -110,6 +111,7 @@ class PhaseOneFoundationTests(unittest.TestCase):
         )
 
         self.assertEqual(len(stored.sha256), 64)
+        self.assertEqual(stored.size_bytes, len(b"investigative evidence"))
         self.assertEqual(storage._s3.upload["extra"]["ServerSideEncryption"], "aws:kms")
         self.assertEqual(storage._s3.upload["extra"]["SSEKMSKeyId"], storage.kms_key_id)
         self.assertEqual(storage._s3.upload["extra"]["ExpectedBucketOwner"], "123456789012")

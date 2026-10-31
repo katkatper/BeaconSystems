@@ -18,6 +18,18 @@ class AgencyStatusUpdate(BaseModel):
     reason: str = Field(min_length=10, max_length=1000)
 
 
+class AgencyQuotaUpdate(BaseModel):
+    storage_quota_bytes: int | None = Field(default=None, ge=1)
+    monthly_provider_request_quota: int | None = Field(default=None, ge=1)
+    monthly_job_quota: int | None = Field(default=None, ge=1)
+
+
+class AgencyQuotaResponse(AgencyQuotaUpdate):
+    model_config = ConfigDict(from_attributes=True)
+
+    agency_id: int
+
+
 class AgencyResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

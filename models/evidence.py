@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
@@ -74,6 +75,7 @@ class Evidence(Base):
 
     file_name = Column(String(255), nullable=True)
     file_path = Column(String(500), nullable=True)
+    file_size_bytes = Column(BigInteger, nullable=False, default=0, server_default="0")
 
 
 
