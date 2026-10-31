@@ -159,3 +159,58 @@ test("investigator can retry a temporarily unavailable case", async ({ page }) =
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByText("MP-TEST-0041")).toBeVisible();
 });
+
+test("investigator sees partial-data warnings and immutable evidence status", async ({ page }) => {
+    await page.route("https://api.beacon.test/cases/41", (route) => route.fulfill({
+        json: {
+            case_id: 41,
+            case_number: "MP-TEST-0041",
+            title: "Synthetic case",
+            person_id: 19,
+            case_status: "open",
+            priority_level: "high",
+            agency_id: 4,
+            investigator_id: 8,
+        },
+    }));
+    await page.route("https://api.beacon.test/evidence/case/41", (route) => route.fulfill({
+        json: [{
+            evidence_id: 71,
+            evidence_type: "photo_video",
+            description: "Synthetic camera image",
+            file_name: "camera.jpg",
+            is_sensitive: true,
+            has_preview: false,
+            storage_tier: "archived",
+            content_sha256: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        }],
+    }));
+    await page.route("https://api.beacon.test/timeline-events/**", (route) =>
+        route.fulfill({ status: 503, json: { detail: "Timeline temporarily unavailable" } })
+    );
+    await page.route("https://api.beacon.test/evidence/chain/71", (route) => route.fulfill({
+        json: [{ chain_id: 1, action: "UPLOAD_EVIDENCE", details: "Original recorded", created_at: "2026-10-31T12:00:00Z" }],
+    }));
+    for (const endpoint of [
+        "https://api.beacon.test/sightings/**",
+        "https://api.beacon.test/persons/**",
+        "https://api.beacon.test/external-records/**",
+        "https://api.beacon.test/agency-exchanges/**",
+        "https://api.beacon.test/leads/**",
+    ]) {
+        await page.route(endpoint, (route) => route.fulfill({ json: [] }));
+    }
+    await page.route("https://api.beacon.test/cases/41/correlations", (route) =>
+        route.fulfill({ json: { correlations: [] } })
+    );
+    await page.goto("/cases/41");
+
+    await expect(page.getByText(/could not load: timeline/i)).toBeVisible();
+    await page.getByRole("tab", { name: "Evidence" }).click();
+    await expect(page.getByText("Synthetic camera image")).toBeVisible();
+    await expect(page.getByText(/SHA-256 abcdef123456/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Archived" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Archive original" })).toHaveCount(0);
+    await page.getByRole("button", { name: "View Chain of Custody" }).click();
+    await expect(page.getByText("Original recorded")).toBeVisible();
+});

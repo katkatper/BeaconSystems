@@ -4,13 +4,15 @@ import { API_BASE, apiBlob } from "../api.jsx";
 
 function AuthenticatedImage({ src, alt, ...props }) {
     const [resolvedSrc, setResolvedSrc] = useState("");
-    const isBeaconPhoto = Boolean(src) && (
+    const isProtectedImage = Boolean(src) && (
         src.startsWith(`${API_BASE}/persons/photo/`) ||
-        src.startsWith("/persons/photo/")
+        src.startsWith("/persons/photo/") ||
+        src.startsWith(`${API_BASE}/evidence/preview/`) ||
+        src.startsWith("/evidence/preview/")
     );
 
     useEffect(() => {
-        if (!src || !isBeaconPhoto) {
+        if (!src || !isProtectedImage) {
             return undefined;
         }
 
@@ -39,17 +41,17 @@ function AuthenticatedImage({ src, alt, ...props }) {
                 URL.revokeObjectURL(objectUrl);
             }
         };
-    }, [isBeaconPhoto, src]);
+    }, [isProtectedImage, src]);
 
     if (!src) {
         return null;
     }
 
-    if (isBeaconPhoto && !resolvedSrc) {
+    if (isProtectedImage && !resolvedSrc) {
         return <div className="protected-image-placeholder" role="img" aria-label={`${alt} loading`} />;
     }
 
-    return <img src={isBeaconPhoto ? resolvedSrc : src} alt={alt} {...props} />;
+    return <img src={isProtectedImage ? resolvedSrc : src} alt={alt} {...props} />;
 }
 
 export default AuthenticatedImage;

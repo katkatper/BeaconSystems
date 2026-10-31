@@ -29,6 +29,9 @@ function CaseDetail() {
     });
     const [evidence, setEvidence] = useState([]);
     const [evidenceChains, setEvidenceChains] = useState({});
+    const [evidenceMessage, setEvidenceMessage] = useState("");
+    const [evidenceActionId, setEvidenceActionId] = useState(null);
+    const [partialLoadWarnings, setPartialLoadWarnings] = useState([]);
     const [selectedExternalRecord, setSelectedExternalRecord] = useState(null);
     const [showSightingForm, setShowSightingForm] = useState(false);
     const [agencyExchanges, setAgencyExchanges] = useState([]);
@@ -46,6 +49,8 @@ function CaseDetail() {
         notes: "",
     });
     const [associateMessage, setAssociateMessage] = useState("");
+    const [pendingLeadResolution, setPendingLeadResolution] = useState(null);
+    const [pendingSightingRemoval, setPendingSightingRemoval] = useState(null);
 
     const [sightingForm, setSightingForm] = useState({
         location: "",
@@ -122,6 +127,17 @@ function CaseDetail() {
                     fetch(apiUrl(`/leads/assignees?case_id=${id}`), { headers: authHeaders }),
                 ]);
 
+                const secondaryResponses = [
+                    ["sightings", sightingsResponse],
+                    ["timeline", timelineResponse],
+                    ["evidence", evidenceResponse],
+                    ["person profile", personResponse],
+                    ["external records", externalRecordsResponse],
+                    ["agency exchanges", agencyExchangesResponse],
+                    ["case correlations", correlationsResponse],
+                    ["leads", leadsResponse],
+                    ["lead assignees", leadAssigneesResponse],
+                ];
                 const [
                     sightingsData,
                     timelineData,
@@ -145,6 +161,12 @@ function CaseDetail() {
                 ]);
 
                 if (!isMounted) return;
+
+                setPartialLoadWarnings(
+                    secondaryResponses
+                        .filter(([, response]) => !response.ok)
+                        .map(([label]) => label)
+                );
 
                 setSightings(Array.isArray(sightingsData) ? sightingsData : []);
                 setTimelineEvents(Array.isArray(timelineData) ? timelineData : []);
@@ -219,12 +241,17 @@ function CaseDetail() {
         }
     };
 
-    const updateLead = async (lead, changes) => {
+    const updateLead = async (lead, changes, resolutionOverride) => {
         const token = localStorage.getItem("token");
-        const resolution = changes.status && ["resolved", "closed"].includes(changes.status)
-            ? window.prompt("Resolution summary (required)", lead.resolution || "")
-            : undefined;
-        if (resolution === null) return;
+        if (
+            changes.status &&
+            ["resolved", "closed"].includes(changes.status) &&
+            resolutionOverride === undefined
+        ) {
+            setPendingLeadResolution({ lead, changes, resolution: lead.resolution || "" });
+            return;
+        }
+        const resolution = resolutionOverride;
         try {
             const response = await fetch(apiUrl(`/leads/${lead.lead_id}`), {
                 method: "PUT",
@@ -307,17 +334,16 @@ function CaseDetail() {
         }
     };
 
-    const deleteSighting = async (sighting) => {
+    const deleteSighting = async (sighting, confirmed = false) => {
         if (!sighting?.sighting_id) {
             setSightingMessage("This sighting cannot be removed because it has not been saved yet.");
             return;
         }
 
-        const shouldDelete = window.confirm(
-            `Remove sighting at ${sighting.location || "this location"}?`
-        );
-
-        if (!shouldDelete) return;
+        if (!confirmed) {
+            setPendingSightingRemoval(sighting);
+            return;
+        }
 
         const token = localStorage.getItem("token");
 
@@ -348,6 +374,7 @@ function CaseDetail() {
                 currentSightings.filter((entry) => entry.sighting_id !== sighting.sighting_id)
             );
             setSightingMessage("Sighting removed.");
+            setPendingSightingRemoval(null);
         } catch (err) {
             console.error(err);
             setSightingMessage("Could not remove sighting.");
@@ -438,15 +465,17 @@ function CaseDetail() {
                 }
             );
 
-            if (!response.ok) throw new Error("Failed to load chain");
+            if (!response.ok) throw new Error("Could not load chain of custody");
 
             const data = await response.json();
             setEvidenceChains((prev) => ({
                 ...prev,
                 [evidenceId]: data,
             }));
+            setEvidenceMessage("Chain of custody loaded.");
         } catch (err) {
             console.error(err);
+            setEvidenceMessage(err.message || "Could not load chain of custody.");
         }
     };
 
@@ -472,7 +501,7 @@ function CaseDetail() {
             window.open(fileUrl, "_blank");
         } catch (err) {
             console.error(err);
-            alert("Could not open evidence.");
+            setEvidenceMessage(err.message || "Could not open evidence.");
         }
     };
 
@@ -501,9 +530,38 @@ function CaseDetail() {
                         : item
                 )
             );
+            setEvidenceMessage("Evidence sensitivity updated.");
         } catch (err) {
             console.error(err);
-            alert("Could not update evidence sensitivity.");
+            setEvidenceMessage(err.message || "Could not update evidence sensitivity.");
+        }
+    };
+
+    const transitionEvidenceStorage = async (item, action) => {
+        const token = localStorage.getItem("token");
+        setEvidenceActionId(item.evidence_id);
+        setEvidenceMessage("");
+        try {
+            const response = await fetch(apiUrl(`/evidence/${item.evidence_id}/${action}`), {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.detail || `Could not ${action} evidence`);
+            setEvidence((current) => current.map((entry) =>
+                entry.evidence_id === item.evidence_id
+                    ? { ...entry, storage_tier: data.storage_tier }
+                    : entry
+            ));
+            setEvidenceMessage(
+                data.storage_tier === "restore_pending"
+                    ? "Evidence restore requested. Archived originals can take time to become available."
+                    : `Evidence storage status updated to ${data.storage_tier}.`
+            );
+        } catch (err) {
+            setEvidenceMessage(err.message || `Could not ${action} evidence.`);
+        } finally {
+            setEvidenceActionId(null);
         }
     };
 
@@ -539,6 +597,79 @@ function CaseDetail() {
                 <span className="workspace-loading-indicator" aria-hidden="true" />
                 Loading case details…
             </div>
+
+            {pendingLeadResolution && (
+                <div className="case-dialog-backdrop" role="presentation">
+                    <section
+                        className="case-dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="lead-resolution-heading"
+                    >
+                        <h2 id="lead-resolution-heading">Document lead resolution</h2>
+                        <p>A resolution summary is required before closing this lead.</p>
+                        <label>
+                            Resolution summary
+                            <textarea
+                                autoFocus
+                                value={pendingLeadResolution.resolution}
+                                onChange={(event) => setPendingLeadResolution({
+                                    ...pendingLeadResolution,
+                                    resolution: event.target.value,
+                                })}
+                            />
+                        </label>
+                        <div className="case-action-row">
+                            <button
+                                type="button"
+                                disabled={!pendingLeadResolution.resolution.trim()}
+                                onClick={() => {
+                                    updateLead(
+                                        pendingLeadResolution.lead,
+                                        pendingLeadResolution.changes,
+                                        pendingLeadResolution.resolution.trim()
+                                    );
+                                    setPendingLeadResolution(null);
+                                }}
+                            >
+                                Save resolution
+                            </button>
+                            <button type="button" onClick={() => setPendingLeadResolution(null)}>
+                                Cancel
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {pendingSightingRemoval && (
+                <div className="case-dialog-backdrop" role="presentation">
+                    <section
+                        className="case-dialog"
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="remove-sighting-heading"
+                    >
+                        <h2 id="remove-sighting-heading">Remove this sighting?</h2>
+                        <p>
+                            The sighting at {pendingSightingRemoval.location || "the recorded location"}
+                            will be removed from this case.
+                        </p>
+                        <div className="case-action-row">
+                            <button
+                                type="button"
+                                className="small-danger-button"
+                                onClick={() => deleteSighting(pendingSightingRemoval, true)}
+                            >
+                                Remove sighting
+                            </button>
+                            <button type="button" onClick={() => setPendingSightingRemoval(null)}>
+                                Cancel
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </div>
     );
 
@@ -819,10 +950,25 @@ function CaseDetail() {
         event.preventDefault();
         selectCaseTab(caseTabs[nextIndex][0]);
     };
+    const canManageEvidenceStorage = ["platform_admin", "agency_admin", "supervisor"]
+        .includes(localStorage.getItem("role"));
 
     return (
         <div className="case-detail-page">
             <Link className="case-back-link" to="/cases">Back to Cases</Link>
+
+            {partialLoadWarnings.length > 0 && (
+                <section className="case-partial-warning" role="status" aria-live="polite">
+                    <strong>Some case information is temporarily unavailable.</strong>
+                    <p>
+                        Beacon could not load: {partialLoadWarnings.join(", ")}. Other authorized
+                        case information remains available.
+                    </p>
+                    <button type="button" onClick={() => setReloadAttempt((value) => value + 1)}>
+                        Retry missing information
+                    </button>
+                </section>
+            )}
 
             <div className="case-section">
                 <div className="case-card-header">
@@ -1193,31 +1339,71 @@ function CaseDetail() {
             {activeTab === "evidence" && (
                 <div className="case-section case-tab-panel">
                     <h2>Evidence</h2>
+                    <p>Original files are integrity-checked before access. Previews are separate derivatives.</p>
+                    {evidenceMessage && <p role="status" aria-live="polite">{evidenceMessage}</p>}
                     {evidence.length === 0 ? (
                         <p>No evidence uploaded.</p>
                     ) : (
                         evidence.map((item) => (
-                            <article key={item.evidence_id} className="queue-item">
-                                <div>
-                                    <strong>{item.evidence_type}</strong>
+                            <article key={item.evidence_id} className="queue-item evidence-review-card">
+                                {item.has_preview && (
+                                    <AuthenticatedImage
+                                        className="evidence-review-preview"
+                                        src={apiUrl(`/evidence/preview/${item.evidence_id}`)}
+                                        alt={`Preview of ${item.file_name || `evidence ${item.evidence_id}`}`}
+                                    />
+                                )}
+                                <div className="evidence-review-content">
+                                <div className="evidence-review-heading">
+                                    <strong>{item.evidence_type || "Evidence"}</strong>
                                     <span>{item.is_sensitive ? "Sensitive" : "Standard"}</span>
+                                    <span>{statusLabel(item.storage_tier || "active")}</span>
                                 </div>
-                                <p>{item.description}</p>
-                                <p>File: {item.file_name}</p>
+                                <p>{item.description || "No description recorded."}</p>
+                                <p>File: {item.file_name || "File name unavailable"}</p>
+                                <small>
+                                    Integrity: {item.content_sha256
+                                        ? `SHA-256 ${item.content_sha256.slice(0, 12)}… recorded`
+                                        : "Legacy file — hash not recorded"}
+                                </small>
                                 <div className="case-action-row">
-                                    <button onClick={() => viewEvidence(item.evidence_id)}>
-                                        Open Evidence
+                                    <button
+                                        type="button"
+                                        onClick={() => viewEvidence(item.evidence_id)}
+                                        disabled={["archived", "restore_pending"].includes(item.storage_tier)}
+                                    >
+                                        {item.storage_tier === "archived" ? "Archived" : item.storage_tier === "restore_pending" ? "Restore pending" : "Open Evidence"}
                                     </button>
-                                    <button onClick={() => loadEvidenceChain(item.evidence_id)}>
+                                    <button type="button" onClick={() => loadEvidenceChain(item.evidence_id)}>
                                         View Chain of Custody
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={() =>
                                             markEvidenceSensitive(item.evidence_id, !item.is_sensitive)
                                         }
                                     >
                                         {item.is_sensitive ? "Unmark Sensitive" : "Mark Sensitive"}
                                     </button>
+                                    {canManageEvidenceStorage && item.storage_tier === "active" && (
+                                        <button
+                                            type="button"
+                                            onClick={() => transitionEvidenceStorage(item, "archive")}
+                                            disabled={evidenceActionId === item.evidence_id}
+                                        >
+                                            Archive original
+                                        </button>
+                                    )}
+                                    {canManageEvidenceStorage && ["archived", "restore_pending"].includes(item.storage_tier) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => transitionEvidenceStorage(item, "restore")}
+                                            disabled={evidenceActionId === item.evidence_id}
+                                        >
+                                            {evidenceActionId === item.evidence_id ? "Requesting…" : "Request restore"}
+                                        </button>
+                                    )}
+                                </div>
                                 </div>
 
                                 {evidenceChains[item.evidence_id]?.map((event) => (
