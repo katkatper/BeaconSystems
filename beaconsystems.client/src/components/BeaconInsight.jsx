@@ -79,9 +79,9 @@ function BeaconInsight() {
     const { pathname } = useLocation();
     const [summary, setSummary] = useState(null);
     const [error, setError] = useState("");
-    const [collapsed, setCollapsed] = useState(() =>
-        typeof window !== "undefined" && window.matchMedia("(max-width: 700px)").matches
-    );
+    // Decision support should never cover operational controls on initial load.
+    // Users can expand it when they want the additional context.
+    const [collapsed, setCollapsed] = useState(true);
     const [updatedAt, setUpdatedAt] = useState(null);
 
     const loadInsights = () => {

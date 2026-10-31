@@ -598,78 +598,6 @@ function CaseDetail() {
                 Loading case details…
             </div>
 
-            {pendingLeadResolution && (
-                <div className="case-dialog-backdrop" role="presentation">
-                    <section
-                        className="case-dialog"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="lead-resolution-heading"
-                    >
-                        <h2 id="lead-resolution-heading">Document lead resolution</h2>
-                        <p>A resolution summary is required before closing this lead.</p>
-                        <label>
-                            Resolution summary
-                            <textarea
-                                autoFocus
-                                value={pendingLeadResolution.resolution}
-                                onChange={(event) => setPendingLeadResolution({
-                                    ...pendingLeadResolution,
-                                    resolution: event.target.value,
-                                })}
-                            />
-                        </label>
-                        <div className="case-action-row">
-                            <button
-                                type="button"
-                                disabled={!pendingLeadResolution.resolution.trim()}
-                                onClick={() => {
-                                    updateLead(
-                                        pendingLeadResolution.lead,
-                                        pendingLeadResolution.changes,
-                                        pendingLeadResolution.resolution.trim()
-                                    );
-                                    setPendingLeadResolution(null);
-                                }}
-                            >
-                                Save resolution
-                            </button>
-                            <button type="button" onClick={() => setPendingLeadResolution(null)}>
-                                Cancel
-                            </button>
-                        </div>
-                    </section>
-                </div>
-            )}
-
-            {pendingSightingRemoval && (
-                <div className="case-dialog-backdrop" role="presentation">
-                    <section
-                        className="case-dialog"
-                        role="alertdialog"
-                        aria-modal="true"
-                        aria-labelledby="remove-sighting-heading"
-                    >
-                        <h2 id="remove-sighting-heading">Remove this sighting?</h2>
-                        <p>
-                            The sighting at {pendingSightingRemoval.location || "the recorded location"}
-                            will be removed from this case.
-                        </p>
-                        <div className="case-action-row">
-                            <button
-                                type="button"
-                                className="small-danger-button"
-                                onClick={() => deleteSighting(pendingSightingRemoval, true)}
-                            >
-                                Remove sighting
-                            </button>
-                            <button type="button" onClick={() => setPendingSightingRemoval(null)}>
-                                Cancel
-                            </button>
-                        </div>
-                    </section>
-                </div>
-            )}
         </div>
     );
 
@@ -1687,6 +1615,65 @@ function CaseDetail() {
                 </div>
             )}
             </div>
+
+            {pendingLeadResolution && (
+                <div className="case-dialog-backdrop" role="presentation">
+                    <section className="case-dialog" role="dialog" aria-modal="true" aria-labelledby="lead-resolution-heading">
+                        <h2 id="lead-resolution-heading">Document lead resolution</h2>
+                        <p>A resolution summary is required before closing this lead.</p>
+                        <label>
+                            Resolution summary
+                            <textarea
+                                autoFocus
+                                value={pendingLeadResolution.resolution}
+                                onChange={(event) => setPendingLeadResolution({
+                                    ...pendingLeadResolution,
+                                    resolution: event.target.value,
+                                })}
+                            />
+                        </label>
+                        <div className="case-action-row">
+                            <button
+                                type="button"
+                                disabled={!pendingLeadResolution.resolution.trim()}
+                                onClick={() => {
+                                    updateLead(
+                                        pendingLeadResolution.lead,
+                                        pendingLeadResolution.changes,
+                                        pendingLeadResolution.resolution.trim()
+                                    );
+                                    setPendingLeadResolution(null);
+                                }}
+                            >
+                                Save resolution
+                            </button>
+                            <button type="button" onClick={() => setPendingLeadResolution(null)}>Cancel</button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {pendingSightingRemoval && (
+                <div className="case-dialog-backdrop" role="presentation">
+                    <section className="case-dialog" role="alertdialog" aria-modal="true" aria-labelledby="remove-sighting-heading">
+                        <h2 id="remove-sighting-heading">Remove this sighting?</h2>
+                        <p>
+                            The sighting at {pendingSightingRemoval.location || "the recorded location"}
+                            will be removed from this case.
+                        </p>
+                        <div className="case-action-row">
+                            <button
+                                type="button"
+                                className="small-danger-button"
+                                onClick={() => deleteSighting(pendingSightingRemoval, true)}
+                            >
+                                Remove sighting
+                            </button>
+                            <button type="button" onClick={() => setPendingSightingRemoval(null)}>Cancel</button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }

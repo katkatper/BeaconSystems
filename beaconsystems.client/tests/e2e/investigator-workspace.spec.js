@@ -214,3 +214,77 @@ test("investigator sees partial-data warnings and immutable evidence status", as
     await page.getByRole("button", { name: "View Chain of Custody" }).click();
     await expect(page.getByText("Original recorded")).toBeVisible();
 });
+
+test("investigator documents lead resolution and confirms sighting removal", async ({ page }) => {
+    let submittedResolution = null;
+    let deletedSighting = false;
+    await page.route("https://api.beacon.test/cases/41", (route) => route.fulfill({
+        json: {
+            case_id: 41,
+            case_number: "MP-TEST-0041",
+            person_id: 19,
+            case_status: "open",
+            priority_level: "high",
+            agency_id: 4,
+            investigator_id: 8,
+        },
+    }));
+    await page.route("https://api.beacon.test/sightings/**", async (route) => {
+        if (route.request().method() === "DELETE") {
+            deletedSighting = true;
+            return route.fulfill({ json: { message: "removed" } });
+        }
+        return route.fulfill({ json: [{ sighting_id: 51, location: "Synthetic station", description: "Test sighting" }] });
+    });
+    await page.route("https://api.beacon.test/leads/**", async (route) => {
+        if (route.request().method() === "PUT") {
+            const requestData = route.request().postDataJSON();
+            submittedResolution = requestData.resolution;
+            return route.fulfill({ json: {
+                lead_id: 61,
+                lead_source: "Camera review",
+                description: "Review synthetic footage",
+                priority: "high",
+                status: requestData.status,
+                resolution: requestData.resolution,
+            } });
+        }
+        if (route.request().url().includes("/assignees")) return route.fulfill({ json: [] });
+        return route.fulfill({ json: [{
+            lead_id: 61,
+            lead_source: "Camera review",
+            description: "Review synthetic footage",
+            priority: "high",
+            status: "in_progress",
+        }] });
+    });
+    await page.route("https://api.beacon.test/persons/**", (route) => route.fulfill({ json: { person_id: 19, known_associates: "" } }));
+    for (const endpoint of [
+        "https://api.beacon.test/timeline-events/**",
+        "https://api.beacon.test/evidence/case/**",
+        "https://api.beacon.test/external-records/**",
+        "https://api.beacon.test/agency-exchanges/**",
+    ]) {
+        await page.route(endpoint, (route) => route.fulfill({ json: [] }));
+    }
+    await page.route("https://api.beacon.test/cases/41/correlations", (route) => route.fulfill({ json: { correlations: [] } }));
+    await page.goto("/cases/41");
+
+    await page.getByRole("tab", { name: "Leads" }).click();
+    const leadCard = page.locator(".case-lead-card").filter({ hasText: "Camera review" });
+    await leadCard.getByLabel("Status").selectOption("resolved");
+    const resolutionDialog = page.getByRole("dialog", { name: "Document lead resolution" });
+    await expect(resolutionDialog).toBeVisible();
+    await resolutionDialog.getByLabel("Resolution summary").fill("Footage reviewed; no confirmed match.");
+    await resolutionDialog.getByRole("button", { name: "Save resolution" }).click();
+    await expect(leadCard.getByText(/Footage reviewed/)).toBeVisible();
+    expect(submittedResolution).toBe("Footage reviewed; no confirmed match.");
+
+    await page.getByRole("tab", { name: "Sightings" }).click();
+    await page.getByRole("button", { name: "Remove" }).click();
+    const removalDialog = page.getByRole("alertdialog", { name: "Remove this sighting?" });
+    await expect(removalDialog).toBeVisible();
+    await removalDialog.getByRole("button", { name: "Remove sighting" }).click();
+    await expect(page.getByText("Sighting removed.")).toBeVisible();
+    expect(deletedSighting).toBe(true);
+});
