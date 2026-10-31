@@ -171,6 +171,41 @@ class PhaseTwoJobQueueTests(unittest.TestCase):
         self.assertEqual(completed.status, "completed")
         self.assertEqual(completed.completed_at, now)
 
+    def test_claims_rotate_to_an_agency_that_has_waited_longer(self):
+        now = datetime(2026, 10, 17, 12, 0, 0)
+        recently_served = Agencies(
+            agency_id=30,
+            agency_name="Recently served",
+            queue_last_claimed_at=now - timedelta(seconds=5),
+        )
+        waiting = Agencies(agency_id=31, agency_name="Waiting agency")
+        self.db.add_all([recently_served, waiting])
+        self.db.commit()
+        enqueue_job(
+            self.db,
+            agency_id=30,
+            job_type="matching.run",
+            payload={"agency_id": 30},
+            idempotency_key="fair:recent",
+            priority=100,
+            available_at=now,
+        )
+        waiting_job, _ = enqueue_job(
+            self.db,
+            agency_id=31,
+            job_type="matching.run",
+            payload={"agency_id": 31},
+            idempotency_key="fair:waiting",
+            priority=1,
+            available_at=now,
+        )
+        self.db.commit()
+
+        claimed = claim_next_job(self.db, worker_id="fair-worker", now=now)
+
+        self.assertEqual(claimed.job_id, waiting_job.job_id)
+        self.assertEqual(waiting.queue_last_claimed_at, now)
+
     def test_phase_two_schema_and_routes_are_tenant_scoped(self):
         migration = (
             REPOSITORY_ROOT

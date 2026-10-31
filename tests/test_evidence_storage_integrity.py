@@ -44,6 +44,18 @@ def test_local_storage_is_write_once_and_detects_tampering():
         assert not storage.verify(key, stored.sha256)
 
 
+def test_local_archive_and_restore_keep_the_original_bytes_unchanged():
+    with tempfile.TemporaryDirectory() as directory:
+        storage = _local_storage(directory)
+        key = storage.create_key(8, "evidence", "statement.txt")
+        stored = storage.put(io.BytesIO(b"unchanged original"), key)
+        storage.archive(key, stored.sha256)
+        storage.request_restore(key)
+        assert storage.restore_ready(key)
+        assert storage.local_path(key).read_bytes() == b"unchanged original"
+        assert storage.verify(key, stored.sha256)
+
+
 def test_image_preview_is_bounded_and_original_is_unchanged():
     original = io.BytesIO()
     Image.new("RGB", (1200, 800), "navy").save(original, "PNG")

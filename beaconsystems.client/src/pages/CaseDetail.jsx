@@ -11,7 +11,9 @@ function CaseDetail() {
     const [caseItem, setCaseItem] = useState(null);
     const [sightings, setSightings] = useState([]);
     const [externalRecords, setExternalRecords] = useState([]);
-    const [error, setError] = useState("");
+    const [error, setError] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [reloadAttempt, setReloadAttempt] = useState(0);
     const [sightingMessage, setSightingMessage] = useState("");
     const [person, setPerson] = useState(null);
     const [timelineEvents, setTimelineEvents] = useState([]);
@@ -59,13 +61,23 @@ function CaseDetail() {
         };
 
         const loadCaseDetail = async () => {
+            setIsLoading(true);
+            setError(null);
             try {
                 const caseResponse = await fetch(apiUrl(`/cases/${id}`), {
                     headers: authHeaders,
                 });
 
                 if (!caseResponse.ok) {
-                    throw new Error("Failed to load case");
+                    const responseError = await caseResponse.json().catch(() => ({}));
+                    const loadError = new Error(
+                        responseError.detail ||
+                        (caseResponse.status === 403
+                            ? "You do not have permission to view this case."
+                            : "Could not load this case.")
+                    );
+                    loadError.status = caseResponse.status;
+                    throw loadError;
                 }
 
                 const caseData = await caseResponse.json();
@@ -152,8 +164,10 @@ function CaseDetail() {
             } catch (err) {
                 console.error(err);
                 if (isMounted) {
-                    setError("Could not load case details.");
+                    setError(err);
                 }
+            } finally {
+                if (isMounted) setIsLoading(false);
             }
         };
 
@@ -162,7 +176,7 @@ function CaseDetail() {
         return () => {
             isMounted = false;
         };
-    }, [id]);
+    }, [id, reloadAttempt]);
 
     const handleSightingChange = (e) => {
         setSightingForm({
@@ -493,9 +507,40 @@ function CaseDetail() {
         }
     };
 
-    if (error) return <p>{error}</p>;
+    if (error && !caseItem) return (
+        <div className="beacon-page">
+            <section
+                className="workspace-state workspace-error-state"
+                role="alert"
+                aria-labelledby="case-load-error-heading"
+            >
+                <span className="workspace-state-label">
+                    {error.status === 403 ? "Access denied" : "Case unavailable"}
+                </span>
+                <h1 id="case-load-error-heading">
+                    {error.status === 403 ? "You cannot access this case" : "Case details could not load"}
+                </h1>
+                <p>{error.message || "Could not load case details."}</p>
+                <div className="workspace-state-actions">
+                    {error.status !== 403 && (
+                        <button type="button" onClick={() => setReloadAttempt((value) => value + 1)}>
+                            Try again
+                        </button>
+                    )}
+                    <Link to="/cases">Return to authorized cases</Link>
+                </div>
+            </section>
+        </div>
+    );
 
-    if (!caseItem) return <p>Loading case details...</p>;
+    if (isLoading || !caseItem) return (
+        <div className="beacon-page">
+            <div className="workspace-state" role="status" aria-live="polite">
+                <span className="workspace-loading-indicator" aria-hidden="true" />
+                Loading case details…
+            </div>
+        </div>
+    );
 
     const sortedSightings = [...sightings].sort(
         (a, b) =>

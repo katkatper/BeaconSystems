@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -166,3 +167,37 @@ jobs:
             beaconsystems.client/playwright-report
             beaconsystems.client/test-results
           retention-days: 30
+
+  staging-exercise:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      MIGRATION_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      SECRET_KEY: ${{ secrets.STAGING_SECRET_KEY }}
+      JWT_ISSUER: beacon-api-staging-gate
+      JWT_AUDIENCE: beacon-web-staging-gate
+      BEACON_LOAD_TEST_TOKEN: ${{ secrets.STAGING_LOAD_TEST_TOKEN }}
+      BEACON_STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Require protected staging configuration
+        run: |
+          test -n "$BEACON_STAGING_BASE_URL"
+          test -n "$DATABASE_URL"
+          test -n "$SECRET_KEY"
+      - name: Install verification dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run production-shaped staging exercise
+        run: >-
+          python scripts/run_staging_exercise.py
+          --base-url "$BEACON_STAGING_BASE_URL"
+          --requests 2000
+          --concurrency 50

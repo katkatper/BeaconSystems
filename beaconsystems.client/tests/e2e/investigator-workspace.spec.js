@@ -107,3 +107,55 @@ test("investigator reviews assigned operational work and clears a notification",
     await expect(page.getByText("Notification marked read.")).toBeAttached();
     await expect(page.getByText("You are caught up.")).toBeVisible();
 });
+
+test("investigator receives a private case access-denied state", async ({ page }) => {
+    await page.route("https://api.beacon.test/cases/41", (route) =>
+        route.fulfill({ status: 403, json: { detail: "Case access is not authorized" } })
+    );
+    await page.goto("/cases/41");
+
+    await expect(page.getByRole("heading", { name: "You cannot access this case" })).toBeVisible();
+    await expect(page.getByText("Case access is not authorized")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Return to authorized cases" })).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+});
+
+test("investigator can retry a temporarily unavailable case", async ({ page }) => {
+    let attempts = 0;
+    await page.route("https://api.beacon.test/cases/41", (route) => {
+        attempts += 1;
+        // React StrictMode invokes the initial effect twice in development.
+        if (attempts <= 2) {
+            return route.fulfill({ status: 503, json: { detail: "Case service is recovering" } });
+        }
+        return route.fulfill({
+            json: {
+                case_id: 41,
+                case_number: "MP-TEST-0041",
+                title: "Synthetic case",
+                person_id: 19,
+                status: "open",
+            },
+        });
+    });
+    for (const endpoint of [
+        "https://api.beacon.test/sightings/**",
+        "https://api.beacon.test/timeline-events/**",
+        "https://api.beacon.test/evidence/case/**",
+        "https://api.beacon.test/persons/**",
+        "https://api.beacon.test/external-records/**",
+        "https://api.beacon.test/agency-exchanges/**",
+        "https://api.beacon.test/cases/41/correlations",
+        "https://api.beacon.test/leads/**",
+    ]) {
+        await page.route(endpoint, (route) => route.fulfill({ json: [] }));
+    }
+    await page.goto("/cases/41");
+
+    await expect(page.getByRole("heading", { name: "Case details could not load" })).toBeVisible();
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByText("MP-TEST-0041")).toBeVisible();
+});

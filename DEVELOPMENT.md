@@ -80,3 +80,6 @@ python scripts/run_staging_exercise.py --base-url https://staging.example.gov
 The gate verifies schema drift, capacity-plan validity, repository hygiene, the
 full backend suite, and bounded concurrent HTTP latency and error thresholds.
 Use synthetic records only and retain the output with the release evidence.
+The same gate can be launched manually from GitHub Actions after configuring the
+protected `staging` environment with `STAGING_BASE_URL`, `STAGING_DATABASE_URL`,
+`STAGING_SECRET_KEY`, and `STAGING_LOAD_TEST_TOKEN`.

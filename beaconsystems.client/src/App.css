@@ -6844,6 +6844,35 @@ body:has(.navbar-collapsed) .app-content.with-sidebar {
     justify-self: center;
 }
 
+.workspace-state-label {
+    color: #fca5a5;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.workspace-state-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.workspace-state-actions a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 8px 14px;
+    box-sizing: border-box;
+    color: #eff6ff;
+    font-weight: 800;
+    text-decoration: none;
+    background: rgba(30, 64, 175, 0.72);
+    border: 1px solid rgba(147, 197, 253, 0.35);
+    border-radius: 8px;
+}
+
 .workspace-loading-indicator {
     width: 18px;
     height: 18px;
