@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../api.jsx";
+import { getSessionValue } from "../authSession.js";
 
 const allowedRoles = ["platform_admin", "agency_admin", "supervisor"];
 
 export default function JobOperations() {
-    const allowed = allowedRoles.includes(localStorage.getItem("role"));
+    const allowed = allowedRoles.includes(getSessionValue("role"));
     const [metrics, setMetrics] = useState(null);
     const [loadedAt, setLoadedAt] = useState(null);
     const [jobs, setJobs] = useState([]);

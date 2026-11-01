@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { apiGet, apiPatch, apiPost, apiUrl } from "../api.jsx";
+import { getSessionValue } from "../authSession.js";
 
 
 const starterAgencies = [
@@ -357,7 +358,7 @@ function AgencyManagement() {
     const [lifecycleBusyId, setLifecycleBusyId] = useState(null);
 
     const token = sessionStorage.getItem("token");
-    const isPlatformAdmin = localStorage.getItem("role") === "platform_admin";
+    const isPlatformAdmin = getSessionValue("role") === "platform_admin";
 
     const refreshAgencies = async () => {
         const data = await apiGet("/agencies/");

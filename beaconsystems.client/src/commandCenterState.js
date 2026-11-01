@@ -1,8 +1,10 @@
+import { getSessionValue } from "./authSession.js";
+
 const READ_STATE_EVENT = "beacon-command-read-state-changed";
 
 const getUserScope = () => {
-    const username = localStorage.getItem("username") || "anonymous";
-    const role = localStorage.getItem("role") || "viewer";
+    const username = getSessionValue("username", "anonymous");
+    const role = getSessionValue("role", "viewer");
     return `${role}:${username}`;
 };
 

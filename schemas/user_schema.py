@@ -60,6 +60,11 @@ class UserResponse(BaseModel):
     email: str
     role: str
 
+
+class CurrentUserResponse(UserResponse):
+    agency_id: int
+    is_active: bool
+
 class UserRoleUpdate(BaseModel):
     role: str
 

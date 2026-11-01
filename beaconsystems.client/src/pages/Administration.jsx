@@ -1,9 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { getSessionValue } from "../authSession.js";
 
 function Administration() {
     const administrationLinks = [
-        ...(["platform_admin", "agency_admin", "supervisor"].includes(localStorage.getItem("role"))
+        ...(["platform_admin", "agency_admin", "supervisor"].includes(getSessionValue("role"))
             ? [["Operations", "/operations", "Inspect queue health and replay failed background jobs."]] : []),
         ["Users", "/admin/users", "Manage accounts, roles, and supervisor access."],
         ["Audit", "/audit", "Review system activity, compliance logs, and user history."],

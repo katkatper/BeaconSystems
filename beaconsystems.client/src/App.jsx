@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 
 import { BrowserRouter as Router,Routes,Route,Navigate,useLocation,useNavigate} from "react-router-dom";
 
@@ -6,6 +6,8 @@ import Navbar from "./pages/Navbar.jsx";
 import Login from "./pages/Login.jsx";
 import "./App.css";
 import BeaconInsight from "./components/BeaconInsight.jsx";
+import { apiGet } from "./api.jsx";
+import { clearAuthSession, getSessionValue, hasAuthToken, setSessionValue, updateSessionIdentity } from "./authSession.js";
 
 const InvestigatorWorkspace = lazy(() => import("./pages/InvestigatorWorkspace.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
@@ -39,22 +41,9 @@ const AuditCenter = lazy(() => import("./pages/AuditCenter.jsx"));
 
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
-function clearAuthSession(message) {
-    sessionStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("username");
-    localStorage.removeItem("agency_id");
-    localStorage.removeItem("last_activity_at");
-    localStorage.removeItem("session_expires_at");
-
-    if (message) {
-        localStorage.setItem("session_timeout_message", message);
-    }
-}
-
 function isSessionExpired() {
-    const lastActivityAt = Number(localStorage.getItem("last_activity_at") || Date.now());
-    const sessionExpiresAt = localStorage.getItem("session_expires_at");
+    const lastActivityAt = Number(getSessionValue("last_activity_at", Date.now()));
+    const sessionExpiresAt = getSessionValue("session_expires_at");
     const absoluteExpiresAt = sessionExpiresAt ? Date.parse(sessionExpiresAt) : null;
     const now = Date.now();
 
@@ -68,21 +57,53 @@ function isSessionExpired() {
 // enforces real authorization; this only controls frontend navigation.
 
 function ProtectedRoute({ children }) {
-    const token = sessionStorage.getItem("token");
+    const token = getSessionValue("token");
+    const [identityStatus, setIdentityStatus] = useState("checking");
+
+    useEffect(() => {
+        let active = true;
+        if (!token || isSessionExpired()) {
+            return () => { active = false; };
+        }
+        apiGet("/users/me")
+            .then((identity) => {
+                if (!active) return;
+                updateSessionIdentity(identity);
+                setIdentityStatus("verified");
+            })
+            .catch(() => {
+                if (!active) return;
+                clearAuthSession({ message: "Your Beacon session could not be verified. Please sign in again." });
+                setIdentityStatus("invalid");
+            });
+        return () => { active = false; };
+    }, [token]);
 
     if (!token || isSessionExpired()) {
         if (token) {
-            clearAuthSession("Your Beacon session expired. Please sign in again.");
+            clearAuthSession({ message: "Your Beacon session expired. Please sign in again." });
         }
 
         return <Navigate to="/login" replace />;
     }
 
+    if (identityStatus === "invalid") {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (identityStatus !== "verified") {
+        return <div className="route-loading-state" role="status">Verifying secure session…</div>;
+    }
+
     return children;
 }
 
+function RoleLanding() {
+    return getSessionValue("role") === "investigator" ? <InvestigatorWorkspace /> : <Dashboard />;
+}
+
 function RoleRoute({ allowedRoles, children }) {
-    const role = localStorage.getItem("role") || "viewer";
+    const role = getSessionValue("role", "viewer");
 
     if (!allowedRoles.includes(role)) {
         return (
@@ -111,17 +132,17 @@ function AppLayout() {
     const hideNavbar = location.pathname === "/login";
 
     useEffect(() => {
-        if (hideNavbar || !sessionStorage.getItem("token")) {
+        if (hideNavbar || !hasAuthToken()) {
             return undefined;
         }
 
         const recordActivity = () => {
-            localStorage.setItem("last_activity_at", String(Date.now()));
+            setSessionValue("last_activity_at", Date.now());
         };
 
         const checkSession = () => {
-            if (sessionStorage.getItem("token") && isSessionExpired()) {
-                clearAuthSession("Your Beacon session expired. Please sign in again.");
+            if (hasAuthToken() && isSessionExpired()) {
+                clearAuthSession({ message: "Your Beacon session expired. Please sign in again." });
                 navigate("/login", { replace: true });
             }
         };
@@ -174,7 +195,7 @@ function AppLayout() {
                     path="/"
                     element={
                         <ProtectedRoute>
-                            {localStorage.getItem("role") === "investigator" ? <InvestigatorWorkspace /> : <Dashboard />}
+                            <RoleLanding />
                         </ProtectedRoute>
                     }
                 />
@@ -416,7 +437,7 @@ function AppLayout() {
                 </Routes>
                 </Suspense>
             </main>
-            {!hideNavbar && sessionStorage.getItem("token") && <BeaconInsight />}
+            {!hideNavbar && hasAuthToken() && <BeaconInsight />}
         </>
     );
 }

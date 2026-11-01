@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiGet, apiPost } from "../api.jsx";
 import ActiveFilterBanner from "../components/ActiveFilterBanner.jsx";
+import { getSessionValue } from "../authSession.js";
 
 const slugify = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 
@@ -248,8 +249,8 @@ function LegalOrders() {
     const [searchParams, setSearchParams] = useSearchParams();
     const statusFilter = searchParams.get("status") || "";
     const requestedTemplate = searchParams.get("template") || "";
-    const username = localStorage.getItem("username") || "";
-    const role = localStorage.getItem("role") || "viewer";
+    const username = getSessionValue("username", "");
+    const role = getSessionValue("role", "viewer");
     const isSupervisor = role === "supervisor";
     const [orders, setOrders] = useState([]);
     const [message, setMessage] = useState("");

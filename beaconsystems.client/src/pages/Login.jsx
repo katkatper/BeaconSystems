@@ -1,6 +1,7 @@
 import { apiUrl } from "../api.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { clearAuthSession, getSessionValue, storeAuthSession } from "../authSession.js";
 
 const LOGIN_ERROR_MESSAGES = {
     401: "Invalid username or password.",
@@ -30,7 +31,7 @@ function Login({ onLogin }) {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
     const [message, setMessage] = useState(
-        () => localStorage.getItem("session_timeout_message") || ""
+        () => getSessionValue("session_timeout_message", "")
     );
     const [recoveryMode, setRecoveryMode] = useState("");
     const [pendingToken, setPendingToken] = useState("");
@@ -50,23 +51,11 @@ function Login({ onLogin }) {
     };
 
     useEffect(() => {
-        localStorage.removeItem("session_timeout_message");
+        sessionStorage.removeItem("session_timeout_message");
     }, []);
 
-    const storeSession = (data) => {
-        sessionStorage.setItem("token", data.access_token);
-        localStorage.setItem("role", data.role);
-        localStorage.setItem("username", data.username);
-        localStorage.setItem("agency_id", data.agency_id || "");
-        localStorage.setItem("last_activity_at", String(Date.now()));
-
-        if (data.session_expires_at) {
-            localStorage.setItem("session_expires_at", data.session_expires_at);
-        }
-    };
-
     const completeLogin = (data) => {
-        storeSession(data);
+        storeAuthSession(data);
 
         if (data.password_change_required) {
             setPendingToken(data.access_token);
@@ -259,8 +248,7 @@ function Login({ onLogin }) {
                 throw new Error(data.detail || "Password update failed");
             }
 
-            sessionStorage.removeItem("token");
-            localStorage.clear();
+            clearAuthSession();
             setPendingToken("");
             setPassword("");
             setNewPassword("");

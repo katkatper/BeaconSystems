@@ -133,9 +133,36 @@ def test_access_tokens_are_tab_scoped_instead_of_persisted_locally():
     assert 'localStorage.getItem("token")' not in sources
     assert 'localStorage.setItem("token"' not in sources
     assert 'localStorage.removeItem("token")' not in sources
-    assert 'sessionStorage.getItem("token")' in sources
-    assert 'sessionStorage.setItem("token"' in sources
-    assert 'sessionStorage.removeItem("token")' in sources
+    helper = (client_root / "authSession.js").read_text(encoding="utf-8")
+    assert '"token"' in helper
+    assert "sessionStorage.getItem(key)" in helper
+    assert "sessionStorage.setItem(key" in helper
+    assert "sessionStorage.removeItem(key)" in helper
+
+
+def test_authentication_metadata_is_tab_scoped_and_centralized():
+    client_root = REPOSITORY_ROOT / "beaconsystems.client" / "src"
+    helper = (client_root / "authSession.js").read_text(encoding="utf-8")
+    sources = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in client_root.rglob("*")
+        if path.suffix in {".js", ".jsx"}
+    )
+
+    for key in ("token", "role", "username", "agency_id", "session_expires_at"):
+        assert f'localStorage.setItem("{key}"' not in sources
+    assert "AUTH_SESSION_KEYS" in helper
+    assert "storeAuthSession" in helper
+    assert "clearAuthSession" in helper
+
+
+def test_protected_routes_verify_identity_with_the_server_before_rendering():
+    app = (REPOSITORY_ROOT / "beaconsystems.client" / "src" / "App.jsx").read_text(encoding="utf-8")
+
+    assert 'apiGet("/users/me")' in app
+    assert "updateSessionIdentity(identity)" in app
+    assert 'identityStatus !== "verified"' in app
+    assert "Verifying secure session" in app
 
 
 def test_beacon_insight_starts_collapsed_without_covering_operational_controls():

@@ -1,21 +1,28 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+let currentRole = "platform_admin";
+
 async function setRole(page, role) {
-    await page.evaluate((nextRole) => localStorage.setItem("role", nextRole), role);
+    currentRole = role;
+    await page.evaluate((nextRole) => sessionStorage.setItem("role", nextRole), role);
 }
 
 test.beforeEach(async ({ page }) => {
+    currentRole = "platform_admin";
     await page.addInitScript(() => {
         sessionStorage.setItem("token", "synthetic-role-test-token");
-        if (!localStorage.getItem("role")) {
-            localStorage.setItem("role", "platform_admin");
+        if (!sessionStorage.getItem("role")) {
+            sessionStorage.setItem("role", "platform_admin");
         }
-        localStorage.setItem("username", "uat-role-user");
-        localStorage.setItem("last_activity_at", String(Date.now()));
-        localStorage.setItem("session_expires_at", new Date(Date.now() + 3_600_000).toISOString());
+        sessionStorage.setItem("username", "uat-role-user");
+        sessionStorage.setItem("last_activity_at", String(Date.now()));
+        sessionStorage.setItem("session_expires_at", new Date(Date.now() + 3_600_000).toISOString());
     });
     await page.route("https://api.beacon.test/dashboard/summary", (route) => route.fulfill({ json: {} }));
+    await page.route("https://api.beacon.test/users/me", (route) => route.fulfill({
+        json: { user_id: 7, username: "uat-role-user", email: "role@example.test", role: currentRole, agency_id: 1, is_active: true },
+    }));
     await page.route("https://api.beacon.test/notifications/unread-count", (route) => route.fulfill({ json: { unread_count: 0 } }));
     await page.route("https://api.beacon.test/agencies/**", (route) => route.fulfill({ json: [] }));
     await page.route("https://api.beacon.test/agency-exchanges/**", (route) => route.fulfill({ json: [] }));

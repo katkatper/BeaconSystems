@@ -21,6 +21,13 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
 class AuthenticationContractTests(unittest.TestCase):
+    def test_authenticated_identity_endpoint_returns_server_authorized_user(self):
+        routes_source = (REPOSITORY_ROOT / "routes" / "users_routes.py").read_text(encoding="utf-8")
+
+        self.assertIn('@router.get("/me", response_model=CurrentUserResponse)', routes_source)
+        self.assertIn("current_user: User = Depends(get_current_user)", routes_source)
+        self.assertIn("return current_user", routes_source)
+
     def test_login_username_ignores_accidental_surrounding_whitespace(self):
         credentials = UserLogin(username="  testsupervisor1  ", password="not-secret")
 

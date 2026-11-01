@@ -4,6 +4,7 @@ import { apiGet } from "../api.jsx";
 import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
 import { useVisiblePolling } from "../hooks/useVisiblePolling.js";
 import OperationsMap from "./OperationsMap.jsx";
+import { getSessionValue } from "../authSession.js";
 
 
 
@@ -16,8 +17,8 @@ function Dashboard() {
     const [error, setError] = useState(
         sessionStorage.getItem("token") ? "" : "No login token found. Please log in first."
     );
-    const role = localStorage.getItem("role") || "viewer";
-    const username = localStorage.getItem("username") || "Beacon User";
+    const role = getSessionValue("role", "viewer");
+    const username = getSessionValue("username", "Beacon User");
     const dashboardProfiles = {
         platform_admin: {
             title: "Command Center",

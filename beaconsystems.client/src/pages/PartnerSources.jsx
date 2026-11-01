@@ -1,5 +1,6 @@
 import { apiUrl } from "../api.jsx";
 import React, { useEffect, useMemo, useState } from "react";
+import { getSessionValue } from "../authSession.js";
 
 const sourceTypes = [
     "hospital",
@@ -114,7 +115,7 @@ function PartnerSources() {
     const [sourceSearch, setSourceSearch] = useState("");
     const [sourceStatusFilter, setSourceStatusFilter] = useState("all");
     const [sourceTypeFilter, setSourceTypeFilter] = useState("all");
-    const role = localStorage.getItem("role");
+    const role = getSessionValue("role");
     const canCreatePartnerSource = role === "platform_admin";
     const canReceivePartnerData = role === "platform_admin" || role === "agency_admin";
     const showSupervisorPartnerView = !canCreatePartnerSource;

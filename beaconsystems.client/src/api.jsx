@@ -1,3 +1,5 @@
+import { getSessionValue, setSessionValue } from "./authSession.js";
+
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export async function getHealth() {
@@ -9,7 +11,7 @@ export async function createPerson(payload) {
 }
 
 export function authHeaders(extraHeaders = {}) {
-    const token = sessionStorage.getItem("token");
+    const token = getSessionValue("token");
 
     return {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -59,8 +61,8 @@ export async function apiRequest(path, options = {}, allowRefresh = true) {
         });
         if (refreshResponse.ok) {
             const refreshed = await refreshResponse.json();
-            sessionStorage.setItem("token", refreshed.access_token);
-            localStorage.setItem("session_expires_at", refreshed.session_expires_at);
+            setSessionValue("token", refreshed.access_token);
+            setSessionValue("session_expires_at", refreshed.session_expires_at);
             response = await fetch(apiUrl(path), {
                 ...options,
                 credentials: "include",

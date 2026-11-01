@@ -4,6 +4,7 @@ import AuthenticatedImage from "../components/AuthenticatedImage.jsx";
 import { useParams, Link } from "react-router-dom";
 import SightingMap from "./SightingMap.jsx";
 import EscapeRouteAnalysis from "./EscapeRouteAnalysis.jsx";
+import { getSessionValue } from "../authSession.js";
 
 function CaseDetail() {
     const { id } = useParams();
@@ -879,7 +880,7 @@ function CaseDetail() {
         selectCaseTab(caseTabs[nextIndex][0]);
     };
     const canManageEvidenceStorage = ["platform_admin", "agency_admin", "supervisor"]
-        .includes(localStorage.getItem("role"));
+        .includes(getSessionValue("role"));
 
     return (
         <div className="case-detail-page">

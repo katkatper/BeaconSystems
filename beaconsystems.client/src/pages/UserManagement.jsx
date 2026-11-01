@@ -1,5 +1,6 @@
 import { apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
+import { getSessionValue } from "../authSession.js";
 
 function UserManagement() {
     const [users, setUsers] = useState([]);
@@ -18,7 +19,7 @@ function UserManagement() {
         agency_id: "",
     });
     const token = sessionStorage.getItem("token");
-    const currentRole = localStorage.getItem("role") || "viewer";
+    const currentRole = getSessionValue("role", "viewer");
     const roleOptions = currentRole === "platform_admin"
         ? [
             ["investigator", "Investigator"],

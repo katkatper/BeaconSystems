@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiGet, apiPost } from "../api.jsx";
 import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
+import { clearAuthSession, getSessionValue } from "../authSession.js";
 
 const taskItems = [
     ["high-risk-missing-persons", "High-risk missing person cases", "Review active critical-risk cases and confirm command attention.", "High", "/missing?risk=high"],
@@ -30,8 +31,8 @@ function CommandTools() {
     const [notifications, setNotifications] = useState([]);
     const [notificationMessage, setNotificationMessage] = useState("");
     const [, setReadStateVersion] = useState(0);
-    const username = localStorage.getItem("username") || "Beacon User";
-    const role = localStorage.getItem("role") || "viewer";
+    const username = getSessionValue("username", "Beacon User");
+    const role = getSessionValue("role", "viewer");
     const isTasks = tool === "tasks";
     const isNotifications = tool === "notifications";
     const isSettings = tool === "settings";
@@ -130,7 +131,7 @@ function CommandTools() {
         try {
             await apiPost(`/users/sessions/${sessionId}/revoke`, {});
             if (isCurrent) {
-                localStorage.clear();
+                clearAuthSession();
                 window.location.assign("/login");
                 return;
             }
@@ -273,7 +274,7 @@ function CommandTools() {
                         <h2>{username}</h2>
                         <div className="beacon-status-list">
                             <span>Role: {role}</span>
-                            <span>Agency ID: {localStorage.getItem("agency_id") || "Not set"}</span>
+                            <span>Agency ID: {getSessionValue("agency_id", "Not set")}</span>
                             <span>Session: Active</span>
                         </div>
                     </section>

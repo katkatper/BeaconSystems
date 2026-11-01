@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { apiGet, apiPost } from "../api.jsx";
 import { getUnviewedCount, subscribeToReadState } from "../commandCenterState.js";
+import { clearAuthSession, getSessionValue, hasAuthToken } from "../authSession.js";
 
 const globalSearchTargets = [
     ["Cases", "/cases", "case number, status, assigned investigator"],
@@ -19,8 +20,8 @@ function Navbar() {
     const [summary, setSummary] = useState(null);
     const [notificationCount, setNotificationCount] = useState(0);
     const [, setReadStateVersion] = useState(0);
-    const role = localStorage.getItem("role");
-    const username = localStorage.getItem("username") || "Beacon User";
+    const role = getSessionValue("role");
+    const username = getSessionValue("username", "Beacon User");
     const navigation = [
         ["Dashboard", "/", "D"],
         ["Missing Persons", "/missing", "M"],
@@ -86,13 +87,12 @@ function Navbar() {
         } catch (err) {
             console.error("Could not revoke the server session", err);
         }
-        sessionStorage.removeItem("token");
-        localStorage.clear();
+        clearAuthSession();
         navigate("/login");
     };
 
     useEffect(() => {
-        if (!sessionStorage.getItem("token")) return undefined;
+        if (!hasAuthToken()) return undefined;
 
         let isMounted = true;
 

@@ -32,6 +32,7 @@ from schemas.user_schema import (
     MfaEnrollmentStart,
     MfaLoginVerify,
     PasswordChange,
+    CurrentUserResponse,
     UserCreate,
     UserLogin,
     UserResponse,
@@ -177,6 +178,13 @@ def mfa_otpauth_uri(user: User, secret: str) -> str:
     return build_otpauth_uri(user.username, secret)
 
 # USER ROUTES WITH ACTIVITY LOGGING
+
+@router.get("/me", response_model=CurrentUserResponse)
+def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+):
+    """Return server-verified identity for frontend authorization rendering."""
+    return current_user
 
 @router.post("/register")
 def register_user(

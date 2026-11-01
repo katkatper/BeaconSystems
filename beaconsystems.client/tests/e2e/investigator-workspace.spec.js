@@ -17,15 +17,18 @@ const emptyWorkspace = {
 async function authenticateInvestigator(page) {
     await page.addInitScript(() => {
         sessionStorage.setItem("token", "synthetic-browser-test-token");
-        localStorage.setItem("role", "investigator");
-        localStorage.setItem("username", "uat-investigator");
-        localStorage.setItem("last_activity_at", String(Date.now()));
-        localStorage.setItem("session_expires_at", new Date(Date.now() + 3_600_000).toISOString());
+        sessionStorage.setItem("role", "investigator");
+        sessionStorage.setItem("username", "uat-investigator");
+        sessionStorage.setItem("last_activity_at", String(Date.now()));
+        sessionStorage.setItem("session_expires_at", new Date(Date.now() + 3_600_000).toISOString());
     });
 }
 
 test.beforeEach(async ({ page }) => {
     await authenticateInvestigator(page);
+    await page.route("**/users/me", (route) => route.fulfill({
+        json: { user_id: 11, username: "uat-investigator", email: "investigator@example.test", role: "investigator", agency_id: 1, is_active: true },
+    }));
     await page.route("**/dashboard/summary", (route) => route.fulfill({ json: {} }));
     await page.route("**/notifications/unread-count", (route) => route.fulfill({ json: { unread_count: 0 } }));
 });
@@ -77,7 +80,10 @@ test("viewer is denied restricted administration before data loads", async ({ pa
         return route.abort();
     });
     await page.goto("/");
-    await page.evaluate(() => localStorage.setItem("role", "viewer"));
+    await page.route("**/users/me", (route) => route.fulfill({
+        json: { user_id: 12, username: "uat-viewer", email: "viewer@example.test", role: "viewer", agency_id: 1, is_active: true },
+    }));
+    await page.evaluate(() => sessionStorage.setItem("role", "viewer"));
     await page.goto("/admin/users");
 
     await expect(page.getByRole("heading", { name: "Access unavailable" })).toBeVisible();
