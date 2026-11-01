@@ -2,9 +2,8 @@ import json
 import unittest
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from integrations import police_api
 from services import geocoding_service
 from services.geocoding_fields import apply_geocode_result, copy_geocode_fields
 
@@ -69,19 +68,6 @@ class ExternalServiceTests(unittest.TestCase):
 
         self.assertEqual((target.latitude, target.longitude), (10, 20))
         self.assertEqual(target.geocode_accuracy, "place")
-
-    @patch("integrations.police_api.requests.get")
-    def test_police_api_uses_timeout_and_rejects_http_errors(self, get):
-        response = Mock()
-        response.json.return_value = {"records": [1]}
-        get.return_value = response
-
-        self.assertEqual(police_api.fetch_Beacon_systems(), {"records": [1]})
-        get.assert_called_once_with(
-            "https://api.police-data.gov/missing",
-            timeout=police_api.EXTERNAL_API_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status.assert_called_once_with()
 
     def test_geocoder_handles_coordinates_known_places_and_unknown_values(self):
         coordinates = geocoding_service.geocode_address("29.75, -95.36")

@@ -16,7 +16,7 @@ const emptyWorkspace = {
 
 async function authenticateInvestigator(page) {
     await page.addInitScript(() => {
-        localStorage.setItem("token", "synthetic-browser-test-token");
+        sessionStorage.setItem("token", "synthetic-browser-test-token");
         localStorage.setItem("role", "investigator");
         localStorage.setItem("username", "uat-investigator");
         localStorage.setItem("last_activity_at", String(Date.now()));

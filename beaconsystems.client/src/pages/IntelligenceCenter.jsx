@@ -34,7 +34,7 @@ function IntelligenceCenter() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
 
         const loadIntelligence = async () => {

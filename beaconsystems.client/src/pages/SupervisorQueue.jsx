@@ -33,7 +33,7 @@ function SupervisorQueue() {
         summary: "",
     });
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const location = useLocation();
     const workspaceFromPath = location.pathname.split("/")[2] || "";
     const activeWorkspace = workspaceFromPath || "personnel";

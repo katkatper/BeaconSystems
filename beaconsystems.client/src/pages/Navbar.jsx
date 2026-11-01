@@ -86,12 +86,13 @@ function Navbar() {
         } catch (err) {
             console.error("Could not revoke the server session", err);
         }
+        sessionStorage.removeItem("token");
         localStorage.clear();
         navigate("/login");
     };
 
     useEffect(() => {
-        if (!localStorage.getItem("token")) return undefined;
+        if (!sessionStorage.getItem("token")) return undefined;
 
         let isMounted = true;
 

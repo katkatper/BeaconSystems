@@ -17,7 +17,7 @@ function UserManagement() {
         role: "investigator",
         agency_id: "",
     });
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const currentRole = localStorage.getItem("role") || "viewer";
     const roleOptions = currentRole === "platform_admin"
         ? [

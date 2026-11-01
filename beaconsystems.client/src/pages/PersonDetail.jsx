@@ -69,7 +69,7 @@ function PersonDetail() {
     const [cases, setCases] = useState([]);
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         fetch(apiUrl(`/persons/${id}`), {
             headers: {

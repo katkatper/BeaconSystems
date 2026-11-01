@@ -9,7 +9,7 @@ export async function createPerson(payload) {
 }
 
 export function authHeaders(extraHeaders = {}) {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
 
     return {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -59,7 +59,7 @@ export async function apiRequest(path, options = {}, allowRefresh = true) {
         });
         if (refreshResponse.ok) {
             const refreshed = await refreshResponse.json();
-            localStorage.setItem("token", refreshed.access_token);
+            sessionStorage.setItem("token", refreshed.access_token);
             localStorage.setItem("session_expires_at", refreshed.session_expires_at);
             response = await fetch(apiUrl(path), {
                 ...options,

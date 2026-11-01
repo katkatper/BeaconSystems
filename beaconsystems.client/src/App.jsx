@@ -40,7 +40,7 @@ const AuditCenter = lazy(() => import("./pages/AuditCenter.jsx"));
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 function clearAuthSession(message) {
-    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("username");
     localStorage.removeItem("agency_id");
@@ -68,7 +68,7 @@ function isSessionExpired() {
 // enforces real authorization; this only controls frontend navigation.
 
 function ProtectedRoute({ children }) {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
 
     if (!token || isSessionExpired()) {
         if (token) {
@@ -111,7 +111,7 @@ function AppLayout() {
     const hideNavbar = location.pathname === "/login";
 
     useEffect(() => {
-        if (hideNavbar || !localStorage.getItem("token")) {
+        if (hideNavbar || !sessionStorage.getItem("token")) {
             return undefined;
         }
 
@@ -120,7 +120,7 @@ function AppLayout() {
         };
 
         const checkSession = () => {
-            if (localStorage.getItem("token") && isSessionExpired()) {
+            if (sessionStorage.getItem("token") && isSessionExpired()) {
                 clearAuthSession("Your Beacon session expired. Please sign in again.");
                 navigate("/login", { replace: true });
             }
@@ -416,7 +416,7 @@ function AppLayout() {
                 </Routes>
                 </Suspense>
             </main>
-            {!hideNavbar && localStorage.getItem("token") && <BeaconInsight />}
+            {!hideNavbar && sessionStorage.getItem("token") && <BeaconInsight />}
         </>
     );
 }

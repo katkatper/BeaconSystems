@@ -29,7 +29,7 @@ const sourceTypes = [
 ];
 
 const fetchLegalAccessRequests = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
 
     const response = await fetch(apiUrl("/legal-access/"), {
         headers: {
@@ -97,7 +97,7 @@ function LegalAccessRequests() {
 
     const submitRequest = async (e) => {
         e.preventDefault();
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         const payload = {
             ...form,
@@ -137,7 +137,7 @@ function LegalAccessRequests() {
     };
 
     const reviewRequest = async (requestId, status) => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         try {
             const response = await fetch(

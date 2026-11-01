@@ -61,7 +61,7 @@ function Alerts() {
     };
 
     const loadAlerts = () => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         fetch(apiUrl("/alerts/"), {
             headers: {
@@ -86,7 +86,7 @@ function Alerts() {
 
     useEffect(() => {
         loadAlerts();
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         Promise.all([
             fetch(apiUrl("/cases/"), { headers: { Authorization: `Bearer ${token}` } }),
             fetch(apiUrl("/persons/?limit=200"), { headers: { Authorization: `Bearer ${token}` } }),
@@ -149,7 +149,7 @@ function Alerts() {
     const createAlert = async (e) => {
         e.preventDefault();
 
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         const query = new URLSearchParams({
             case_id: form.case_id,
@@ -205,7 +205,7 @@ function Alerts() {
     };
 
     const updateAlert = async (alertId) => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         const payload = {
             ...alertEditForm,
             case_id: Number(alertEditForm.case_id),

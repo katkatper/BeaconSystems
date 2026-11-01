@@ -122,7 +122,23 @@ def test_api_errors_preserve_http_status_for_permission_states():
     assert "error.status = response.status" in source
 
 
-def test_beacon_insight_starts_collapsed_on_small_screens():
+def test_access_tokens_are_tab_scoped_instead_of_persisted_locally():
+    client_root = REPOSITORY_ROOT / "beaconsystems.client" / "src"
+    sources = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in client_root.rglob("*")
+        if path.suffix in {".js", ".jsx"}
+    )
+
+    assert 'localStorage.getItem("token")' not in sources
+    assert 'localStorage.setItem("token"' not in sources
+    assert 'localStorage.removeItem("token")' not in sources
+    assert 'sessionStorage.getItem("token")' in sources
+    assert 'sessionStorage.setItem("token"' in sources
+    assert 'sessionStorage.removeItem("token")' in sources
+
+
+def test_beacon_insight_starts_collapsed_without_covering_operational_controls():
     source = (
         REPOSITORY_ROOT
         / "beaconsystems.client"
@@ -130,7 +146,8 @@ def test_beacon_insight_starts_collapsed_on_small_screens():
         / "components"
         / "BeaconInsight.jsx"
     ).read_text(encoding="utf-8")
-    assert 'window.matchMedia("(max-width: 700px)").matches' in source
+    assert "const [collapsed, setCollapsed] = useState(true)" in source
+    assert 'window.matchMedia("(max-width: 700px)").matches' not in source
 
 
 def test_frontend_restricted_routes_have_role_guards_and_safe_denial_state():

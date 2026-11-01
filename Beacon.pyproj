@@ -24,7 +24,6 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="check_user_dependencies.py" />
     <Compile Include="database\__init__.py" />
     <Compile Include="models\bolo_alert.py" />
     <Compile Include="models\external_record.py" />
@@ -43,19 +42,14 @@
     <Compile Include="routes\match_routes.py" />
     <Compile Include="routes\partner_intake_routes.py" />
     <Compile Include="routes\person_routes.py" />
-    <Compile Include="routes\routes.py" />
     <Compile Include="routes\sightings_routes.py" />
     <Compile Include="routes\search_routes.py" />
     <Compile Include="config\aws_config.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="config\database_config.py" />
     <Compile Include="config\settings.py" />
     <Compile Include="config\__init__.py" />
     <Compile Include="database\base.py" />
-    <Compile Include="integrations\cameras.py" />
-    <Compile Include="integrations\dna.py" />
-    <Compile Include="integrations\missing_registry.py" />
     <Compile Include="models\activity_log.py" />
     <Compile Include="models\agency_exchange.py" />
     <Compile Include="models\agencies.py" />
@@ -64,12 +58,6 @@
     <Compile Include="models\case.py" />
     <Compile Include="models\case_team_member.py" />
     <Compile Include="database\connection.py" />
-    <Compile Include="database\leads.py" />
-    <Compile Include="integrations\financial_transactions.py" />
-    <Compile Include="integrations\hospital_api.py" />
-    <Compile Include="integrations\police_api.py" />
-    <Compile Include="integrations\social_media_api.py" />
-    <Compile Include="integrations\transportation.py" />
     <Compile Include="main.py" />
     <Compile Include="models\data_matches.py" />
     <Compile Include="models\data_sources.py" />
@@ -91,8 +79,6 @@
     <Compile Include="security\auth.py" />
     <Compile Include="services\activity_service.py" />
     <Compile Include="services\alert_service.py" />
-    <Compile Include="services\auth_service.py" />
-    <Compile Include="services\case_service.py" />
     <Compile Include="services\match_service.py" />
   </ItemGroup>
   <ItemGroup>

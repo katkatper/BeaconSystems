@@ -1,5 +1,5 @@
 import { apiUrl } from "../api.jsx";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const LOGIN_ERROR_MESSAGES = {
@@ -38,6 +38,7 @@ function Login({ onLogin }) {
     const [mfaCode, setMfaCode] = useState("");
     const [mfaEnrollment, setMfaEnrollment] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const submissionLock = useRef(false);
     const navigate = useNavigate();
 
     const getLandingPath = (role) => {
@@ -53,7 +54,7 @@ function Login({ onLogin }) {
     }, []);
 
     const storeSession = (data) => {
-        localStorage.setItem("token", data.access_token);
+        sessionStorage.setItem("token", data.access_token);
         localStorage.setItem("role", data.role);
         localStorage.setItem("username", data.username);
         localStorage.setItem("agency_id", data.agency_id || "");
@@ -82,8 +83,12 @@ function Login({ onLogin }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (isSubmitting) return;
+        if (submissionLock.current) return;
 
+        const submitted = new FormData(e.currentTarget);
+        const submittedUsername = String(submitted.get("username") || "").trim();
+        const submittedPassword = String(submitted.get("password") || "");
+        submissionLock.current = true;
         setIsSubmitting(true);
         setError("");
         setMessage("");
@@ -99,8 +104,8 @@ function Login({ onLogin }) {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    username: username.trim(),
-                    password: password,
+                    username: submittedUsername,
+                    password: submittedPassword,
                 }),
             });
 
@@ -143,14 +148,16 @@ function Login({ onLogin }) {
                     : err.message || "Beacon could not complete sign-in."
             );
         } finally {
+            submissionLock.current = false;
             setIsSubmitting(false);
         }
     };
 
     const handleMfaEnrollment = async (e) => {
         e.preventDefault();
-        if (isSubmitting) return;
+        if (submissionLock.current) return;
 
+        submissionLock.current = true;
         setIsSubmitting(true);
         setError("");
         setMessage("");
@@ -175,14 +182,16 @@ function Login({ onLogin }) {
             console.error(err);
             setError(err.message || "Could not complete MFA enrollment");
         } finally {
+            submissionLock.current = false;
             setIsSubmitting(false);
         }
     };
 
     const handleMfaVerify = async (e) => {
         e.preventDefault();
-        if (isSubmitting) return;
+        if (submissionLock.current) return;
 
+        submissionLock.current = true;
         setIsSubmitting(true);
         setError("");
         setMessage("");
@@ -213,6 +222,7 @@ function Login({ onLogin }) {
             console.error(err);
             setError(err.message || "Could not verify MFA code");
         } finally {
+            submissionLock.current = false;
             setIsSubmitting(false);
         }
     };
@@ -227,8 +237,9 @@ function Login({ onLogin }) {
             return;
         }
 
-        if (isSubmitting) return;
+        if (submissionLock.current) return;
 
+        submissionLock.current = true;
         setIsSubmitting(true);
         try {
             const response = await fetch(apiUrl("/users/change-password"), {
@@ -248,6 +259,7 @@ function Login({ onLogin }) {
                 throw new Error(data.detail || "Password update failed");
             }
 
+            sessionStorage.removeItem("token");
             localStorage.clear();
             setPendingToken("");
             setPassword("");
@@ -258,6 +270,7 @@ function Login({ onLogin }) {
             console.error(err);
             setError(err.message || "Could not update password");
         } finally {
+            submissionLock.current = false;
             setIsSubmitting(false);
         }
     };
@@ -313,6 +326,7 @@ function Login({ onLogin }) {
                     <form onSubmit={handleSubmit} aria-busy={isSubmitting}>
                         <input
                             type="text"
+                            name="username"
                             aria-label="Username"
                             autoComplete="username"
                             placeholder="Username"
@@ -322,6 +336,7 @@ function Login({ onLogin }) {
 
                         <input
                             type="password"
+                            name="password"
                             aria-label="Password"
                             autoComplete="current-password"
                             placeholder="Password"

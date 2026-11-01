@@ -22,7 +22,7 @@ function CaseAccess() {
 
     const submitAccessRequest = async (e) => {
         e.preventDefault();
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         try {
             const response = await fetch(apiUrl("/cases/access-request"), {

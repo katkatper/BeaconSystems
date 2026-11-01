@@ -234,7 +234,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
     };
 
     const geocodeAnalysisOrigin = async (value) => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         if (token && value.trim()) {
             try {
@@ -328,7 +328,7 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
         setSaveStatus("");
 
         try {
-            const token = localStorage.getItem("token");
+            const token = sessionStorage.getItem("token");
             const response = await fetch(apiUrl("/timeline-events/"), {
                 method: "POST",
                 headers: {

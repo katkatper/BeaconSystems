@@ -79,7 +79,7 @@ function LegalOrderDetail() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         const loadRequest = async () => {
             try {

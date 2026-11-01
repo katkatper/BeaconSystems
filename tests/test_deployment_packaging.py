@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -43,6 +45,50 @@ class DeploymentPackagingTests(unittest.TestCase):
         ]:
             with self.subTest(path=path):
                 self.assertTrue(hygiene.forbidden_tracked(path))
+
+    def test_repository_hygiene_rejects_starter_placeholder_modules(self):
+        hygiene = _load_hygiene_module()
+        original_directory = Path.cwd()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            services = root / "services"
+            services.mkdir()
+            (services / "placeholder.py").write_text(
+                "class my_class(object):\n    pass\n",
+                encoding="utf-8",
+            )
+            (services / "real.py").write_text(
+                "class Provider:\n    def run(self):\n        return True\n",
+                encoding="utf-8",
+            )
+            try:
+                os.chdir(root)
+                self.assertTrue(hygiene.placeholder_python("services/placeholder.py"))
+                self.assertFalse(hygiene.placeholder_python("services/real.py"))
+            finally:
+                os.chdir(original_directory)
+
+    def test_repository_hygiene_rejects_missing_project_items(self):
+        hygiene = _load_hygiene_module()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            (root / "present.py").write_text("VALUE = 1\n", encoding="utf-8")
+            project = root / "Beacon.pyproj"
+            project.write_text(
+                """<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Compile Include="present.py" />
+    <Compile Include="services\\missing.py" />
+  </ItemGroup>
+</Project>
+""",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                hygiene.missing_project_files(str(project)),
+                ["services\\missing.py"],
+            )
 
     def test_production_launcher_uses_environment_runtime_controls(self):
         source = (

@@ -7,7 +7,7 @@ async function setRole(page, role) {
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
-        localStorage.setItem("token", "synthetic-role-test-token");
+        sessionStorage.setItem("token", "synthetic-role-test-token");
         if (!localStorage.getItem("role")) {
             localStorage.setItem("role", "platform_admin");
         }

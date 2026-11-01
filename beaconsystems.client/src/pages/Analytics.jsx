@@ -6,7 +6,7 @@ function Analytics() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         fetch(apiUrl("/dashboard/summary"), {
             headers: { Authorization: `Bearer ${token}` },

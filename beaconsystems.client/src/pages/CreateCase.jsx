@@ -18,7 +18,7 @@ function CreateCase() {
     });
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         fetch(apiUrl("/persons/"), {
             headers: {
@@ -43,7 +43,7 @@ function CreateCase() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         try {
             const payload = {

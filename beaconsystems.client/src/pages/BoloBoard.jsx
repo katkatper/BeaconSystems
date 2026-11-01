@@ -47,7 +47,7 @@ function BoloBoard() {
     });
     const [message, setMessage] = useState("");
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
 
     const loadBolos = async () => {
         const data = await fetchBolos(token);

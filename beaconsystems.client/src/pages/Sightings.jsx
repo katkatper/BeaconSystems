@@ -8,7 +8,7 @@ function Sightings() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         fetch(apiUrl("/sightings/"), {
             headers: { Authorization: `Bearer ${token}` },

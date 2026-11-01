@@ -356,7 +356,7 @@ function AgencyManagement() {
     const [statusDrafts, setStatusDrafts] = useState({});
     const [lifecycleBusyId, setLifecycleBusyId] = useState(null);
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const isPlatformAdmin = localStorage.getItem("role") === "platform_admin";
 
     const refreshAgencies = async () => {

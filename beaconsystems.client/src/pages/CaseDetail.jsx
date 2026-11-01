@@ -58,7 +58,7 @@ function CaseDetail() {
     });
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         let isMounted = true;
 
         const authHeaders = {
@@ -216,7 +216,7 @@ function CaseDetail() {
 
     const submitLead = async (event) => {
         event.preventDefault();
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         setLeadMessage("");
         try {
             const response = await fetch(apiUrl("/leads/"), {
@@ -242,7 +242,7 @@ function CaseDetail() {
     };
 
     const updateLead = async (lead, changes, resolutionOverride) => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         if (
             changes.status &&
             ["resolved", "closed"].includes(changes.status) &&
@@ -270,7 +270,7 @@ function CaseDetail() {
     const submitSighting = async (e) => {
         e.preventDefault();
 
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         try {
             const payload = {
@@ -345,7 +345,7 @@ function CaseDetail() {
             return;
         }
 
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         try {
             const response = await fetch(
@@ -389,7 +389,7 @@ function CaseDetail() {
             return;
         }
 
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         const nextAssociate = {
             id: `associate-${person.person_id}-${associates.length + 1}`,
             name: associateForm.name || "Known associate",
@@ -455,7 +455,7 @@ function CaseDetail() {
     };
 
     const loadEvidenceChain = async (evidenceId) => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         try {
             const response = await fetch(
@@ -480,7 +480,7 @@ function CaseDetail() {
     };
 
     const viewEvidence = async (evidenceId) => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         try {
             const response = await fetch(
@@ -506,7 +506,7 @@ function CaseDetail() {
     };
 
     const markEvidenceSensitive = async (evidenceId, isSensitive) => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
 
         try {
             const response = await fetch(
@@ -538,7 +538,7 @@ function CaseDetail() {
     };
 
     const transitionEvidenceStorage = async (item, action) => {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         setEvidenceActionId(item.evidence_id);
         setEvidenceMessage("");
         try {

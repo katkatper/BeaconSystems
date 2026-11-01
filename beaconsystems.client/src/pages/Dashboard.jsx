@@ -14,7 +14,7 @@ function Dashboard() {
     const [currentTime, setCurrentTime] = useState(() => new Date());
     const [, setReadStateVersion] = useState(0);
     const [error, setError] = useState(
-        localStorage.getItem("token") ? "" : "No login token found. Please log in first."
+        sessionStorage.getItem("token") ? "" : "No login token found. Please log in first."
     );
     const role = localStorage.getItem("role") || "viewer";
     const username = localStorage.getItem("username") || "Beacon User";
@@ -94,7 +94,7 @@ function Dashboard() {
 
     // Poll only while Beacon is visible, and never overlap a slow request.
     useVisiblePolling(async (isActive) => {
-        if (!localStorage.getItem("token")) return;
+        if (!sessionStorage.getItem("token")) return;
 
         try {
             const data = await apiGet("/dashboard/summary");
