@@ -158,11 +158,14 @@ def test_authentication_metadata_is_tab_scoped_and_centralized():
 
 def test_protected_routes_verify_identity_with_the_server_before_rendering():
     app = (REPOSITORY_ROOT / "beaconsystems.client" / "src" / "App.jsx").read_text(encoding="utf-8")
+    session = (REPOSITORY_ROOT / "beaconsystems.client" / "src" / "authSession.js").read_text(encoding="utf-8")
 
     assert 'apiGet("/users/me")' in app
-    assert "updateSessionIdentity(identity)" in app
+    assert "verifySessionIdentity(token" in app
     assert 'identityStatus !== "verified"' in app
     assert "Verifying secure session" in app
+    assert "verifiedToken === token" in session
+    assert "pendingVerification?.token === token" in session
 
 
 def test_beacon_insight_starts_collapsed_without_covering_operational_controls():

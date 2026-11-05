@@ -7,7 +7,7 @@ import Login from "./pages/Login.jsx";
 import "./App.css";
 import BeaconInsight from "./components/BeaconInsight.jsx";
 import { apiGet } from "./api.jsx";
-import { clearAuthSession, getSessionValue, hasAuthToken, setSessionValue, updateSessionIdentity } from "./authSession.js";
+import { clearAuthSession, getSessionValue, hasAuthToken, setSessionValue, verifySessionIdentity } from "./authSession.js";
 
 const InvestigatorWorkspace = lazy(() => import("./pages/InvestigatorWorkspace.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
@@ -65,10 +65,9 @@ function ProtectedRoute({ children }) {
         if (!token || isSessionExpired()) {
             return () => { active = false; };
         }
-        apiGet("/users/me")
-            .then((identity) => {
+        verifySessionIdentity(token, () => apiGet("/users/me"))
+            .then(() => {
                 if (!active) return;
-                updateSessionIdentity(identity);
                 setIdentityStatus("verified");
             })
             .catch(() => {

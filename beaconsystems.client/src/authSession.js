@@ -8,6 +8,9 @@ const AUTH_SESSION_KEYS = [
     "session_timeout_message",
 ];
 
+let verifiedToken = null;
+let pendingVerification = null;
+
 export const getSessionValue = (key, fallback = null) => (
     sessionStorage.getItem(key) ?? fallback
 );
@@ -21,6 +24,8 @@ export const setSessionValue = (key, value) => {
 };
 
 export const storeAuthSession = (data) => {
+    verifiedToken = null;
+    pendingVerification = null;
     setSessionValue("token", data.access_token);
     setSessionValue("role", data.role);
     setSessionValue("username", data.username);
@@ -35,7 +40,29 @@ export const updateSessionIdentity = (data) => {
     setSessionValue("agency_id", data.agency_id);
 };
 
+export const verifySessionIdentity = (token, verifier) => {
+    if (verifiedToken === token) return Promise.resolve();
+    if (pendingVerification?.token === token) return pendingVerification.promise;
+
+    const promise = Promise.resolve()
+        .then(verifier)
+        .then((identity) => {
+            if (getSessionValue("token") !== token) {
+                throw new Error("Session changed during identity verification");
+            }
+            updateSessionIdentity(identity);
+            verifiedToken = token;
+        })
+        .finally(() => {
+            if (pendingVerification?.token === token) pendingVerification = null;
+        });
+    pendingVerification = { token, promise };
+    return promise;
+};
+
 export const clearAuthSession = ({ message } = {}) => {
+    verifiedToken = null;
+    pendingVerification = null;
     AUTH_SESSION_KEYS.forEach((key) => sessionStorage.removeItem(key));
     if (message) setSessionValue("session_timeout_message", message);
 };

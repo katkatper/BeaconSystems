@@ -61,7 +61,12 @@ class UserResponse(BaseModel):
     role: str
 
 
-class CurrentUserResponse(UserResponse):
+class CurrentUserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: int
+    username: str
+    role: str
     agency_id: int
     is_active: bool
 
