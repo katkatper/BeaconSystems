@@ -65,7 +65,9 @@ jobs:
       - name: Scan Python source for security issues
         run: python -m bandit -r config database integrations models routes security services -ll
       - name: Enforce Python correctness and import hygiene
-        run: python -m ruff check config database integrations models routes schemas security services main.py scripts tests
+        run: >-
+          python -m ruff check --output-format=github
+          config database integrations models routes schemas security services main.py scripts tests
       - name: Require one migration head
         run: test "$(alembic heads | wc -l)" -eq 1
       - name: Apply migrations to PostgreSQL
