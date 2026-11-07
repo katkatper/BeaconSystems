@@ -101,7 +101,7 @@ jobs:
       - name: Annotate PostgreSQL queue failure
         if: failure()
         run: |
-          python -c "from pathlib import Path; text = '\n'.join(Path('queue-test.log').read_text(errors='replace').splitlines()[-200:]); print('::error title=PostgreSQL queue test failure::' + text.replace('%', '%25').replace(chr(10), '%0A').replace(chr(13), '%0D'))"
+          python -c "from pathlib import Path; text = '\n'.join(Path('queue-test.log').read_text(errors='replace').splitlines()[-40:]); print('::error title=PostgreSQL queue test failure::' + text.replace('%', '%25').replace(chr(10), '%0A').replace(chr(13), '%0D'))"
       - name: Verify Phase I load and stateless contracts
         run: python -m unittest tests.test_phase_one_load_gate -v
       - name: Verify application import
