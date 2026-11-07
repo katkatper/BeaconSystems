@@ -51,6 +51,8 @@ async function parseResponse(response) {
 async function refreshAccessToken() {
     if (pendingRefresh) return pendingRefresh;
 
+    const tokenBeingRefreshed = getSessionValue("token");
+
     pendingRefresh = fetch(apiUrl("/users/refresh"), {
         method: "POST",
         credentials: "include",
@@ -58,6 +60,7 @@ async function refreshAccessToken() {
         .then(async (response) => {
             if (!response.ok) return false;
             const refreshed = await response.json();
+            if (getSessionValue("token") !== tokenBeingRefreshed) return false;
             setSessionValue("token", refreshed.access_token);
             setSessionValue("session_expires_at", refreshed.session_expires_at);
             return true;

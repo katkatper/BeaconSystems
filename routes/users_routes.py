@@ -27,12 +27,12 @@ from database.tenant_context import configure_tenant_session
 from models.auth_session import AuthSession
 from models.user import User
 from schemas.user_schema import (
+    CurrentUserResponse,
     MfaEnable,
     MfaEnrollmentComplete,
     MfaEnrollmentStart,
     MfaLoginVerify,
     PasswordChange,
-    CurrentUserResponse,
     UserCreate,
     UserLogin,
     UserResponse,
