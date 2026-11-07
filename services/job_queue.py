@@ -124,7 +124,7 @@ def recover_stale_jobs(
             AsyncJob.status == "running",
             AsyncJob.locked_at <= expired_before,
         )
-        .with_for_update(skip_locked=True)
+        .with_for_update(of=AsyncJob, skip_locked=True)
         .all()
     )
     for job in jobs:
