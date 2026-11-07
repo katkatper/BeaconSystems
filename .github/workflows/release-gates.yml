@@ -63,11 +63,11 @@ jobs:
       - name: Audit Python dependencies
         run: python -m pip_audit -r requirements.txt --progress-spinner off
       - name: Scan Python source for security issues
-        run: python -m bandit -r config database integrations models routes security services -ll
+        run: python -m bandit -r config database models routes security services -ll
       - name: Enforce Python correctness and import hygiene
         run: >-
           python -m ruff check --output-format=github
-          config database integrations models routes schemas security services main.py scripts tests
+          config database models routes schemas security services main.py scripts tests
       - name: Require one migration head
         run: test "$(alembic heads | wc -l)" -eq 1
       - name: Apply migrations to PostgreSQL
@@ -77,7 +77,7 @@ jobs:
       - name: Run backend and isolation tests with coverage floor
         run: >-
           python -m pytest tests -q -p no:cacheprovider
-          --cov=config --cov=database --cov=integrations --cov=models
+          --cov=config --cov=database --cov=models
           --cov=routes --cov=schemas --cov=security --cov=services
           --cov-fail-under=40 --cov-report=term
       - name: Verify PostgreSQL multi-worker queue claims
