@@ -135,9 +135,14 @@ jobs:
         with:
           image-ref: beacon-api:${{ github.sha }}
           format: table
+          output: trivy-api.txt
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: 1
+      - name: Annotate API image scan failure
+        if: failure()
+        run: |
+          python -c "from pathlib import Path; text = '\n'.join(Path('trivy-api.txt').read_text(errors='replace').splitlines()[-80:]); print('::error title=API image vulnerability scan::' + text.replace('%', '%25').replace(chr(10), '%0A').replace(chr(13), '%0D'))"
       - name: Scan production worker image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
