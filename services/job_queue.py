@@ -124,7 +124,7 @@ def recover_stale_jobs(
             AsyncJob.status == "running",
             AsyncJob.locked_at <= expired_before,
         )
-        .with_for_update(of=AsyncJob.__table__, skip_locked=True)
+        .with_for_update(skip_locked=True)
         .all()
     )
     for job in jobs:
@@ -158,7 +158,7 @@ def claim_next_job(db: Session, *, worker_id: str, now=None) -> AsyncJob | None:
             AsyncJob.available_at.asc(),
             AsyncJob.job_id.asc(),
         )
-        .with_for_update(skip_locked=True)
+        .with_for_update(of=AsyncJob.__table__, skip_locked=True)
         .first()
     )
     if not job:
