@@ -94,7 +94,14 @@ jobs:
       - name: Verify PostgreSQL multi-worker queue claims
         env:
           BEACON_QUEUE_TEST_DATABASE_URL: postgresql+psycopg2://beacon_ci:beacon_ci_password@127.0.0.1:5432/beacon_ci
-        run: python -m pytest tests/test_queue_postgres.py -q -p no:cacheprovider
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_queue_postgres.py -q -p no:cacheprovider \
+            2>&1 | tee queue-test.log
+      - name: Annotate PostgreSQL queue failure
+        if: failure()
+        run: |
+          python -c "from pathlib import Path; text = '\n'.join(Path('queue-test.log').read_text(errors='replace').splitlines()[-200:]); print('::error title=PostgreSQL queue test failure::' + text.replace('%', '%25').replace(chr(10), '%0A').replace(chr(13), '%0D'))"
       - name: Verify Phase I load and stateless contracts
         run: python -m unittest tests.test_phase_one_load_gate -v
       - name: Verify application import
