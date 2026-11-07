@@ -19,7 +19,6 @@ RUN python -m pip install --no-cache-dir --requirement requirements.txt
 COPY alembic.ini main.py global-bundle.pem ./
 COPY config ./config
 COPY database ./database
-COPY integrations ./integrations
 COPY migrations ./migrations
 COPY models ./models
 COPY routes ./routes
