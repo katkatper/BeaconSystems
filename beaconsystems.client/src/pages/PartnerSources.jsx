@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet, apiPost, apiPut } from "../api.jsx";
 import React, { useEffect, useMemo, useState } from "react";
 import { getSessionValue } from "../authSession.js";
 
@@ -63,38 +63,12 @@ const partnerCapabilityRows = [
     ["Family Portal", "Controlled updates, tips, documents, consent-based information", "Limited access"],
 ];
 
-const authHeaders = (includeJson = false) => {
-    const headers = {
-        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-    };
-
-    if (includeJson) {
-        headers["Content-Type"] = "application/json";
-    }
-
-    return headers;
-};
-
 const fetchPartnerWorkspace = async () => {
-    const [sourcesResponse, recordsResponse, intakeResponse] = await Promise.all([
-        fetch(apiUrl("/integrations/"), {
-            headers: authHeaders(),
-        }),
-        fetch(apiUrl("/external-records/"), {
-            headers: authHeaders(),
-        }),
-        fetch(apiUrl("/partner-intake/"), {
-            headers: authHeaders(),
-        }),
+    const [sourcesData, recordsData, intakeData] = await Promise.all([
+        apiGet("/integrations/"),
+        apiGet("/external-records/"),
+        apiGet("/partner-intake/"),
     ]);
-
-    if (!sourcesResponse.ok) {
-        throw new Error("Failed to load partner sources");
-    }
-
-    const sourcesData = await sourcesResponse.json();
-    const recordsData = recordsResponse.ok ? await recordsResponse.json() : [];
-    const intakeData = intakeResponse.ok ? await intakeResponse.json() : [];
 
     return {
         sources: Array.isArray(sourcesData) ? sourcesData : [],
@@ -268,15 +242,7 @@ function PartnerSources() {
                     : null,
                 webhook_token: sourceForm.webhook_token || null,
             };
-            const response = await fetch(apiUrl("/integrations/"), {
-                method: "POST",
-                headers: authHeaders(true),
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error("Could not create partner source");
-            }
+            await apiPost("/integrations/", payload);
 
             setMessage("Partner source created and marked pending.");
             setSourceForm(emptySourceForm);
@@ -303,16 +269,7 @@ function PartnerSources() {
                     : null,
             };
 
-            const response = await fetch(apiUrl("/partner-intake/"), {
-                method: "POST",
-                headers: authHeaders(true),
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not receive partner data");
-            }
+            await apiPost("/partner-intake/", payload);
 
             setMessage("Partner data received and added to investigator review.");
             setIntakeForm(emptyIntakeForm);
@@ -329,18 +286,7 @@ function PartnerSources() {
 
     const updateSource = async (sourceId, updates) => {
         try {
-            const response = await fetch(
-                apiUrl(`/integrations/${sourceId}`),
-                {
-                    method: "PUT",
-                    headers: authHeaders(true),
-                    body: JSON.stringify(updates),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not update partner source");
-            }
+            await apiPut(`/integrations/${sourceId}`, updates);
 
             await loadPartnerWorkspace();
         } catch (err) {
@@ -365,28 +311,14 @@ function PartnerSources() {
         }
 
         try {
-            const response = await fetch(
-                apiUrl(`/partner-intake/${record.intake_id}/attach`),
-                {
-                    method: "PUT",
-                    headers: authHeaders(true),
-                    body: JSON.stringify({
-                        case_id: Number(caseId),
-                        person_id: personId ? Number(personId) : null,
-                        review_notes: review.review_notes || null,
-                        legal_authority_type: review.legal_authority_type,
-                        legal_authority_reference:
-                            review.legal_authority_reference || null,
-                        legal_authority_notes:
-                            review.legal_authority_notes || null,
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not attach partner data");
-            }
+            await apiPut(`/partner-intake/${record.intake_id}/attach`, {
+                case_id: Number(caseId),
+                person_id: personId ? Number(personId) : null,
+                review_notes: review.review_notes || null,
+                legal_authority_type: review.legal_authority_type,
+                legal_authority_reference: review.legal_authority_reference || null,
+                legal_authority_notes: review.legal_authority_notes || null,
+            });
 
             setMessage("Partner data attached to the case and logged.");
             await loadPartnerWorkspace();
@@ -400,21 +332,9 @@ function PartnerSources() {
         const review = reviewForms[intakeId] || {};
 
         try {
-            const response = await fetch(
-                apiUrl(`/partner-intake/${intakeId}/dismiss`),
-                {
-                    method: "PUT",
-                    headers: authHeaders(true),
-                    body: JSON.stringify({
-                        review_notes: review.review_notes || "Dismissed after review",
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not dismiss partner data");
-            }
+            await apiPut(`/partner-intake/${intakeId}/dismiss`, {
+                review_notes: review.review_notes || "Dismissed after review",
+            });
 
             setMessage("Partner data dismissed and logged.");
             await loadPartnerWorkspace();

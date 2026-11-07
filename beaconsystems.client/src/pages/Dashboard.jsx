@@ -4,7 +4,7 @@ import { apiGet } from "../api.jsx";
 import { getVisibleCount, markItemViewed, subscribeToReadState } from "../commandCenterState.js";
 import { useVisiblePolling } from "../hooks/useVisiblePolling.js";
 import OperationsMap from "./OperationsMap.jsx";
-import { getSessionValue } from "../authSession.js";
+import { getSessionValue, hasAuthToken } from "../authSession.js";
 
 
 
@@ -15,7 +15,7 @@ function Dashboard() {
     const [currentTime, setCurrentTime] = useState(() => new Date());
     const [, setReadStateVersion] = useState(0);
     const [error, setError] = useState(
-        sessionStorage.getItem("token") ? "" : "No login token found. Please log in first."
+        hasAuthToken() ? "" : "No login token found. Please log in first."
     );
     const role = getSessionValue("role", "viewer");
     const username = getSessionValue("username", "Beacon User");
@@ -95,7 +95,7 @@ function Dashboard() {
 
     // Poll only while Beacon is visible, and never overlap a slow request.
     useVisiblePolling(async (isActive) => {
-        if (!sessionStorage.getItem("token")) return;
+        if (!hasAuthToken()) return;
 
         try {
             const data = await apiGet("/dashboard/summary");

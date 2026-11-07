@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet, apiPost } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 
 function CreateCase() {
@@ -18,14 +18,7 @@ function CreateCase() {
     });
 
     useEffect(() => {
-        const token = sessionStorage.getItem("token");
-
-        fetch(apiUrl("/persons/"), {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => res.json())
+        apiGet("/persons/")
             .then((data) => setPersons(data))
             .catch((err) => {
                 console.error(err);
@@ -43,8 +36,6 @@ function CreateCase() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const token = sessionStorage.getItem("token");
-
         try {
             const payload = {
                 ...formData,
@@ -53,21 +44,7 @@ function CreateCase() {
                 agency_id: Number(formData.agency_id),
             };
 
-            const response = await fetch(apiUrl("/cases/"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to create case");
-            }
-
-            const data = await response.json();
-            console.log("Case created:", data);
+            await apiPost("/cases/", payload);
 
             setMessage("Case created successfully.");
         } catch (err) {

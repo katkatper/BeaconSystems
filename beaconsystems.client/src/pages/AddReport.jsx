@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiPost } from "../api.jsx";
 import React, { useState } from "react";
 
 function AddPerson() {
@@ -36,8 +36,6 @@ function AddPerson() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const token = sessionStorage.getItem("token");
-
         try {
             const payload = {
                 ...formData,
@@ -45,21 +43,7 @@ function AddPerson() {
                 weight: formData.weight ? Number(formData.weight) : null,
             };
 
-            const response = await fetch(apiUrl("/persons/"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to create person");
-            }
-
-            const data = await response.json();
-            console.log("Person created:", data);
+            const data = await apiPost("/persons/", payload);
 
             setMessage(`Report submitted and case ${data.case_number || ""} opened.`.trim());
 

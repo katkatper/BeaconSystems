@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { apiGet, apiPatch, apiPost, apiUrl } from "../api.jsx";
+import { apiGet, apiPatch, apiPost } from "../api.jsx";
 import { getSessionValue } from "../authSession.js";
 
 
@@ -357,7 +357,6 @@ function AgencyManagement() {
     const [statusDrafts, setStatusDrafts] = useState({});
     const [lifecycleBusyId, setLifecycleBusyId] = useState(null);
 
-    const token = sessionStorage.getItem("token");
     const isPlatformAdmin = getSessionValue("role") === "platform_admin";
 
     const refreshAgencies = async () => {
@@ -370,17 +369,7 @@ function AgencyManagement() {
 
         const loadAgencies = async () => {
             try {
-                const response = await fetch(apiUrl("/agencies/"), {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error("Failed to load agencies");
-                }
-
-                const data = await response.json();
+                const data = await apiGet("/agencies/");
 
                 if (isMounted) {
                     setAgencies(mergeAgencies(Array.isArray(data) ? data : []));
@@ -400,7 +389,7 @@ function AgencyManagement() {
         return () => {
             isMounted = false;
         };
-    }, [token]);
+    }, []);
 
     useEffect(() => {
         let isMounted = true;

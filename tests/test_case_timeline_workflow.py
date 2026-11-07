@@ -12,10 +12,8 @@ def test_case_timeline_request_is_authenticated_and_not_duplicated():
         / "CaseDetail.jsx"
     ).read_text(encoding="utf-8")
 
-    timeline_request = 'fetch(apiUrl(`/timeline-events/?case_id=${id}`), {'
+    timeline_request = 'apiGet(`/timeline-events/?case_id=${id}`)'
     assert timeline_request in source
-    request_section = source[source.index(timeline_request):]
-    assert "headers: authHeaders" in request_section[:250]
     assert "const unifiedTimeline = timelineEvents" in source
     assert "timelineEvents.length + sortedSightings.length" not in source
     assert "unifiedTimeline.map((event)" in source

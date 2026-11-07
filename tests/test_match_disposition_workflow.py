@@ -43,7 +43,7 @@ def test_intelligence_center_requires_human_match_disposition():
         / "IntelligenceCenter.jsx"
     ).read_text(encoding="utf-8")
 
-    assert 'fetch(apiUrl("/matches/?limit=100")' in source
+    assert 'apiGet("/matches/?limit=100")' in source
     assert "Beacon provides a score, not a final identity decision" in source
     assert "Confirm Match" in source
     assert "Need More Information" in source

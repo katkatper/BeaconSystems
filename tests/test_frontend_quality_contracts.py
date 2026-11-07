@@ -122,6 +122,59 @@ def test_api_errors_preserve_http_status_for_permission_states():
     assert "error.status = response.status" in source
 
 
+def test_shared_api_transport_deduplicates_refresh_and_covers_read_workflows():
+    client_root = REPOSITORY_ROOT / "beaconsystems.client" / "src"
+    api = (client_root / "api.jsx").read_text(encoding="utf-8")
+
+    assert "let pendingRefresh = null" in api
+    assert "if (pendingRefresh) return pendingRefresh" in api
+    assert "if (await refreshAccessToken())" in api
+
+    for page_name in (
+        "Analytics.jsx",
+        "Sightings.jsx",
+        "ExternalRecordList.jsx",
+        "IntelligenceCenter.jsx",
+        "LegalOrderDetail.jsx",
+        "PersonDetail.jsx",
+    ):
+        source = (client_root / "pages" / page_name).read_text(encoding="utf-8")
+        assert 'sessionStorage.getItem("token")' not in source
+        assert "apiGet(" in source
+
+
+def test_authenticated_write_workflows_use_shared_refresh_safe_transport():
+    client_root = REPOSITORY_ROOT / "beaconsystems.client" / "src"
+    api = (client_root / "api.jsx").read_text(encoding="utf-8")
+
+    assert "export async function apiPut" in api
+    for page_name in (
+        "AddReport.jsx",
+        "CreateCase.jsx",
+        "CaseAccess.jsx",
+        "LegalAccessRequests.jsx",
+        "AddExternalRecord.jsx",
+    ):
+        source = (client_root / "pages" / page_name).read_text(encoding="utf-8")
+        assert 'sessionStorage.getItem("token")' not in source
+        assert "fetch(" not in source
+        assert "api" in source
+
+
+def test_authenticated_pages_do_not_bypass_shared_api_transport():
+    pages_root = REPOSITORY_ROOT / "beaconsystems.client" / "src" / "pages"
+
+    for path in pages_root.glob("*.jsx"):
+        source = path.read_text(encoding="utf-8")
+        assert 'sessionStorage.getItem("token")' not in source
+        if path.name != "Login.jsx":
+            assert "fetch(" not in source, f"{path.name} bypasses the shared API transport"
+
+    case_detail = (pages_root / "CaseDetail.jsx").read_text(encoding="utf-8")
+    assert "Promise.allSettled" in case_detail
+    assert "apiBlob(" in case_detail
+
+
 def test_access_tokens_are_tab_scoped_instead_of_persisted_locally():
     client_root = REPOSITORY_ROOT / "beaconsystems.client" / "src"
     sources = "\n".join(

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { apiUrl } from "../api.jsx";
+import { apiGet, apiPost } from "../api.jsx";
 
 const distributionOptions = [
     "Patrol", "Detectives", "Supervisors", "Dispatch", "State Police",
@@ -7,19 +7,7 @@ const distributionOptions = [
     "Medical Examiner", "Hospitals",
 ];
 
-const fetchBolos = async (token) => {
-    const response = await fetch(apiUrl("/bolos/"), {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error("Could not load BOLO alerts");
-    }
-
-    return response.json();
-};
+const fetchBolos = () => apiGet("/bolos/");
 
 function BoloBoard() {
     const [bolos, setBolos] = useState([]);
@@ -47,17 +35,15 @@ function BoloBoard() {
     });
     const [message, setMessage] = useState("");
 
-    const token = sessionStorage.getItem("token");
-
     const loadBolos = async () => {
-        const data = await fetchBolos(token);
+        const data = await fetchBolos();
         setBolos(data);
     };
 
     useEffect(() => {
         let isMounted = true;
 
-        fetchBolos(token)
+        fetchBolos()
             .then((data) => {
                 if (isMounted) {
                     setBolos(data);
@@ -74,7 +60,7 @@ function BoloBoard() {
         return () => {
             isMounted = false;
         };
-    }, [token]);
+    }, []);
 
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;
@@ -125,21 +111,10 @@ function BoloBoard() {
             vehicle_identifiers: form.vehicle || null,
         };
 
-        const response = await fetch(apiUrl("/bolos/"), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            const detail = Array.isArray(error.detail)
-                ? error.detail.map((item) => item.msg).join("; ")
-                : error.detail;
-            setMessage(detail || "Could not create BOLO alert");
+        try {
+            await apiPost("/bolos/", payload);
+        } catch (error) {
+            setMessage(error.message || "Could not create BOLO alert");
             return;
         }
 

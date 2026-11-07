@@ -1,4 +1,4 @@
-import { apiRequest, apiUrl } from "../api.jsx";
+import { apiGet, apiRequest } from "../api.jsx";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 
 const IntelligenceMap3D = lazy(() => import("./IntelligenceMap3D.jsx"));
@@ -34,29 +34,17 @@ function IntelligenceCenter() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = sessionStorage.getItem("token");
-        const headers = { Authorization: `Bearer ${token}` };
-
         const loadIntelligence = async () => {
             try {
-                const [sightingsResponse, recordsResponse, bolosResponse, evidenceResponse, personsResponse, matchesResponse] =
+                const [sightingsData, recordsData, bolosData, evidenceData, personsData, matchesData] =
                     await Promise.all([
-                        fetch(apiUrl("/sightings/"), { headers }),
-                        fetch(apiUrl("/external-records/"), { headers }),
-                        fetch(apiUrl("/bolos/"), { headers }),
-                        fetch(apiUrl("/evidence/"), { headers }),
-                        fetch(apiUrl("/persons/?limit=100"), { headers }),
-                        fetch(apiUrl("/matches/?limit=100"), { headers }),
+                        apiGet("/sightings/"),
+                        apiGet("/external-records/"),
+                        apiGet("/bolos/"),
+                        apiGet("/evidence/"),
+                        apiGet("/persons/?limit=100"),
+                        apiGet("/matches/?limit=100"),
                     ]);
-
-                const [sightingsData, recordsData, bolosData, evidenceData, personsData, matchesData] = await Promise.all([
-                    sightingsResponse.ok ? sightingsResponse.json() : [],
-                    recordsResponse.ok ? recordsResponse.json() : [],
-                    bolosResponse.ok ? bolosResponse.json() : [],
-                    evidenceResponse.ok ? evidenceResponse.json() : [],
-                    personsResponse.ok ? personsResponse.json() : [],
-                    matchesResponse.ok ? matchesResponse.json() : [],
-                ]);
 
                 if (!isMounted) return;
 

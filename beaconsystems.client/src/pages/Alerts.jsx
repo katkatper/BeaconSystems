@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet, apiPut, apiRequest } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -61,20 +61,7 @@ function Alerts() {
     };
 
     const loadAlerts = () => {
-        const token = sessionStorage.getItem("token");
-
-        fetch(apiUrl("/alerts/"), {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Failed to load alerts");
-                }
-
-                return res.json();
-            })
+        apiGet("/alerts/")
             .then((data) => {
                 setAlerts(data);
             })
@@ -86,13 +73,12 @@ function Alerts() {
 
     useEffect(() => {
         loadAlerts();
-        const token = sessionStorage.getItem("token");
         Promise.all([
-            fetch(apiUrl("/cases/"), { headers: { Authorization: `Bearer ${token}` } }),
-            fetch(apiUrl("/persons/?limit=200"), { headers: { Authorization: `Bearer ${token}` } }),
-        ]).then(async ([caseResponse, personResponse]) => {
-            setCases(caseResponse.ok ? await caseResponse.json() : []);
-            setPersons(personResponse.ok ? await personResponse.json() : []);
+            apiGet("/cases/"),
+            apiGet("/persons/?limit=200"),
+        ]).then(([caseData, personData]) => {
+            setCases(Array.isArray(caseData) ? caseData : []);
+            setPersons(Array.isArray(personData) ? personData : []);
         }).catch((err) => console.error(err));
     }, []);
 
@@ -149,8 +135,6 @@ function Alerts() {
     const createAlert = async (e) => {
         e.preventDefault();
 
-        const token = sessionStorage.getItem("token");
-
         const query = new URLSearchParams({
             case_id: form.case_id,
             person_id: form.person_id,
@@ -167,21 +151,7 @@ function Alerts() {
         }
 
         try {
-            const response = await fetch(
-                apiUrl(`/alerts/?${query.toString()}`),
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to create alert");
-            }
-
-            const data = await response.json();
+            const data = await apiRequest(`/alerts/?${query.toString()}`, { method: "POST" });
 
             setMessage(data.message || "Alert created.");
 
@@ -205,7 +175,6 @@ function Alerts() {
     };
 
     const updateAlert = async (alertId) => {
-        const token = sessionStorage.getItem("token");
         const payload = {
             ...alertEditForm,
             case_id: Number(alertEditForm.case_id),
@@ -217,19 +186,7 @@ function Alerts() {
         };
 
         try {
-            const response = await fetch(apiUrl(`/alerts/${alertId}`), {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Failed to update alert");
-            }
+            await apiPut(`/alerts/${alertId}`, payload);
 
             setMessage("Alert updated.");
             setEditingAlertId(null);

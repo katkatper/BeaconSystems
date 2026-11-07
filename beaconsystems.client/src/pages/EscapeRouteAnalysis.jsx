@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet, apiPost } from "../api.jsx";
 import React, { useMemo, useState } from "react";
 import SightingMap from "./SightingMap.jsx";
 import { geocodeLocal } from "../geoUtils.js";
@@ -234,22 +234,9 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
     };
 
     const geocodeAnalysisOrigin = async (value) => {
-        const token = sessionStorage.getItem("token");
-
-        if (token && value.trim()) {
+        if (value.trim()) {
             try {
-                const response = await fetch(
-                    apiUrl(`/geocoding/address?address=${encodeURIComponent(value)}`),
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
-                );
-
-                if (response.ok) {
-                    return response.json();
-                }
+                return await apiGet(`/geocoding/address?address=${encodeURIComponent(value)}`);
             } catch (error) {
                 console.error(error);
             }
@@ -328,29 +315,14 @@ function EscapeRouteAnalysis({ embedded = false, caseContext = null, onAnalysisR
         setSaveStatus("");
 
         try {
-            const token = sessionStorage.getItem("token");
-            const response = await fetch(apiUrl("/timeline-events/"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    case_id: caseContext.caseId,
-                    person_id: caseContext.personId || null,
-                    event_type: "escape_route_analysis",
-                    source_type: "beacon_escape_route",
-                    location: form.abductionLocation || null,
-                    description: buildTimelineDescription(),
-                }),
+            const savedEvent = await apiPost("/timeline-events/", {
+                case_id: caseContext.caseId,
+                person_id: caseContext.personId || null,
+                event_type: "escape_route_analysis",
+                source_type: "beacon_escape_route",
+                location: form.abductionLocation || null,
+                description: buildTimelineDescription(),
             });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not save analysis to timeline.");
-            }
-
-            const savedEvent = await response.json();
             onTimelineEventSaved?.(savedEvent);
             setSaveStatus("Escape route analysis saved to the case timeline.");
         } catch (error) {

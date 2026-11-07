@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 
 function Analytics() {
@@ -6,12 +6,7 @@ function Analytics() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = sessionStorage.getItem("token");
-
-        fetch(apiUrl("/dashboard/summary"), {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((response) => (response.ok ? response.json() : null))
+        apiGet("/dashboard/summary")
             .then((data) => {
                 if (isMounted) {
                     setSummary(data);

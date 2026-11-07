@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiBlob, apiDelete, apiGet, apiPost, apiPut, apiRequest, apiUrl } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import AuthenticatedImage from "../components/AuthenticatedImage.jsx";
 import { useParams, Link } from "react-router-dom";
@@ -59,114 +59,44 @@ function CaseDetail() {
     });
 
     useEffect(() => {
-        const token = sessionStorage.getItem("token");
         let isMounted = true;
-
-        const authHeaders = {
-            Authorization: `Bearer ${token}`,
-        };
 
         const loadCaseDetail = async () => {
             setIsLoading(true);
             setError(null);
             try {
-                const caseResponse = await fetch(apiUrl(`/cases/${id}`), {
-                    headers: authHeaders,
-                });
-
-                if (!caseResponse.ok) {
-                    const responseError = await caseResponse.json().catch(() => ({}));
-                    const loadError = new Error(
-                        responseError.detail ||
-                        (caseResponse.status === 403
-                            ? "You do not have permission to view this case."
-                            : "Could not load this case.")
-                    );
-                    loadError.status = caseResponse.status;
-                    throw loadError;
-                }
-
-                const caseData = await caseResponse.json();
+                const caseData = await apiGet(`/cases/${id}`);
 
                 if (!isMounted) return;
                 setCaseItem(caseData);
 
-                const [
-                    sightingsResponse,
-                    timelineResponse,
-                    evidenceResponse,
-                    personResponse,
-                    externalRecordsResponse,
-                    agencyExchangesResponse,
-                    correlationsResponse,
-                    leadsResponse,
-                    leadAssigneesResponse,
-                ] = await Promise.all([
-                    fetch(apiUrl(`/sightings/?case_id=${id}`), {
-                        headers: authHeaders,
-                    }),
-                    fetch(apiUrl(`/timeline-events/?case_id=${id}`), {
-                        headers: authHeaders,
-                    }),
-                    fetch(apiUrl(`/evidence/case/${id}`), {
-                        headers: authHeaders,
-                    }),
-                    fetch(apiUrl(`/persons/${caseData.person_id}`), {
-                        headers: authHeaders,
-                    }),
-                    fetch(
-                        apiUrl(`/external-records/?case_id=${id}`),
-                        { headers: authHeaders }
-                    ),
-                    fetch(apiUrl(`/agency-exchanges/?case_id=${id}`), {
-                        headers: authHeaders,
-                    }),
-                    fetch(apiUrl(`/cases/${id}/correlations`), {
-                        headers: authHeaders,
-                    }),
-                    fetch(apiUrl(`/leads/?case_id=${id}`), { headers: authHeaders }),
-                    fetch(apiUrl(`/leads/assignees?case_id=${id}`), { headers: authHeaders }),
-                ]);
-
-                const secondaryResponses = [
-                    ["sightings", sightingsResponse],
-                    ["timeline", timelineResponse],
-                    ["evidence", evidenceResponse],
-                    ["person profile", personResponse],
-                    ["external records", externalRecordsResponse],
-                    ["agency exchanges", agencyExchangesResponse],
-                    ["case correlations", correlationsResponse],
-                    ["leads", leadsResponse],
-                    ["lead assignees", leadAssigneesResponse],
+                const secondaryRequests = [
+                    ["sightings", apiGet(`/sightings/?case_id=${id}`), []],
+                    ["timeline", apiGet(`/timeline-events/?case_id=${id}`), []],
+                    ["evidence", apiGet(`/evidence/case/${id}`), []],
+                    ["person profile", apiGet(`/persons/${caseData.person_id}`), null],
+                    ["external records", apiGet(`/external-records/?case_id=${id}`), []],
+                    ["agency exchanges", apiGet(`/agency-exchanges/?case_id=${id}`), []],
+                    ["case correlations", apiGet(`/cases/${id}/correlations`), { correlations: [] }],
+                    ["leads", apiGet(`/leads/?case_id=${id}`), []],
+                    ["lead assignees", apiGet(`/leads/assignees?case_id=${id}`), []],
                 ];
-                const [
-                    sightingsData,
-                    timelineData,
-                    evidenceData,
-                    personData,
-                    externalRecordsData,
-                    agencyExchangesData,
-                    correlationsData,
-                    leadsData,
-                    leadAssigneesData,
-                ] = await Promise.all([
-                    sightingsResponse.ok ? sightingsResponse.json() : [],
-                    timelineResponse.ok ? timelineResponse.json() : [],
-                    evidenceResponse.ok ? evidenceResponse.json() : [],
-                    personResponse.ok ? personResponse.json() : null,
-                    externalRecordsResponse.ok ? externalRecordsResponse.json() : [],
-                    agencyExchangesResponse.ok ? agencyExchangesResponse.json() : [],
-                    correlationsResponse.ok ? correlationsResponse.json() : { correlations: [] },
-                    leadsResponse.ok ? leadsResponse.json() : [],
-                    leadAssigneesResponse.ok ? leadAssigneesResponse.json() : [],
-                ]);
+                const secondaryResults = await Promise.allSettled(
+                    secondaryRequests.map(([, request]) => request)
+                );
+                const secondaryData = secondaryResults.map((result, index) =>
+                    result.status === "fulfilled" ? result.value : secondaryRequests[index][2]
+                );
+                const [sightingsData, timelineData, evidenceData, personData,
+                    externalRecordsData, agencyExchangesData, correlationsData,
+                    leadsData, leadAssigneesData] = secondaryData;
 
                 if (!isMounted) return;
 
                 setPartialLoadWarnings(
-                    secondaryResponses
-                        .filter(([, response]) => !response.ok)
-                        .map(([label]) => label)
+                    secondaryResults
+                        .map((result, index) => result.status === "rejected" ? secondaryRequests[index][0] : null)
+                        .filter(Boolean)
                 );
 
                 setSightings(Array.isArray(sightingsData) ? sightingsData : []);
@@ -217,23 +147,16 @@ function CaseDetail() {
 
     const submitLead = async (event) => {
         event.preventDefault();
-        const token = sessionStorage.getItem("token");
         setLeadMessage("");
         try {
-            const response = await fetch(apiUrl("/leads/"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    case_id: Number(id),
-                    lead_source: leadForm.lead_source,
-                    description: leadForm.description,
-                    priority: leadForm.priority,
-                    assigned_to_user_id: leadForm.assigned_to_user_id ? Number(leadForm.assigned_to_user_id) : null,
-                    due_at: leadForm.due_at ? new Date(leadForm.due_at).toISOString() : null,
-                }),
+            const data = await apiPost("/leads/", {
+                case_id: Number(id),
+                lead_source: leadForm.lead_source,
+                description: leadForm.description,
+                priority: leadForm.priority,
+                assigned_to_user_id: leadForm.assigned_to_user_id ? Number(leadForm.assigned_to_user_id) : null,
+                due_at: leadForm.due_at ? new Date(leadForm.due_at).toISOString() : null,
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.detail || "Could not create lead");
             setLeads((current) => [data, ...current]);
             setLeadForm({ lead_source: "", description: "", priority: "medium", assigned_to_user_id: "", due_at: "" });
             setLeadMessage("Lead created and added to the case workflow.");
@@ -243,7 +166,6 @@ function CaseDetail() {
     };
 
     const updateLead = async (lead, changes, resolutionOverride) => {
-        const token = sessionStorage.getItem("token");
         if (
             changes.status &&
             ["resolved", "closed"].includes(changes.status) &&
@@ -254,13 +176,10 @@ function CaseDetail() {
         }
         const resolution = resolutionOverride;
         try {
-            const response = await fetch(apiUrl(`/leads/${lead.lead_id}`), {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ ...changes, ...(resolution !== undefined ? { resolution } : {}) }),
+            const data = await apiPut(`/leads/${lead.lead_id}`, {
+                ...changes,
+                ...(resolution !== undefined ? { resolution } : {}),
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.detail || "Could not update lead");
             setLeads((current) => current.map((item) => item.lead_id === data.lead_id ? data : item));
             setLeadMessage(`Lead ${data.lead_id} updated.`);
         } catch (err) {
@@ -271,8 +190,6 @@ function CaseDetail() {
     const submitSighting = async (e) => {
         e.preventDefault();
 
-        const token = sessionStorage.getItem("token");
-
         try {
             const payload = {
                 case_id: Number(id),
@@ -282,37 +199,9 @@ function CaseDetail() {
                 image_url: null,
             };
 
-            const response = await fetch(apiUrl("/sightings/"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.status === 401) {
-                setSightingMessage("Your session expired. Please log in again before adding a sighting.");
-                return;
-            }
-
-            if (response.status === 403) {
-                setSightingMessage("Your role does not have permission to add sightings to this case.");
-                return;
-            }
-
-            if (!response.ok) throw new Error("Failed to add sighting");
-
-            const data = await response.json();
-            const createdSightingResponse = data.sighting_id
-                ? await fetch(apiUrl(`/sightings/${data.sighting_id}`), {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                })
-                : null;
-            const createdSighting = createdSightingResponse?.ok
-                ? await createdSightingResponse.json()
+            const data = await apiPost("/sightings/", payload);
+            const createdSighting = data.sighting_id
+                ? await apiGet(`/sightings/${data.sighting_id}`).catch(() => null)
                 : null;
 
             setSightings([
@@ -331,7 +220,11 @@ function CaseDetail() {
             });
         } catch (err) {
             console.error(err);
-            setSightingMessage("Could not add sighting.");
+            setSightingMessage(
+                err.status === 403
+                    ? "Your role does not have permission to add sightings to this case."
+                    : err.message || "Could not add sighting."
+            );
         }
     };
 
@@ -346,30 +239,8 @@ function CaseDetail() {
             return;
         }
 
-        const token = sessionStorage.getItem("token");
-
         try {
-            const response = await fetch(
-                apiUrl(`/sightings/${sighting.sighting_id}`),
-                {
-                    method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (response.status === 401) {
-                setSightingMessage("Your session expired. Please log in again before removing a sighting.");
-                return;
-            }
-
-            if (response.status === 403) {
-                setSightingMessage("Your role does not have permission to remove sightings from this case.");
-                return;
-            }
-
-            if (!response.ok) throw new Error("Failed to remove sighting");
+            await apiDelete(`/sightings/${sighting.sighting_id}`);
 
             setSightings((currentSightings) =>
                 currentSightings.filter((entry) => entry.sighting_id !== sighting.sighting_id)
@@ -378,7 +249,11 @@ function CaseDetail() {
             setPendingSightingRemoval(null);
         } catch (err) {
             console.error(err);
-            setSightingMessage("Could not remove sighting.");
+            setSightingMessage(
+                err.status === 403
+                    ? "Your role does not have permission to remove sightings from this case."
+                    : err.message || "Could not remove sighting."
+            );
         }
     };
 
@@ -390,7 +265,6 @@ function CaseDetail() {
             return;
         }
 
-        const token = sessionStorage.getItem("token");
         const nextAssociate = {
             id: `associate-${person.person_id}-${associates.length + 1}`,
             name: associateForm.name || "Known associate",
@@ -403,43 +277,14 @@ function CaseDetail() {
         const nextAssociates = [...associates, nextAssociate];
 
         try {
-            const response = await fetch(apiUrl(`/persons/${person.person_id}`), {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    known_associates: JSON.stringify(nextAssociates),
-                }),
+            await apiPut(`/persons/${person.person_id}`, {
+                known_associates: JSON.stringify(nextAssociates),
             });
-
-            if (response.status === 401) {
-                setAssociateMessage("Your session expired. Please log in again before adding associates.");
-                return;
-            }
-
-            if (response.status === 403) {
-                setAssociateMessage("Your role does not have permission to update associates for this case.");
-                return;
-            }
-
-            if (!response.ok) throw new Error("Failed to save associate");
-
-            const refreshedPersonResponse = await fetch(apiUrl(`/persons/${person.person_id}`), {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            setPerson(
-                refreshedPersonResponse.ok
-                    ? await refreshedPersonResponse.json()
-                    : {
-                        ...person,
-                        known_associates: JSON.stringify(nextAssociates),
-                    }
-            );
+            const refreshedPerson = await apiGet(`/persons/${person.person_id}`).catch(() => ({
+                ...person,
+                known_associates: JSON.stringify(nextAssociates),
+            }));
+            setPerson(refreshedPerson);
             setAssociateForm({
                 name: "",
                 relationship: "",
@@ -451,24 +296,17 @@ function CaseDetail() {
             setAssociateMessage("Associate added to this case profile.");
         } catch (err) {
             console.error(err);
-            setAssociateMessage("Could not save associate.");
+            setAssociateMessage(
+                err.status === 403
+                    ? "Your role does not have permission to update associates for this case."
+                    : err.message || "Could not save associate."
+            );
         }
     };
 
     const loadEvidenceChain = async (evidenceId) => {
-        const token = sessionStorage.getItem("token");
-
         try {
-            const response = await fetch(
-                apiUrl(`/evidence/chain/${evidenceId}`),
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                }
-            );
-
-            if (!response.ok) throw new Error("Could not load chain of custody");
-
-            const data = await response.json();
+            const data = await apiGet(`/evidence/chain/${evidenceId}`);
             setEvidenceChains((prev) => ({
                 ...prev,
                 [evidenceId]: data,
@@ -481,23 +319,8 @@ function CaseDetail() {
     };
 
     const viewEvidence = async (evidenceId) => {
-        const token = sessionStorage.getItem("token");
-
         try {
-            const response = await fetch(
-                apiUrl(`/evidence/view/${evidenceId}`),
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not open evidence");
-            }
-
-            const blob = await response.blob();
+            const blob = await apiBlob(`/evidence/view/${evidenceId}`);
             const fileUrl = window.URL.createObjectURL(blob);
             window.open(fileUrl, "_blank");
         } catch (err) {
@@ -507,22 +330,8 @@ function CaseDetail() {
     };
 
     const markEvidenceSensitive = async (evidenceId, isSensitive) => {
-        const token = sessionStorage.getItem("token");
-
         try {
-            const response = await fetch(
-                apiUrl(`/evidence/${evidenceId}/sensitive?is_sensitive=${isSensitive}`),
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not update sensitivity");
-            }
+            await apiRequest(`/evidence/${evidenceId}/sensitive?is_sensitive=${isSensitive}`, { method: "PUT" });
 
             setEvidence(
                 evidence.map((item) =>
@@ -539,16 +348,10 @@ function CaseDetail() {
     };
 
     const transitionEvidenceStorage = async (item, action) => {
-        const token = sessionStorage.getItem("token");
         setEvidenceActionId(item.evidence_id);
         setEvidenceMessage("");
         try {
-            const response = await fetch(apiUrl(`/evidence/${item.evidence_id}/${action}`), {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.detail || `Could not ${action} evidence`);
+            const data = await apiRequest(`/evidence/${item.evidence_id}/${action}`, { method: "POST" });
             setEvidence((current) => current.map((entry) =>
                 entry.evidence_id === item.evidence_id
                     ? { ...entry, storage_tier: data.storage_tier }

@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -79,22 +79,9 @@ function LegalOrderDetail() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = sessionStorage.getItem("token");
-
         const loadRequest = async () => {
             try {
-                const response = await fetch(apiUrl(`/legal-access/${id}`), {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.detail || "Could not load legal request");
-                }
-
-                const data = await response.json();
+                const data = await apiGet(`/legal-access/${id}`);
 
                 if (isMounted) {
                     setRequest(data);

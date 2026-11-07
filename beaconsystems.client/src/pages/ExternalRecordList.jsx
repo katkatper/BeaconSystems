@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet } from "../api.jsx";
 import React, { useEffect, useMemo, useState } from "react";
 
 function ExternalRecordList() {
@@ -8,23 +8,11 @@ function ExternalRecordList() {
     const [showMore, setShowMore] = useState(false);
 
     useEffect(() => {
-        const token = sessionStorage.getItem("token");
-        const headers = {
-            Authorization: `Bearer ${token}`,
-        };
-
         Promise.all([
-            fetch(apiUrl("/external-records/"), { headers }),
-            fetch(apiUrl("/integrations/"), { headers }),
+            apiGet("/external-records/"),
+            apiGet("/integrations/"),
         ])
-            .then(async ([recordsResponse, partnersResponse]) => {
-                const recordsData = recordsResponse.ok
-                    ? await recordsResponse.json()
-                    : [];
-                const partnersData = partnersResponse.ok
-                    ? await partnersResponse.json()
-                    : [];
-
+            .then(([recordsData, partnersData]) => {
                 setRecords(Array.isArray(recordsData) ? recordsData : []);
                 setPartners(Array.isArray(partnersData) ? partnersData : []);
             })

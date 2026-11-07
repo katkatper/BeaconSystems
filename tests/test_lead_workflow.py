@@ -43,8 +43,8 @@ def test_case_profile_uses_real_lead_records_instead_of_placeholder_counts():
         / "CaseDetail.jsx"
     ).read_text(encoding="utf-8")
 
-    assert 'fetch(apiUrl(`/leads/?case_id=${id}`)' in source
-    assert 'fetch(apiUrl(`/leads/assignees?case_id=${id}`)' in source
+    assert 'apiGet(`/leads/?case_id=${id}`)' in source
+    assert 'apiGet(`/leads/assignees?case_id=${id}`)' in source
     assert "submitLead" in source
     assert "updateLead" in source
     assert "New leads: {externalRecords.length}" not in source

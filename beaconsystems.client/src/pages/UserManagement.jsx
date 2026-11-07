@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet, apiPost, apiPut, apiRequest } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import { getSessionValue } from "../authSession.js";
 
@@ -18,7 +18,6 @@ function UserManagement() {
         role: "investigator",
         agency_id: "",
     });
-    const token = sessionStorage.getItem("token");
     const currentRole = getSessionValue("role", "viewer");
     const roleOptions = currentRole === "platform_admin"
         ? [
@@ -48,29 +47,8 @@ function UserManagement() {
     });
     const canManageUser = (user) => currentRole !== "supervisor" ||
         !["platform_admin", "agency_admin"].includes(user.role);
-    const getApiErrorMessage = (errorData, fallback) => {
-        if (Array.isArray(errorData.detail)) {
-            return errorData.detail
-                .map((item) => `${item.loc?.slice(1).join(".") || "field"}: ${item.msg}`)
-                .join("; ");
-        }
-
-        return errorData.detail || fallback;
-    };
-
     useEffect(() => {
-        fetch(apiUrl("/admin/users/"), {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Could not load users.");
-                }
-
-                return res.json();
-            })
+        apiGet("/admin/users/")
             .then((data) => {
                 setUsers(Array.isArray(data) ? data : []);
                 setMessage("");
@@ -79,7 +57,7 @@ function UserManagement() {
                 console.error(err);
                 setMessage("Could not load users.");
             });
-    }, [token]);
+    }, []);
 
     const registerUser = async (event) => {
         event.preventDefault();
@@ -93,21 +71,7 @@ function UserManagement() {
                 agency_id: newUser.agency_id ? Number(newUser.agency_id) : null,
             };
 
-            const response = await fetch(apiUrl("/admin/users/"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(getApiErrorMessage(errorData, "Could not register user"));
-            }
-
-            const data = await response.json();
+            const data = await apiPost("/admin/users/", payload);
             setUsers((currentUsers) => [...currentUsers, data].sort((a, b) =>
                 (a.username || "").localeCompare(b.username || "")
             ));
@@ -127,20 +91,7 @@ function UserManagement() {
 
     const updateUserStatus = async (userId, isActive) => {
         try {
-            const response = await fetch(
-                apiUrl(`/admin/users/${userId}/status?is_active=${isActive}`),
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Could not update user status");
-            }
+            await apiRequest(`/admin/users/${userId}/status?is_active=${isActive}`, { method: "PUT" });
 
             setUsers((currentUsers) =>
                 currentUsers.map((user) =>
@@ -158,26 +109,9 @@ function UserManagement() {
         const temporaryPassword = resetPasswords[userId] || "";
 
         try {
-            const response = await fetch(
-                apiUrl(`/admin/users/${userId}/reset-password`),
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        temporary_password: temporaryPassword,
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(getApiErrorMessage(errorData, "Could not reset user password"));
-            }
-
-            const data = await response.json();
+            const data = await apiPut(`/admin/users/${userId}/reset-password`, {
+                temporary_password: temporaryPassword,
+            });
             setResetPasswords((currentPasswords) => ({
                 ...currentPasswords,
                 [userId]: "",
@@ -191,19 +125,7 @@ function UserManagement() {
 
     const promoteToInvestigator = async (userId) => {
         try {
-            const response = await fetch(
-                apiUrl(`/admin/users/${userId}/role?role=investigator`),
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not update role");
-            }
+            await apiRequest(`/admin/users/${userId}/role?role=investigator`, { method: "PUT" });
 
             setUsers((currentUsers) =>
                 currentUsers.map((user) =>

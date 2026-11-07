@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import SightingMap from "./SightingMap.jsx";
 
@@ -8,12 +8,7 @@ function Sightings() {
 
     useEffect(() => {
         let isMounted = true;
-        const token = sessionStorage.getItem("token");
-
-        fetch(apiUrl("/sightings/"), {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((response) => (response.ok ? response.json() : []))
+        apiGet("/sightings/")
             .then((data) => {
                 if (isMounted) {
                     setSightings(Array.isArray(data) ? data : []);

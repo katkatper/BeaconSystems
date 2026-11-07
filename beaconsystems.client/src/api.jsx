@@ -1,6 +1,7 @@
 import { getSessionValue, setSessionValue } from "./authSession.js";
 
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+let pendingRefresh = null;
 
 export async function getHealth() {
     return apiGet("/");
@@ -47,6 +48,27 @@ async function parseResponse(response) {
     return response;
 }
 
+async function refreshAccessToken() {
+    if (pendingRefresh) return pendingRefresh;
+
+    pendingRefresh = fetch(apiUrl("/users/refresh"), {
+        method: "POST",
+        credentials: "include",
+    })
+        .then(async (response) => {
+            if (!response.ok) return false;
+            const refreshed = await response.json();
+            setSessionValue("token", refreshed.access_token);
+            setSessionValue("session_expires_at", refreshed.session_expires_at);
+            return true;
+        })
+        .finally(() => {
+            pendingRefresh = null;
+        });
+
+    return pendingRefresh;
+}
+
 export async function apiRequest(path, options = {}, allowRefresh = true) {
     let response = await fetch(apiUrl(path), {
         ...options,
@@ -55,14 +77,7 @@ export async function apiRequest(path, options = {}, allowRefresh = true) {
     });
 
     if (response.status === 401 && allowRefresh && path !== "/users/refresh") {
-        const refreshResponse = await fetch(apiUrl("/users/refresh"), {
-            method: "POST",
-            credentials: "include",
-        });
-        if (refreshResponse.ok) {
-            const refreshed = await refreshResponse.json();
-            setSessionValue("token", refreshed.access_token);
-            setSessionValue("session_expires_at", refreshed.session_expires_at);
+        if (await refreshAccessToken()) {
             response = await fetch(apiUrl(path), {
                 ...options,
                 credentials: "include",
@@ -98,6 +113,20 @@ export async function apiPatch(path, payload) {
     });
 }
 
+export async function apiPut(path, payload) {
+    return apiRequest(path, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function apiDelete(path) {
+    return apiRequest(path, { method: "DELETE" });
+}
+
 export async function apiPostForm(path, formData) {
     return apiRequest(path, {
         method: "POST",
@@ -106,17 +135,6 @@ export async function apiPostForm(path, formData) {
 }
 
 export async function apiBlob(path) {
-    const response = await fetch(apiUrl(path), {
-        headers: authHeaders(),
-    });
-
-    if (!response.ok) {
-        const contentType = response.headers.get("content-type") || "";
-        const errorData = contentType.includes("application/json")
-            ? await response.json().catch(() => ({}))
-            : {};
-        throw new Error(errorData.detail || `Request failed (${response.status})`);
-    }
-
-    return response.blob();
+    const response = await apiRequest(path);
+    return response instanceof Response ? response.blob() : response;
 }

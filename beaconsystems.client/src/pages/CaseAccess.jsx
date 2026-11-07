@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiPost } from "../api.jsx";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -22,28 +22,12 @@ function CaseAccess() {
 
     const submitAccessRequest = async (e) => {
         e.preventDefault();
-        const token = sessionStorage.getItem("token");
-
         try {
-            const response = await fetch(apiUrl("/cases/access-request"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    case_id: Number(caseId),
-                    reason_category: reasonCategory,
-                    reason,
-                }),
+            const data = await apiPost("/cases/access-request", {
+                case_id: Number(caseId),
+                reason_category: reasonCategory,
+                reason,
             });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Access request denied");
-            }
-
-            const data = await response.json();
             setMessage(data.message);
             setGrantedCaseId(data.message.includes("auto-approved") ? caseId : null);
         } catch (err) {

@@ -33,7 +33,6 @@ function SupervisorQueue() {
         summary: "",
     });
 
-    const token = sessionStorage.getItem("token");
     const location = useLocation();
     const workspaceFromPath = location.pathname.split("/")[2] || "";
     const activeWorkspace = workspaceFromPath || "personnel";
@@ -133,7 +132,7 @@ function SupervisorQueue() {
         const timer = setTimeout(loadQueue, 0);
 
         return () => clearTimeout(timer);
-    }, [loadQueue, token]);
+    }, [loadQueue]);
 
     useEffect(() => {
         let isMounted = true;
@@ -156,7 +155,7 @@ function SupervisorQueue() {
             isMounted = false;
             clearTimeout(timer);
         };
-    }, [token]);
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -178,7 +177,7 @@ function SupervisorQueue() {
         return () => {
             isMounted = false;
         };
-    }, [token]);
+    }, []);
 
     const reviewCaseAccess = async (grantId, action) => {
         if (reviewingGrants[grantId]) {

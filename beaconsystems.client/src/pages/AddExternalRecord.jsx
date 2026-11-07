@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiRequest } from "../api.jsx";
 import React, { useState } from "react";
 
 function AddExternalRecord() {
@@ -34,14 +34,8 @@ function AddExternalRecord() {
             notes: form.notes,
         });
 
-        const response = await fetch(
-            apiUrl(`/external-records/?${params.toString()}`),
-            {
-                method: "POST",
-            }
-        );
-
-        if (response.ok) {
+        try {
+            await apiRequest(`/external-records/?${params.toString()}`, { method: "POST" });
             setMessage("External record added successfully.");
             setForm({
                 integration_source_id: 1,
@@ -52,7 +46,8 @@ function AddExternalRecord() {
                 location: "",
                 notes: "",
             });
-        } else {
+        } catch (err) {
+            console.error(err);
             setMessage("Failed to add external record.");
         }
     }

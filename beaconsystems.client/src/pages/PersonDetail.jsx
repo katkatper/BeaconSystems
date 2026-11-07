@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import AuthenticatedImage from "../components/AuthenticatedImage.jsx";
 import { useParams } from "react-router-dom";
@@ -69,27 +69,11 @@ function PersonDetail() {
     const [cases, setCases] = useState([]);
 
     useEffect(() => {
-        const token = sessionStorage.getItem("token");
-
-        fetch(apiUrl(`/persons/${id}`), {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then(res => res.json())
+        apiGet(`/persons/${id}`)
             .then(data => {
                 setPerson(data);
-
-                return fetch(
-                    apiUrl(`/cases/by-person/${id}`),
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
-                );
+                return apiGet(`/cases/by-person/${id}`);
             })
-            .then(res => res.json())
             .then(caseData => {
                 setCases(caseData);
             });

@@ -1,4 +1,4 @@
-import { apiUrl } from "../api.jsx";
+import { apiGet, apiPost, apiPut } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 
 const authorityTypes = [
@@ -29,19 +29,7 @@ const sourceTypes = [
 ];
 
 const fetchLegalAccessRequests = async () => {
-    const token = sessionStorage.getItem("token");
-
-    const response = await fetch(apiUrl("/legal-access/"), {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to load legal access requests");
-    }
-
-    return response.json();
+    return apiGet("/legal-access/");
 };
 
 function LegalAccessRequests() {
@@ -97,26 +85,13 @@ function LegalAccessRequests() {
 
     const submitRequest = async (e) => {
         e.preventDefault();
-        const token = sessionStorage.getItem("token");
-
         const payload = {
             ...form,
             case_id: form.case_id ? Number(form.case_id) : null,
         };
 
         try {
-            const response = await fetch(apiUrl("/legal-access/"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error("Could not submit legal access request");
-            }
+            await apiPost("/legal-access/", payload);
 
             setMessage("Legal access request submitted for review.");
             setForm({
@@ -137,27 +112,11 @@ function LegalAccessRequests() {
     };
 
     const reviewRequest = async (requestId, status) => {
-        const token = sessionStorage.getItem("token");
-
         try {
-            const response = await fetch(
-                apiUrl(`/legal-access/${requestId}/review`),
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        status,
-                        review_notes: reviewNotes[requestId] || "",
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Could not review request");
-            }
+            await apiPut(`/legal-access/${requestId}/review`, {
+                status,
+                review_notes: reviewNotes[requestId] || "",
+            });
 
             await loadRequests();
         } catch (err) {
