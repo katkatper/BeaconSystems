@@ -90,6 +90,7 @@ jobs:
             tail -n 250 backend-test.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          python -c "from pathlib import Path; text = '\n'.join(Path('backend-test.log').read_text(errors='replace').splitlines()[-200:]); print('::error title=Backend test failure::' + text.replace('%', '%25').replace(chr(10), '%0A').replace(chr(13), '%0D'))"
       - name: Verify PostgreSQL multi-worker queue claims
         env:
           BEACON_QUEUE_TEST_DATABASE_URL: postgresql+psycopg2://beacon_ci:beacon_ci_password@127.0.0.1:5432/beacon_ci
