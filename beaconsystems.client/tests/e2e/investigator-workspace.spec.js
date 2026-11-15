@@ -33,6 +33,13 @@ test.beforeEach(async ({ page }) => {
     await page.route("**/notifications/unread-count", (route) => route.fulfill({ json: { unread_count: 0 } }));
 });
 
+async function activateCaseTab(page, name) {
+    const tab = page.getByRole("tab", { name });
+    await tab.focus();
+    await tab.press("Enter");
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+}
+
 test("investigator empty state is responsive and accessible", async ({ page }) => {
     await page.route("**/dashboard/investigator", (route) => route.fulfill({ json: emptyWorkspace }));
     await page.goto("/");
@@ -212,7 +219,7 @@ test("investigator sees partial-data warnings and immutable evidence status", as
     await page.goto("/cases/41");
 
     await expect(page.getByText(/could not load: timeline/i)).toBeVisible();
-    await page.getByRole("tab", { name: "Evidence" }).click();
+    await activateCaseTab(page, "Evidence");
     await expect(page.getByText("Synthetic camera image")).toBeVisible();
     await expect(page.getByText(/SHA-256 abcdef123456/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Archived" })).toBeDisabled();
@@ -276,17 +283,20 @@ test("investigator documents lead resolution and confirms sighting removal", asy
     await page.route("https://api.beacon.test/cases/41/correlations", (route) => route.fulfill({ json: { correlations: [] } }));
     await page.goto("/cases/41");
 
-    await page.getByRole("tab", { name: "Leads" }).click();
+    await activateCaseTab(page, "Leads");
     const leadCard = page.locator(".case-lead-card").filter({ hasText: "Camera review" });
     await leadCard.getByLabel("Status").selectOption("resolved");
     const resolutionDialog = page.getByRole("dialog", { name: "Document lead resolution" });
     await expect(resolutionDialog).toBeVisible();
     await resolutionDialog.getByLabel("Resolution summary").fill("Footage reviewed; no confirmed match.");
-    await resolutionDialog.getByRole("button", { name: "Save resolution" }).click();
+    const saveResolution = resolutionDialog.getByRole("button", { name: "Save resolution" });
+    await expect(saveResolution).toBeEnabled();
+    await saveResolution.focus();
+    await saveResolution.press("Enter");
     await expect(leadCard.getByText(/Footage reviewed/)).toBeVisible();
     expect(submittedResolution).toBe("Footage reviewed; no confirmed match.");
 
-    await page.getByRole("tab", { name: "Sightings" }).click();
+    await activateCaseTab(page, "Sightings");
     await page.getByRole("button", { name: "Remove" }).click();
     const removalDialog = page.getByRole("alertdialog", { name: "Remove this sighting?" });
     await expect(removalDialog).toBeVisible();
