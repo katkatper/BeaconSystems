@@ -40,6 +40,12 @@ async function activateCaseTab(page, name) {
     await expect(tab).toHaveAttribute("aria-selected", "true");
 }
 
+async function activateControl(control) {
+    await expect(control).toBeEnabled();
+    await control.focus();
+    await control.press("Enter");
+}
+
 test("investigator empty state is responsive and accessible", async ({ page }) => {
     await page.route("**/dashboard/investigator", (route) => route.fulfill({ json: emptyWorkspace }));
     await page.goto("/");
@@ -224,7 +230,7 @@ test("investigator sees partial-data warnings and immutable evidence status", as
     await expect(page.getByText(/SHA-256 abcdef123456/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Archived" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Archive original" })).toHaveCount(0);
-    await page.getByRole("button", { name: "View Chain of Custody" }).click();
+    await activateControl(page.getByRole("button", { name: "View Chain of Custody" }));
     await expect(page.getByText("Original recorded")).toBeVisible();
 });
 
@@ -297,10 +303,10 @@ test("investigator documents lead resolution and confirms sighting removal", asy
     expect(submittedResolution).toBe("Footage reviewed; no confirmed match.");
 
     await activateCaseTab(page, "Sightings");
-    await page.getByRole("button", { name: "Remove" }).click();
+    await activateControl(page.getByRole("button", { name: "Remove" }));
     const removalDialog = page.getByRole("alertdialog", { name: "Remove this sighting?" });
     await expect(removalDialog).toBeVisible();
-    await removalDialog.getByRole("button", { name: "Remove sighting" }).click();
+    await activateControl(removalDialog.getByRole("button", { name: "Remove sighting" }));
     await expect(page.getByText("Sighting removed.")).toBeVisible();
     expect(deletedSighting).toBe(true);
 });
