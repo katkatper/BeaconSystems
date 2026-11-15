@@ -134,15 +134,14 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: beacon-api:${{ github.sha }}
-          format: table
-          output: trivy-api.txt
+          format: json
+          output: trivy-api.json
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: 1
       - name: Annotate API image scan failure
         if: failure()
-        run: |
-          python -c "from pathlib import Path; text = '\n'.join(Path('trivy-api.txt').read_text(errors='replace').splitlines()[-80:]); print('::error title=API image vulnerability scan::' + text.replace('%', '%25').replace(chr(10), '%0A').replace(chr(13), '%0D'))"
+        run: python scripts/annotate_trivy_report.py trivy-api.json
       - name: Scan production worker image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -182,7 +181,13 @@ jobs:
       - name: Install browser test engines
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Run browser, viewport and accessibility matrix
-        run: npm run test:e2e
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee browser-test.log
+      - name: Annotate browser matrix failure
+        if: failure()
+        run: |
+          node -e "const fs=require('fs'); const lines=fs.readFileSync('browser-test.log','utf8').split(/\r?\n/).slice(-100).join('\n'); const escaped=lines.replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'); console.log('::error title=Browser matrix failure::'+escaped)"
       - name: Preserve browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
