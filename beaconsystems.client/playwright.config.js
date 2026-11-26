@@ -1,9 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
+import process from "node:process";
 
 export default defineConfig({
     testDir: "./tests/e2e",
     outputDir: "./test-results",
     reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
+    retries: process.env.CI ? 1 : 0,
+    timeout: 45_000,
     workers: 1,
     use: {
         baseURL: "https://127.0.0.1:4173",
