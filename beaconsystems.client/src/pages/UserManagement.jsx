@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiPut, apiRequest } from "../api.jsx";
 import React, { useEffect, useState } from "react";
 import { getSessionValue } from "../authSession.js";
+import OnboardingAdmin from "./OnboardingAdmin.jsx";
 
 function UserManagement() {
     const [users, setUsers] = useState([]);
@@ -149,6 +150,7 @@ function UserManagement() {
             </header>
 
             {message && <p className="alert-banner">{message}</p>}
+            <OnboardingAdmin platformAdmin={currentRole === "platform_admin"} />
 
             <section className="users-admin-grid">
                 <section className="users-panel user-admin-panel">

@@ -33,6 +33,7 @@ from routes import (
 )
 from routes.admin_log import router as admin_log_router
 from routes.admin_user_routes import router as admin_user_router
+from routes.onboarding_routes import router as onboarding_router
 from routes.agencies_routes import router as agencies_router
 from routes.agency_exchange_routes import router as agency_exchange_router
 from routes.alerts_routes import router as alerts_router
@@ -202,6 +203,7 @@ app.include_router(capacity_router)
 app.include_router(alerts_router)
 app.include_router(evidence_router)
 app.include_router(admin_user_router)
+app.include_router(onboarding_router)
 app.include_router(agencies_router)
 app.include_router(dashboard_router)
 app.include_router(legal_access_router)

@@ -32,6 +32,7 @@ from models.leads import Leads
 from models.legal_access_request import LegalAccessRequest
 from models.match import Match
 from models.notification import Notification
+from models.onboarding import AccountAccessRequest, AccountInvitation
 from models.partner_intake_record import PartnerIntakeRecord
 from models.person import Person
 from models.sighting import Sighting

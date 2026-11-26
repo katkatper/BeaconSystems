@@ -1,6 +1,6 @@
 import { apiUrl } from "../api.jsx";
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { clearAuthSession, getSessionValue, storeAuthSession } from "../authSession.js";
 
 const LOGIN_ERROR_MESSAGES = {
@@ -332,9 +332,13 @@ function Login({ onLogin }) {
                             onChange={(e) => setPassword(e.target.value)}
                         />
 
-                        <button type="submit" disabled={isSubmitting}>
+                        <button className="login-submit-action" type="submit" disabled={isSubmitting}>
                             {isSubmitting ? "Signing in…" : "Secure Login"}
                         </button>
+                        <div className="login-recovery-actions">
+                            <Link to="/register">Create Account</Link>
+                            <Link to="/request-access">Request access</Link>
+                        </div>
                     </form>
                 ) : (
                     <form className="password-change-panel" onSubmit={handlePasswordChange} aria-busy={isSubmitting}>

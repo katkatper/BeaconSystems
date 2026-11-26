@@ -4,6 +4,7 @@ import { BrowserRouter as Router,Routes,Route,Navigate,useLocation,useNavigate} 
 
 import Navbar from "./pages/Navbar.jsx";
 import Login from "./pages/Login.jsx";
+import AccountOnboarding from "./pages/AccountOnboarding.jsx";
 import "./App.css";
 import BeaconInsight from "./components/BeaconInsight.jsx";
 import { apiGet } from "./api.jsx";
@@ -128,7 +129,7 @@ function AppLayout() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const hideNavbar = location.pathname === "/login";
+    const hideNavbar = ["/login", "/register", "/request-access"].includes(location.pathname);
 
     useEffect(() => {
         if (hideNavbar || !hasAuthToken()) {
@@ -189,6 +190,8 @@ function AppLayout() {
                 <Route path="/operations" element={<ProtectedRoute><RoleRoute allowedRoles={operationalRoles}><JobOperations /></RoleRoute></ProtectedRoute>} />
 
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<AccountOnboarding key="register" register />} />
+                <Route path="/request-access" element={<AccountOnboarding key="request-access" />} />
 
                 <Route
                     path="/"
