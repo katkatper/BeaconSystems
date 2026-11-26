@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install --only-upgrade --no-install-recommends --yes zlib1g \
+    && apt-get install --only-upgrade --no-install-recommends --yes zlib1g libzstd1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --system --gid 10001 beacon \
